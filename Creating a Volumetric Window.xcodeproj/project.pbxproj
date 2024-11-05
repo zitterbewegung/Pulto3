@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
-		DF58AE252BCD826D00C8F737 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE242BCD826D00C8F737 /* MainView.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
 		DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */; };
 		DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE332BCD82AF00C8F737 /* VolumetricWindow.swift */; };
@@ -21,7 +20,6 @@
 		961121329AB26B80BF5FA320 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		DF58AE1B2BCD826D00C8F737 /* Volumetric Window.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Volumetric Window.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF58AE222BCD826D00C8F737 /* EntryPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryPoint.swift; sourceTree = "<group>"; };
-		DF58AE242BCD826D00C8F737 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		DF58AE282BCD826F00C8F737 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		DF58AE2D2BCD826F00C8F737 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -108,7 +106,6 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				DF58AE242BCD826D00C8F737 /* MainView.swift */,
 				DF58AE332BCD82AF00C8F737 /* VolumetricWindow.swift */,
 			);
 			path = Views;
@@ -187,7 +184,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */,
-				DF58AE252BCD826D00C8F737 /* MainView.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
