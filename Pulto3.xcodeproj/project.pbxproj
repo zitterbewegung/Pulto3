@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */; };
 		DC09C5DF2DE3BB1700774D7D /* NotebookWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */; };
+		DC09C6452DE3E22000774D7D /* DataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C6442DE3E22000774D7D /* DataImportView.swift */; };
 		DC0E89992DE366E900B27198 /* Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* Windows.swift */; };
 		DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */; };
 		DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */; };
@@ -28,6 +29,7 @@
 		DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookChartsView.swift; sourceTree = "<group>"; };
 		DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookWindows.swift; sourceTree = "<group>"; };
 		DC09C6432DE3CCC800774D7D /* DataFrameColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataFrameColumn.swift; sourceTree = "<group>"; };
+		DC09C6442DE3E22000774D7D /* DataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataImportView.swift; sourceTree = "<group>"; };
 		DC0E89982DE366E900B27198 /* Windows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Windows.swift; sourceTree = "<group>"; };
 		DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoEnviroment.swift; sourceTree = "<group>"; };
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
@@ -127,6 +129,7 @@
 				DC0E89982DE366E900B27198 /* Windows.swift */,
 				DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
+				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
 				DF58AE332BCD82AF00C8F737 /* VolumetricWindow.swift */,
 				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */,
@@ -207,6 +210,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC09C6452DE3E22000774D7D /* DataImportView.swift in Sources */,
 				DC09C5DF2DE3BB1700774D7D /* NotebookWindows.swift in Sources */,
 				DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */,
 				DC0E89992DE366E900B27198 /* Windows.swift in Sources */,
@@ -350,17 +354,18 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = Pulto;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Pulto/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SpatialCard;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.volumetric-window${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.Pulto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "xros xrsimulator";
@@ -379,17 +384,18 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = Pulto;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Pulto/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SpatialCard;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.apple-samplecode.volumetric-window${SAMPLE_CODE_DISAMBIGUATOR}";
+				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.Pulto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "xros xrsimulator";
