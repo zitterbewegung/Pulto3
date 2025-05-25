@@ -1,69 +1,55 @@
 //
-//  NewWindowID.swift
-//  UnderstandingVisionos
+//  NotebookWindows.swift
+//  Volumetric Window
 //
 //  Created by Joshua Herman on 5/25/25.
+//  Copyright © 2025 Apple. All rights reserved.
 //
-
-
+/*
 import SwiftUI
 
 
-struct NewWindowID: Identifiable {
+struct NotebookNewWindowID: Identifiable {
     /// The unique identifier for the window.
     var id: Int
 }
 
-struct OpenWindowView: View {
+struct NotebookNewWindowIDOpenWindowView: View {
     /// The `id` value that the main view uses to identify the SwiftUI window.
-    @State var nextWindowID = NewWindowID(id: 1)
+    @State var notebooknextWindowID = NewWindowID(id: 1)
 
 
     /// The environment value for getting an `OpenWindowAction` instance.
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openWindow) private var notebookopenWindow
 
 
     var body: some View {
         // Create a button in the center of the window that
         // launches a new SwiftUI window.
-        Button("Open a new window") {
+        Button("Open a new Notebook window") {
             // Open a new window with the assigned ID.
-            openWindow(value: nextWindowID.id)
+            notebookopenWindow(value: notebooknextWindowID.id)
 
 
             // Increment the `id` value of the `nextWindowID` by 1.
-            nextWindowID.id += 1
+            notebooknextWindowID.id += 1
         }
     }
 }
 
-import SwiftUI
 
-
-struct NewWindow: View {
+struct notebookNewWindow: View {
     /// Acts as the main identifier for the new view.
     let id: Int
 
     var body: some View {
         // Create a text view that displays
         // the window's `id` value.
-        Text("New window number \(id)")
-    }
-}
-/*import SwiftUI
+        VStack{
+            Text("New window number \(id)")
+            NotebookChartsView()
 
-
-@main
-struct EntryPoint: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-
-        /// A `WindowGroup` for each newly created window in the app's main view.
-        WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
-            NewWindow(id: id ?? 1)
         }
     }
 }
-*/ 
+*/
