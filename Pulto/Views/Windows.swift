@@ -47,7 +47,10 @@ struct NewWindow: View {
     var body: some View {
         // Create a text view that displays
         // the window's `id` value.
-        Text("New window number \(id)")
+        VStack{
+            Text("New window number \(id)")
+            SpatialEditorView()
+        }
     }
 }
 /*import SwiftUI

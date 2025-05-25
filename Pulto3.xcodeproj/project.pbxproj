@@ -10,6 +10,8 @@
 		DC0E89992DE366E900B27198 /* Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* Windows.swift */; };
 		DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */; };
 		DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */; };
+		DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */; };
+		DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */; };
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
 		DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */; };
@@ -24,6 +26,8 @@
 		DC0E89982DE366E900B27198 /* Windows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Windows.swift; sourceTree = "<group>"; };
 		DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoEnviroment.swift; sourceTree = "<group>"; };
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
+		DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
+		DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotlyWebView.swift; sourceTree = "<group>"; };
 		DF58AE1B2BCD826D00C8F737 /* Volumetric Window.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Volumetric Window.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF58AE222BCD826D00C8F737 /* EntryPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryPoint.swift; sourceTree = "<group>"; };
 		DF58AE282BCD826F00C8F737 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -65,7 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				961121329AB26B80BF5FA320 /* README.md */,
-				DF58AE1D2BCD826D00C8F737 /* Creating a Volumetric Window */,
+				DF58AE1D2BCD826D00C8F737 /* Pulto */,
 				DF58AE1C2BCD826D00C8F737 /* Products */,
 				0860B14583968FDFE9E0702A /* Configuration */,
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
@@ -80,14 +84,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		DF58AE1D2BCD826D00C8F737 /* Creating a Volumetric Window */ = {
+		DF58AE1D2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXGroup;
 			children = (
 				F5CE2A592C2B2A00009123E2 /* Views */,
 				DF58AE3D2BCD8D8200C8F737 /* Resources */,
 				F5CE2A582C2B27D7009123E2 /* App */,
 			);
-			path = "Creating a Volumetric Window";
+			path = Pulto;
 			sourceTree = "<group>";
 		};
 		DF58AE3D2BCD8D8200C8F737 /* Resources */ = {
@@ -115,7 +119,9 @@
 			children = (
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
 				DC0E89982DE366E900B27198 /* Windows.swift */,
+				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
 				DF58AE332BCD82AF00C8F737 /* VolumetricWindow.swift */,
+				DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -196,7 +202,9 @@
 				DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */,
 				DC0E89992DE366E900B27198 /* Windows.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
+				DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */,
 				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
+				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,12 +339,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "Creating\\ a\\ Volumetric\\ Window/App";
+				DEVELOPMENT_ASSET_PATHS = Pulto;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Creating a Volumetric Window/App/Info.plist";
+				INFOPLIST_FILE = Pulto/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -360,12 +368,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "Creating\\ a\\ Volumetric\\ Window/App";
+				DEVELOPMENT_ASSET_PATHS = Pulto;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Creating a Volumetric Window/App/Info.plist";
+				INFOPLIST_FILE = Pulto/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
