@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DC0E89992DE366E900B27198 /* Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* Windows.swift */; };
+		DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */; };
+		DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */; };
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
 		DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */; };
@@ -15,9 +18,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */ = {isa = PBXFileReference; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
-		380E1188A5BB9827EF4A0778 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = LICENSE.txt; sourceTree = "<group>"; };
+		2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
+		380E1188A5BB9827EF4A0778 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		961121329AB26B80BF5FA320 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		DC0E89982DE366E900B27198 /* Windows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Windows.swift; sourceTree = "<group>"; };
+		DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoEnviroment.swift; sourceTree = "<group>"; };
+		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
 		DF58AE1B2BCD826D00C8F737 /* Volumetric Window.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Volumetric Window.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF58AE222BCD826D00C8F737 /* EntryPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryPoint.swift; sourceTree = "<group>"; };
 		DF58AE282BCD826F00C8F737 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -87,6 +93,7 @@
 		DF58AE3D2BCD8D8200C8F737 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */,
 				DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */,
 			);
 			path = Resources;
@@ -106,6 +113,8 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
+				DC0E89982DE366E900B27198 /* Windows.swift */,
 				DF58AE332BCD82AF00C8F737 /* VolumetricWindow.swift */,
 			);
 			path = Views;
@@ -147,7 +156,7 @@
 					};
 				};
 			};
-			buildConfigurationList = DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Creating a Volumetric Window" */;
+			buildConfigurationList = DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -170,6 +179,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */,
 				DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */,
 				DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */,
 				DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */,
@@ -184,7 +194,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */,
+				DC0E89992DE366E900B27198 /* Windows.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
+				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -373,7 +385,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Creating a Volumetric Window" */ = {
+		DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DF58AE2E2BCD826F00C8F737 /* Debug */,

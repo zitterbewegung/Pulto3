@@ -19,6 +19,7 @@ struct VolumetricWindow: View {
     var body: some View {
         // Get the height, width, and depth information
         // of the view with a geometry reader.
+        OpenWindowView()
         GeometryReader3D { geometry in
             RealityView { content in
                 // Attempt to load the entity that uses the file name as a source.

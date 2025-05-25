@@ -13,9 +13,15 @@ struct EntryPoint: App {
     let heightModifier: CGFloat = 0.25
 
     var body: some Scene {
+        /// A `WindowGroup` for each newly created window in the app's main view.
+        WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
+            NewWindow(id: id ?? 1)
+        }
         // Configure a window group with a volumetric window.
+
         WindowGroup() {
             VolumetricWindow()
+ 
         }
         .windowStyle(.volumetric)
         // Scale the size of the window group relative to the volumetric window's size.
