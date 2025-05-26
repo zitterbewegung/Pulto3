@@ -1,5 +1,5 @@
 /*
-See the LICENSE.txt file for this sample’s licensing information.
+See the LICENSE.txt file for this sample's licensing information.
 
 Abstract:
 The app's main entry point
@@ -9,34 +9,35 @@ import SwiftUI
 
 @main
 struct EntryPoint: App {
-    /// The multiplier for the height of the volumetric window.
     let heightModifier: CGFloat = 0.25
 
     var body: some Scene {
-        WindowGroup("Main") {
-            OpenWindowView()
+        // Make this the default/main window group
+        WindowGroup(id: "main") {
+            PultoHomeView()
         }
+        .defaultSize(width: 800, height: 600) // Add explicit sizing
 
-        /// A `WindowGroup` for each newly created window in the app's main view.
         WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
             NewWindow(id: id ?? 1)
         }
 
-        // Configure a window group with a volumetric window.
-
-        WindowGroup() {
+        WindowGroup("Volumetric") {
             VolumetricWindow()
-
-
         }
-        
         .windowStyle(.volumetric)
-        // Scale the size of the window group relative to the volumetric window's size.
-        .defaultSize(
-            width: VolumetricWindow.defaultSize,
-            height: heightModifier * VolumetricWindow.defaultSize,
-            depth: VolumetricWindow.defaultSize,
-            in: .meters
-        )
+        .defaultSize(width: 1480, height: 600)
+
+        // Move OpenWindowView to a separate group
+        WindowGroup("OpenWindow") {
+            OpenWindowView()
+        }
     }
 }
+/*
+#Preview {
+    #PreviewLayout(width: 800, height: 600) {
+        EntryPoint().body
+    }
+}
+*/

@@ -47,29 +47,35 @@ struct OpenWindowView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Choose Window Type")
-                .font(.title2)
-                .padding()
+        HStack {
 
-            // Create buttons for each window type
-            ForEach(WindowType.allCases, id: \.self) { windowType in
-                Button("Open \(windowType.displayName) Window") {
-                    // Store the window type for this ID
-                    WindowTypeManager.shared.setType(windowType, for: nextWindowID)
+            VStack(spacing: 20) {
 
-                    // Open window with just the ID (compatible with your existing setup)
-                    openWindow(value: nextWindowID)
+                Text("Choose Window Type")
+                    .font(.title2)
+                    .padding()
 
-                    // Increment the `id` value for the next window
-                    nextWindowID += 1
+                // Create buttons for each window type
+                ForEach(WindowType.allCases, id: \.self) { windowType in
+                    Button("Open \(windowType.displayName) Window") {
+                        // Store the window type for this ID
+                        WindowTypeManager.shared.setType(windowType, for: nextWindowID)
+
+                        // Open window with just the ID (compatible with your existing setup)
+                        openWindow(value: nextWindowID)
+
+                        // Increment the `id` value for the next window
+                        nextWindowID += 1
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(8)
             }
+            .padding()
+  
         }
-        .padding()
+
     }
 }
 
@@ -88,11 +94,13 @@ struct NewWindow: View {
 
             // Display the appropriate view based on window type
             switch windowType {
-            case .notebook:
-                NotebookChartsView()
-            case .spatial:
-                SpatialEditorView()
+                case .notebook:
+                    NotebookChartsView()
+                case .spatial:
+                    SpatialEditorView()
+
             }
+            
         }
     }
 }
