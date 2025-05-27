@@ -96,8 +96,8 @@ struct PultoHomeView: View {
                                 QuickStatsSection(isDarkMode: isDarkMode)
                             }
                         }
-                        .padding(.horizontal, 60)
-                        .padding(.bottom, 40)
+                        .padding(.horizontal, 40)
+                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -130,10 +130,12 @@ struct PultoHomeView: View {
             }
         }
         .sheet(isPresented: $showCreateProject) {
-            CreateProjectView()
+            //CreateProjectView()
+            //
+            DataImportView()
         }
         .sheet(isPresented: $showOpenProject) {
-            OpenProjectView()
+            VolumetricWindow()
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -163,7 +165,7 @@ struct HeaderView: View {
                         )
                     )
 
-                Text("Data Visualization Platform")
+                Text("Spatial Data Visualization Platform")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundColor(isDarkMode ? .white : .black)
@@ -196,12 +198,12 @@ struct HeaderView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 60)
+        .padding(.horizontal, 40)
         .padding(.top, 40)
     }
 }
 
-struct HeroSection: View {
+struct SpatialHeroSection: View {
     let isDarkMode: Bool
 
     var body: some View {

@@ -212,7 +212,7 @@ struct SpatialMetadataHomeView: View {
                     ScrollView {
                         VStack(spacing: 32) {
                             // Hero Section
-                            HeroSection(isDarkMode: isDarkMode)
+                            SpatialHeroSection(isDarkMode: isDarkMode)
 
                             // Notebooks Section
                             if viewModel.isLoading {
