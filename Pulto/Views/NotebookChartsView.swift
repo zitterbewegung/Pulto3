@@ -1,12 +1,3 @@
-
-//
-//  NotebookChartsView.swift
-//  SwiftChartsWWDC24
-//
-//  Created by Joshua Herman on 12/25/24.
-//  Copyright © 2024 Apple. All rights reserved.
-//
-
 //
 //  NotebookChartsView.swift
 //  Volumetric Window

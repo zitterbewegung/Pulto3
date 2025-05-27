@@ -10,7 +10,7 @@ import SwiftUI
 enum WindowType: String, CaseIterable, Codable, Hashable {
     case notebook = "Notebook Chart"
     case spatial = "Spatial Editor"
-
+   // case column = "DataFrame Viewer"
     var displayName: String {
         return self.rawValue
     }
@@ -98,6 +98,8 @@ struct NewWindow: View {
                     NotebookChartsView()
                 case .spatial:
                     SpatialEditorView()
+                //case. column:
+                    //DataFrameView()
 
             }
             

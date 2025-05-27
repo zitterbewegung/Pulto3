@@ -16,7 +16,7 @@ struct EntryPoint: App {
         WindowGroup(id: "main") {
             PultoHomeView()
         }
-        .defaultSize(width: 800, height: 600) // Add explicit sizing
+        .defaultSize(width: 1280, height: 900) // Add explicit sizing
 
         WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
             NewWindow(id: id ?? 1)
@@ -26,7 +26,7 @@ struct EntryPoint: App {
             VolumetricWindow()
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 1480, height: 600)
+        .defaultSize(width: 1280, height: 720)
 
         // Move OpenWindowView to a separate group
         WindowGroup("OpenWindow") {
