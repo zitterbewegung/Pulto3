@@ -132,10 +132,11 @@ struct PultoHomeView: View {
         .sheet(isPresented: $showCreateProject) {
             //CreateProjectView()
             //
-            DataImportView()
+            CSVChartRecommenderView().frame(width: 600, height: 750)
+            //DataImportView().frame(width: 600, height: 750)
         }
         .sheet(isPresented: $showOpenProject) {
-            VolumetricWindow()
+            OpenWindowView()
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()

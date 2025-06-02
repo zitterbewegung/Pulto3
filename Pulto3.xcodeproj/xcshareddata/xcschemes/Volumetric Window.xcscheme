@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "DF58AE1A2BCD826D00C8F737"
-               BuildableName = "Volumetric Window.app"
-               BlueprintName = "Volumetric Window"
+               BuildableName = "Pulto.app"
+               BlueprintName = "Pulto"
                ReferencedContainer = "container:Pulto3.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "DF58AE1A2BCD826D00C8F737"
-            BuildableName = "Volumetric Window.app"
-            BlueprintName = "Volumetric Window"
+            BuildableName = "Pulto.app"
+            BlueprintName = "Pulto"
             ReferencedContainer = "container:Pulto3.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "DF58AE1A2BCD826D00C8F737"
-            BuildableName = "Volumetric Window.app"
-            BlueprintName = "Volumetric Window"
+            BuildableName = "Pulto.app"
+            BlueprintName = "Pulto"
             ReferencedContainer = "container:Pulto3.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -10,6 +10,7 @@ struct DataImportView: View {
     @State private var errorMessage = ""
     @State private var importedFileName = ""
     @State private var selectedImportMethod: ImportMethod = .url
+    @Environment(\.dismiss) private var dismiss  // Add this line
 
     enum ImportMethod: String, CaseIterable {
         case url = "URL"
@@ -105,7 +106,7 @@ struct DataImportView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cancel") {
-                        // Handle cancel action
+                       dismiss()
                     }
                     .buttonStyle(.borderless)
                 }
