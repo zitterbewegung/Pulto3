@@ -22,6 +22,7 @@
 		DC70C5802DE7668200DADEAE /* importJuypterNotebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
 		DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */; };
+		DCB9B4EF2DEF857E00FB5AF3 /* PointCloudGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */; };
 		DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */; };
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
@@ -49,6 +50,7 @@
 		DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = importJuypterNotebook.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
 		DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
+		DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudGenerator.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
 		DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInView.swift; sourceTree = "<group>"; };
 		DF58AE1B2BCD826D00C8F737 /* Pulto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulto.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -154,6 +156,7 @@
 				DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */,
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
 				DC0E89982DE366E900B27198 /* Windows.swift */,
+				DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */,
 				DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
 				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
@@ -255,6 +258,7 @@
 				DC70C5802DE7668200DADEAE /* importJuypterNotebook.swift in Sources */,
 				DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */,
 				DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */,
+				DCB9B4EF2DEF857E00FB5AF3 /* PointCloudGenerator.swift in Sources */,
 				DC6365FE2DE53A1000F94FA8 /* DataTableView.swift in Sources */,
 				DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */,
 				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
