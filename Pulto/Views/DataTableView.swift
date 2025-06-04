@@ -1,4 +1,4 @@
-import SwiftUI
+/*import SwiftUI
 import SwiftData
 
 // MARK: - SwiftData Model
@@ -272,3 +272,5 @@ struct StatusBadge: View {
     DataTableContentView()
         .modelContainer(for: DataItem.self, inMemory: true)
 }
+ 
+*/
