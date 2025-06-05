@@ -1,3 +1,12 @@
+//
+//  ChartDataPoint.swift
+//  Pulto
+//
+//  Created by Joshua Herman on 6/4/25.
+//  Copyright © 2025 Apple. All rights reserved.
+//
+
+
 import SwiftUI
 import Charts
 import Foundation
@@ -154,7 +163,7 @@ class ChartDataExtractor {
 }
 
 // MARK: - Example Usage
-struct ContentView: View {
+struct DemoContentView: View {
     // Sample data
     let salesData = [
         (category: "Q1", value: 1200.0),
@@ -227,7 +236,8 @@ struct ContentView: View {
         if let barChartJSON = ChartDataExtractor.toJupyterJSON(barChartData) {
             print("Bar Chart JSON:")
             print(barChartJSON)
-            print("\n" + "="*50 + "\n")
+            let separator = String(repeating: "=", count: 50)
+            print("\n\(separator)\n")
         }
         
         if let lineChartJSON = ChartDataExtractor.toJupyterJSON(lineChartData) {
@@ -267,3 +277,8 @@ func commandLineExample() {
 
 // Uncomment to run command line example
 // commandLineExample()
+
+// For visionOS specific preview
+#Preview("visionOS", traits: .fixedLayout(width: 400, height: 300)) {
+    ContentView()
+}
