@@ -12,7 +12,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     case notebook = "Notebook Chart"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
-
+    
     var displayName: String {
         return self.rawValue
     }
@@ -23,7 +23,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
         case .notebook:
             return "code"
         case .spatial:
-            return "markdown"
+            return "spatial"
         case .column:
             return "code"
         }

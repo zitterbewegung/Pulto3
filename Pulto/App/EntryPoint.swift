@@ -29,9 +29,12 @@ struct EntryPoint: App {
         .defaultSize(width: 1280, height: 720)
 
         // Move OpenWindowView to a separate group
-        WindowGroup("OpenWindow") {
+        // Add this new WindowGroup for the volumetric view
+        WindowGroup(id: "open-project-window") {
             OpenWindowView()
         }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 600, height: 400, depth: 300, in: .millimeters)
     }
 }
 /*

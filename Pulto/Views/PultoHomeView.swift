@@ -1,13 +1,10 @@
 import SwiftUI
 import RealityKit
 
-
-
-
 struct PultoHomeView: View {
     @State private var selectedSection: HomeSection? = nil
     @State private var showCreateProject = false
-    @State private var showOpenProject = false
+    @State private var showOpenProject = false  // Can be removed if not used elsewhere
     @State private var showSettings = false
     @State private var showLogin = false
     @State private var isUserLoggedIn = false
@@ -15,6 +12,7 @@ struct PultoHomeView: View {
     @State private var recentProjects: [Project] = Project.sampleProjects
     @State private var isDarkMode = true
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.openWindow) private var openWindow  // Add this environment value
 
     enum HomeSection: String, CaseIterable {
         case create = "Create Project"
@@ -73,10 +71,12 @@ struct PultoHomeView: View {
                             // Hero Section
                             HeroSection(isDarkMode: isDarkMode)
 
-                            // Primary Actions
+                            // Primary Actions - Updated to use openWindow for Open Project
                             PrimaryActionsGrid(
                                 showCreateProject: $showCreateProject,
-                                showOpenProject: $showOpenProject,
+                                onOpenProject: {
+                                    openWindow(id: "open-project-window")
+                                },
                                 isDarkMode: isDarkMode
                             )
 
@@ -132,12 +132,10 @@ struct PultoHomeView: View {
         .sheet(isPresented: $showCreateProject) {
             //CreateProjectView()
             //
-            //CSVChartRecommenderView().frame(width: 600, height: 750)
-            DataImportView().frame(width: 600, height: 750)
+            CSVChartRecommenderView().frame(width: 600, height: 750)
+            //DataImportView().frame(width: 600, height: 750)
         }
-        .sheet(isPresented: $showOpenProject) {
-            OpenWindowView()
-        }
+        // Removed the sheet for showOpenProject since it now opens in volumetric window
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
@@ -249,9 +247,10 @@ struct SpatialHeroSection: View {
     }
 }
 
+// Updated PrimaryActionsGrid to use closure for Open Project
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
-    @Binding var showOpenProject: Bool
+    let onOpenProject: () -> Void  // Changed from @Binding
     let isDarkMode: Bool
 
     var body: some View {
@@ -277,7 +276,7 @@ struct PrimaryActionsGrid: View {
                     icon: "folder",
                     color: .purple
                 ) {
-                    showOpenProject = true
+                    onOpenProject()  // Call the closure instead of setting state
                 }
 
                 ActionCard(
@@ -519,13 +518,6 @@ struct CreateProjectView: View {
     }
 }
 
-struct OpenProjectView: View {
-    var body: some View {
-        Text("Open Project View")
-            .frame(width: 600, height: 400)
-    }
-}
-
 struct SettingsView: View {
     var body: some View {
         Text("Settings View")
@@ -567,6 +559,24 @@ struct LoginView: View {
         .padding()
     }
 }
+
+// HeroSection that references SpatialHeroSection
+/*struct HeroSection: View {
+    let isDarkMode: Bool
+
+    var body: some View {
+        SpatialHeroSection(isDarkMode: isDarkMode)
+    }
+}*/
+
+/* CSVChartRecommenderView placeholder
+struct CSVChartRecommenderView: View {
+    var body: some View {
+        Text("CSV Chart Recommender View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+*/
 
 // Preview
 struct PultoHomeView_Previews: PreviewProvider {
