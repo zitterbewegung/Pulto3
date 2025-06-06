@@ -321,7 +321,8 @@ struct WindowBView: View {
                 .padding()
 
             // Add content specific to Window B here
-            Text("Additional Content for Window B")
+            
+            //Text("Additional Content for Window B")
                 .padding()
             // PlotlyView() // Commented out as it's not defined
         }
@@ -392,3 +393,8 @@ struct ControlWindowView: View {
     }
 }
 
+// MARK: - Preview Provider
+#Preview {
+    SpatialEditorView()
+        .frame(width: 600, height: 800)
+}

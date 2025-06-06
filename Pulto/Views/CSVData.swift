@@ -616,9 +616,11 @@ struct RecommendationCard: View {
     }
 }
 
+/*
 // MARK: - App Entry Point
 struct ContentView: View {
     var body: some View {
         CSVChartRecommenderView()
     }
 }
+*/
