@@ -6,7 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
 import SwiftUI
 import Charts
 import Foundation
@@ -15,12 +14,18 @@ import Foundation
 struct ChartDataPoint: Codable {
     let x: Double
     let y: Double
+    let z: Double?  // Added for 3D support
     let category: String?
-    
-    init(x: Double, y: Double, category: String? = nil) {
+    let color: String?  // Added for point cloud color
+    let intensity: Double?  // Added for point cloud intensity
+
+    init(x: Double, y: Double, z: Double? = nil, category: String? = nil, color: String? = nil, intensity: Double? = nil) {
         self.x = x
         self.y = y
+        self.z = z
         self.category = category
+        self.color = color
+        self.intensity = intensity
     }
 }
 
@@ -30,19 +35,21 @@ struct JupyterChartData: Codable {
     let chartType: String
     let xAxisLabel: String?
     let yAxisLabel: String?
-    
-    init(title: String, dataPoints: [ChartDataPoint], chartType: String, xAxisLabel: String? = nil, yAxisLabel: String? = nil) {
+    let zAxisLabel: String?  // Added for 3D axis
+
+    init(title: String, dataPoints: [ChartDataPoint], chartType: String, xAxisLabel: String? = nil, yAxisLabel: String? = nil, zAxisLabel: String? = nil) {
         self.title = title
         self.dataPoints = dataPoints
         self.chartType = chartType
         self.xAxisLabel = xAxisLabel
         self.yAxisLabel = yAxisLabel
+        self.zAxisLabel = zAxisLabel
     }
 }
 
 // MARK: - Chart Data Extractor
 class ChartDataExtractor {
-    
+
     // Extract data from a line chart
     static func extractLineChartData(
         title: String,
@@ -59,7 +66,7 @@ class ChartDataExtractor {
             yAxisLabel: yAxisLabel
         )
     }
-    
+
     // Extract data from a bar chart with categories
     static func extractBarChartData(
         title: String,
@@ -78,12 +85,58 @@ class ChartDataExtractor {
             yAxisLabel: yAxisLabel
         )
     }
-    
+
+    // Extract data from a 3D point cloud
+    static func extractPointCloudData(
+        title: String,
+        data: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)],
+        xAxisLabel: String? = nil,
+        yAxisLabel: String? = nil,
+        zAxisLabel: String? = nil
+    ) -> JupyterChartData {
+        let dataPoints = data.map { point in
+            ChartDataPoint(
+                x: point.x,
+                y: point.y,
+                z: point.z,
+                color: point.color,
+                intensity: point.intensity
+            )
+        }
+        return JupyterChartData(
+            title: title,
+            dataPoints: dataPoints,
+            chartType: "pointcloud",
+            xAxisLabel: xAxisLabel,
+            yAxisLabel: yAxisLabel,
+            zAxisLabel: zAxisLabel
+        )
+    }
+
+    // Simplified point cloud data extraction (without color/intensity)
+    static func extractSimplePointCloudData(
+        title: String,
+        data: [(x: Double, y: Double, z: Double)],
+        xAxisLabel: String? = nil,
+        yAxisLabel: String? = nil,
+        zAxisLabel: String? = nil
+    ) -> JupyterChartData {
+        let dataPoints = data.map { ChartDataPoint(x: $0.x, y: $0.y, z: $0.z) }
+        return JupyterChartData(
+            title: title,
+            dataPoints: dataPoints,
+            chartType: "pointcloud",
+            xAxisLabel: xAxisLabel,
+            yAxisLabel: yAxisLabel,
+            zAxisLabel: zAxisLabel
+        )
+    }
+
     // Convert chart data to JSON string for Jupyter
     static func toJupyterJSON(_ chartData: JupyterChartData) -> String? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        
+
         do {
             let jsonData = try encoder.encode(chartData)
             return String(data: jsonData, encoding: .utf8)
@@ -92,16 +145,17 @@ class ChartDataExtractor {
             return nil
         }
     }
-    
+
     // Generate Python code for Jupyter cell
     static func generateJupyterPythonCode(_ chartData: JupyterChartData) -> String {
         let jsonString = toJupyterJSON(chartData) ?? "{}"
-        
+
         return """
         import json
         import matplotlib.pyplot as plt
         import pandas as pd
         import numpy as np
+        from mpl_toolkits.mplot3d import Axes3D
         
         # Chart data from Swift
         chart_data_json = '''\(jsonString)'''
@@ -112,44 +166,100 @@ class ChartDataExtractor {
         # Extract data points
         x_values = [point['x'] for point in chart_data['dataPoints']]
         y_values = [point['y'] for point in chart_data['dataPoints']]
+        z_values = [point.get('z') for point in chart_data['dataPoints']]
         categories = [point.get('category') for point in chart_data['dataPoints']]
+        colors = [point.get('color') for point in chart_data['dataPoints']]
+        intensities = [point.get('intensity') for point in chart_data['dataPoints']]
         
         # Create the plot
-        plt.figure(figsize=(10, 6))
-        
-        if chart_data['chartType'] == 'line':
-            plt.plot(x_values, y_values, marker='o')
-        elif chart_data['chartType'] == 'bar':
-            if any(categories):
-                plt.bar(categories, y_values)
-                plt.xticks(rotation=45)
+        if chart_data['chartType'] == 'pointcloud':
+            fig = plt.figure(figsize=(12, 9))
+            ax = fig.add_subplot(111, projection='3d')
+            
+            # Prepare colors for point cloud
+            if any(colors):
+                # Use provided colors
+                point_colors = colors
+            elif any(intensities):
+                # Use intensity for coloring
+                point_colors = [i for i in intensities if i is not None]
+                scatter = ax.scatter(x_values, y_values, z_values, c=point_colors, cmap='viridis', s=1)
+                plt.colorbar(scatter, ax=ax, label='Intensity')
             else:
-                plt.bar(x_values, y_values)
+                # Default coloring based on z-values
+                scatter = ax.scatter(x_values, y_values, z_values, c=z_values, cmap='viridis', s=1)
+                plt.colorbar(scatter, ax=ax, label='Z Value')
+            
+            ax.set_title(chart_data['title'])
+            ax.set_xlabel(chart_data.get('xAxisLabel', 'X'))
+            ax.set_ylabel(chart_data.get('yAxisLabel', 'Y'))
+            ax.set_zlabel(chart_data.get('zAxisLabel', 'Z'))
+            
+            # Add grid
+            ax.grid(True, alpha=0.3)
+            
+            # Set viewing angle
+            ax.view_init(elev=20, azim=45)
+            
+        else:
+            # Handle 2D charts (existing code)
+            plt.figure(figsize=(10, 6))
+            
+            if chart_data['chartType'] == 'line':
+                plt.plot(x_values, y_values, marker='o')
+            elif chart_data['chartType'] == 'bar':
+                if any(categories):
+                    plt.bar(categories, y_values)
+                    plt.xticks(rotation=45)
+                else:
+                    plt.bar(x_values, y_values)
+            
+            plt.title(chart_data['title'])
+            if chart_data.get('xAxisLabel'):
+                plt.xlabel(chart_data['xAxisLabel'])
+            if chart_data.get('yAxisLabel'):
+                plt.ylabel(chart_data['yAxisLabel'])
+            
+            plt.grid(True, alpha=0.3)
         
-        plt.title(chart_data['title'])
-        if chart_data.get('xAxisLabel'):
-            plt.xlabel(chart_data['xAxisLabel'])
-        if chart_data.get('yAxisLabel'):
-            plt.ylabel(chart_data['yAxisLabel'])
-        
-        plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.show()
         
-        # Also create a pandas DataFrame for further analysis
+        # Create a pandas DataFrame for further analysis
         df_data = {
             'x': x_values,
             'y': y_values
         }
+        if any(z_values):
+            df_data['z'] = z_values
         if any(categories):
             df_data['category'] = categories
+        if any(colors):
+            df_data['color'] = colors
+        if any(intensities):
+            df_data['intensity'] = intensities
         
         df = pd.DataFrame(df_data)
-        print("\\nDataFrame:")
-        print(df)
+        print("\\nDataFrame Summary:")
+        print(df.describe())
+        print("\\nFirst 10 rows:")
+        print(df.head(10))
+        
+        # Additional statistics for point clouds
+        if chart_data['chartType'] == 'pointcloud':
+            print("\\nPoint Cloud Statistics:")
+            print(f"Total points: {len(df)}")
+            print(f"Bounding box:")
+            print(f"  X: [{df['x'].min():.3f}, {df['x'].max():.3f}]")
+            print(f"  Y: [{df['y'].min():.3f}, {df['y'].max():.3f}]")
+            print(f"  Z: [{df['z'].min():.3f}, {df['z'].max():.3f}]")
+            
+            # Calculate centroid
+            centroid = (df['x'].mean(), df['y'].mean(), df['z'].mean())
+            print(f"Centroid: ({centroid[0]:.3f}, {centroid[1]:.3f}, {centroid[2]:.3f})")
         """
     }
-    
+
     // Save Jupyter code to file
     static func saveJupyterCode(_ code: String, to filename: String) {
         let url = URL(fileURLWithPath: filename)
@@ -160,8 +270,63 @@ class ChartDataExtractor {
             print("Error saving file: \(error)")
         }
     }
-}
 
+    // Generate interactive Plotly code for better point cloud visualization
+    static func generateJupyterPlotlyCode(_ chartData: JupyterChartData) -> String {
+        let jsonString = toJupyterJSON(chartData) ?? "{}"
+
+        return """
+        import json
+        import pandas as pd
+        import numpy as np
+        import plotly.graph_objects as go
+        
+        # Chart data from Swift
+        chart_data_json = '''\(jsonString)'''
+        
+        # Parse the data
+        chart_data = json.loads(chart_data_json)
+        
+        # Extract data points
+        x_values = [point['x'] for point in chart_data['dataPoints']]
+        y_values = [point['y'] for point in chart_data['dataPoints']]
+        z_values = [point.get('z') for point in chart_data['dataPoints']]
+        intensities = [point.get('intensity') for point in chart_data['dataPoints']]
+        
+        if chart_data['chartType'] == 'pointcloud' and all(z is not None for z in z_values):
+            # Create interactive 3D scatter plot
+            fig = go.Figure(data=[go.Scatter3d(
+                x=x_values,
+                y=y_values,
+                z=z_values,
+                mode='markers',
+                marker=dict(
+                    size=2,
+                    color=intensities if any(intensities) else z_values,
+                    colorscale='Viridis',
+                    showscale=True,
+                    colorbar=dict(title="Intensity" if any(intensities) else "Z Value")
+                )
+            )])
+            
+            fig.update_layout(
+                title=chart_data['title'],
+                scene=dict(
+                    xaxis_title=chart_data.get('xAxisLabel', 'X'),
+                    yaxis_title=chart_data.get('yAxisLabel', 'Y'),
+                    zaxis_title=chart_data.get('zAxisLabel', 'Z'),
+                    camera=dict(
+                        eye=dict(x=1.5, y=1.5, z=1.5)
+                    )
+                ),
+                width=900,
+                height=700
+            )
+            
+            fig.show()
+        """
+    }
+}
 // MARK: - Example Usage
 struct DemoContentView: View {
     // Sample data
@@ -171,7 +336,7 @@ struct DemoContentView: View {
         (category: "Q3", value: 1500.0),
         (category: "Q4", value: 2100.0)
     ]
-    
+
     let temperatureData = [
         (x: 1.0, y: 20.5),
         (x: 2.0, y: 22.1),
@@ -179,13 +344,13 @@ struct DemoContentView: View {
         (x: 4.0, y: 23.2),
         (x: 5.0, y: 21.7)
     ]
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Swift Chart Data Extractor")
                 .font(.title)
                 .padding()
-            
+
             // Sample Swift Chart
             Chart(salesData, id: \.category) { item in
                 BarMark(
@@ -195,18 +360,26 @@ struct DemoContentView: View {
             }
             .frame(height: 200)
             .padding()
-            
+
             Button("Extract Chart Data for Jupyter") {
                 extractAndExportData()
             }
             .padding()
-            .background(Color.blue)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.white.opacity(0.1))
+                    .background(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(.white.opacity(0.2), lineWidth: 1)
+                    }
+            }
             .foregroundColor(.white)
             .cornerRadius(8)
         }
         .padding()
     }
-    
+
     func extractAndExportData() {
         // Extract bar chart data
         let barChartData = ChartDataExtractor.extractBarChartData(
@@ -215,7 +388,7 @@ struct DemoContentView: View {
             xAxisLabel: "Quarter",
             yAxisLabel: "Sales ($)"
         )
-        
+
         // Extract line chart data
         let lineChartData = ChartDataExtractor.extractLineChartData(
             title: "Temperature Over Time",
@@ -223,15 +396,15 @@ struct DemoContentView: View {
             xAxisLabel: "Day",
             yAxisLabel: "Temperature (°C)"
         )
-        
+
         // Generate Jupyter code for bar chart
         let barChartJupyterCode = ChartDataExtractor.generateJupyterPythonCode(barChartData)
         ChartDataExtractor.saveJupyterCode(barChartJupyterCode, to: "bar_chart_jupyter.py")
-        
+
         // Generate Jupyter code for line chart
         let lineChartJupyterCode = ChartDataExtractor.generateJupyterPythonCode(lineChartData)
         ChartDataExtractor.saveJupyterCode(lineChartJupyterCode, to: "line_chart_jupyter.py")
-        
+
         // Print JSON data for manual copying
         if let barChartJSON = ChartDataExtractor.toJupyterJSON(barChartData) {
             print("Bar Chart JSON:")
@@ -239,7 +412,7 @@ struct DemoContentView: View {
             let separator = String(repeating: "=", count: 50)
             print("\n\(separator)\n")
         }
-        
+
         if let lineChartJSON = ChartDataExtractor.toJupyterJSON(lineChartData) {
             print("Line Chart JSON:")
             print(lineChartJSON)
@@ -255,7 +428,7 @@ func commandLineExample() {
         (category: "Orange", value: 30.0),
         (category: "Banana", value: 25.0)
     ]
-    
+
     // Extract chart data
     let chartData = ChartDataExtractor.extractBarChartData(
         title: "Fruit Sales",
@@ -263,13 +436,13 @@ func commandLineExample() {
         xAxisLabel: "Fruit Type",
         yAxisLabel: "Units Sold"
     )
-    
+
     // Generate Jupyter code
     let jupyterCode = ChartDataExtractor.generateJupyterPythonCode(chartData)
-    
+
     // Save to file
     ChartDataExtractor.saveJupyterCode(jupyterCode, to: "fruit_sales_jupyter.py")
-    
+
     // Print for copying to Jupyter
     print("Copy this code to your Jupyter cell:")
     print(jupyterCode)
@@ -280,5 +453,5 @@ func commandLineExample() {
 
 // For visionOS specific preview
 #Preview("visionOS", traits: .fixedLayout(width: 400, height: 300)) {
-    ContentView()
+    DemoContentView()
 }

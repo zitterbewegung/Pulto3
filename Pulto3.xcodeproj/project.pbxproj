@@ -8,19 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC035F592DED4A3D001D5CF6 /* CSVData.swift */; };
-		DC035F5C2DED4C65001D5CF6 /* EnhancedRecommendationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC035F5B2DED4C65001D5CF6 /* EnhancedRecommendationCard.swift */; };
 		DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */; };
 		DC09C5DF2DE3BB1700774D7D /* NotebookWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */; };
 		DC09C6452DE3E22000774D7D /* DataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C6442DE3E22000774D7D /* DataImportView.swift */; };
-		DC0E89992DE366E900B27198 /* Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* Windows.swift */; };
+		DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* OpenWindowView.swift */; };
 		DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */; };
 		DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */; };
 		DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */; };
 		DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */; };
+		DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
-		DC6365FE2DE53A1000F94FA8 /* DataTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FD2DE53A1000F94FA8 /* DataTableView.swift */; };
 		DC70C5802DE7668200DADEAE /* importJuypterNotebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
+		DC77C8E32DF29207002A3EDA /* PointCloudDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC77C8E22DF29207002A3EDA /* PointCloudDemo.swift */; };
 		DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */; };
 		DCB9B4EF2DEF857E00FB5AF3 /* PointCloudGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */; };
 		DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */; };
@@ -36,19 +36,19 @@
 		380E1188A5BB9827EF4A0778 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		961121329AB26B80BF5FA320 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		DC035F592DED4A3D001D5CF6 /* CSVData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVData.swift; sourceTree = "<group>"; };
-		DC035F5B2DED4C65001D5CF6 /* EnhancedRecommendationCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedRecommendationCard.swift; sourceTree = "<group>"; };
 		DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookChartsView.swift; sourceTree = "<group>"; };
 		DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookWindows.swift; sourceTree = "<group>"; };
 		DC09C6442DE3E22000774D7D /* DataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataImportView.swift; sourceTree = "<group>"; };
-		DC0E89982DE366E900B27198 /* Windows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Windows.swift; sourceTree = "<group>"; };
+		DC0E89982DE366E900B27198 /* OpenWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWindowView.swift; sourceTree = "<group>"; };
 		DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoEnviroment.swift; sourceTree = "<group>"; };
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
 		DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotlyWebView.swift; sourceTree = "<group>"; };
+		DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartDataPoint.swift; sourceTree = "<group>"; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
-		DC6365FD2DE53A1000F94FA8 /* DataTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataTableView.swift; sourceTree = "<group>"; };
 		DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = importJuypterNotebook.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
+		DC77C8E22DF29207002A3EDA /* PointCloudDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDemo.swift; sourceTree = "<group>"; };
 		DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
 		DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudGenerator.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
@@ -149,13 +149,13 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				DC6365FD2DE53A1000F94FA8 /* DataTableView.swift */,
 				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
 				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
-				DC035F5B2DED4C65001D5CF6 /* EnhancedRecommendationCard.swift */,
 				DC70C57F2DE7668200DADEAE /* importJuypterNotebook.swift */,
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
-				DC0E89982DE366E900B27198 /* Windows.swift */,
+				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
+				DC77C8E22DF29207002A3EDA /* PointCloudDemo.swift */,
 				DCB9B4EE2DEF857E00FB5AF3 /* PointCloudGenerator.swift */,
 				DC09C5DE2DE3BB1700774D7D /* NotebookWindows.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
@@ -246,11 +246,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DC035F5C2DED4C65001D5CF6 /* EnhancedRecommendationCard.swift in Sources */,
+				DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */,
 				DC09C6452DE3E22000774D7D /* DataImportView.swift in Sources */,
 				DC09C5DF2DE3BB1700774D7D /* NotebookWindows.swift in Sources */,
+				DC77C8E32DF29207002A3EDA /* PointCloudDemo.swift in Sources */,
 				DF58AE342BCD82AF00C8F737 /* VolumetricWindow.swift in Sources */,
-				DC0E89992DE366E900B27198 /* Windows.swift in Sources */,
+				DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */,
 				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
@@ -259,7 +260,6 @@
 				DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */,
 				DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */,
 				DCB9B4EF2DEF857E00FB5AF3 /* PointCloudGenerator.swift in Sources */,
-				DC6365FE2DE53A1000F94FA8 /* DataTableView.swift in Sources */,
 				DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */,
 				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
 				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
