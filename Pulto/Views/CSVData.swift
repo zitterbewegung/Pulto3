@@ -393,137 +393,147 @@ struct CSVChartRecommenderView: View {
     @State private var selectedRecommendation: ChartRecommendation?
     @State private var isImporting = false
     @State private var errorMessage: String?
-    
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                if csvData == nil {
-                    // Welcome screen
-                    VStack(spacing: 30) {
-                        Image(systemName: "chart.xyaxis.line")
-                            .font(.system(size: 80))
-                            .foregroundColor(.blue)
-                        
-                        Text("CSV Chart Recommender")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        Text("Import a CSV file from iCloud to get intelligent chart recommendations")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                        
-                        Button(action: { isImporting = true }) {
-                            Label("Import CSV from iCloud", systemImage: "icloud.and.arrow.down")
+
+                VStack(spacing: 20) {
+
+
+                    if csvData == nil {
+                        // Welcome screen
+                        VStack(spacing: 30) {
+                            Image(systemName: "chart.xyaxis.line")
+                                .font(.system(size: 80))
+                                .foregroundColor(.blue)
+
+                            Text("CSV Chart Recommender")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            Text("Import a CSV file from iCloud to get intelligent chart recommendations")
                                 .font(.headline)
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                        }
-                    }
-                    .padding()
-                } else {
-                    // Data loaded view
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Data Summary
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Data Summary")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                
-                                HStack(spacing: 30) {
-                                    DataSummaryItem(
-                                        icon: "tablecells",
-                                        label: "Rows",
-                                        value: "\(csvData!.rows.count)"
-                                    )
-                                    
-                                    DataSummaryItem(
-                                        icon: "rectangle.split.3x1",
-                                        label: "Columns",
-                                        value: "\(csvData!.headers.count)"
-                                    )
-                                    
-                                    DataSummaryItem(
-                                        icon: "number",
-                                        label: "Numeric",
-                                        value: "\(csvData!.columnTypes.filter { $0 == .numeric }.count)"
-                                    )
-                                }
-                                .padding(.vertical, 10)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
                                 .padding(.horizontal)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(10)
+
+                            Button(action: { isImporting = true }) {
+                                Label("Import CSV from iCloud", systemImage: "icloud.and.arrow.down")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
                             }
-                            
-                            // Recommendations
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Recommended Charts")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                
-                                ForEach(recommendations, id: \.recommendation) { score in
-                                    RecommendationCard(
-                                        score: score,
-                                        isSelected: selectedRecommendation == score.recommendation,
-                                        action: { selectedRecommendation = score.recommendation }
-                                    )
-                                }
-                            }
-                            
-                            // Chart Preview
-                            if let selected = selectedRecommendation {
+                        }
+                        .padding()
+                    } else {
+                        // Data loaded view
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 20) {
+                                // Data Summary
                                 VStack(alignment: .leading, spacing: 10) {
-                                    Text("Chart Preview")
+                                    Text("Data Summary")
                                         .font(.title2)
                                         .fontWeight(.bold)
-                                    
-                                    SampleChartView(data: csvData!, recommendation: selected)
+
+                                    HStack(spacing: 30) {
+                                        DataSummaryItem(
+                                            icon: "tablecells",
+                                            label: "Rows",
+                                            value: "\(csvData!.rows.count)"
+                                        )
+
+                                        DataSummaryItem(
+                                            icon: "rectangle.split.3x1",
+                                            label: "Columns",
+                                            value: "\(csvData!.headers.count)"
+                                        )
+
+                                        DataSummaryItem(
+                                            icon: "number",
+                                            label: "Numeric",
+                                            value: "\(csvData!.columnTypes.filter { $0 == .numeric }.count)"
+                                        )
+                                    }
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal)
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(10)
                                 }
+
+                                // Recommendations
+                                VStack(alignment: .leading, spacing: 15) {
+                                    Text("Recommended Charts")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+
+                                    ForEach(recommendations, id: \.recommendation) { score in
+                                        RecommendationCard(
+                                            score: score,
+                                            isSelected: selectedRecommendation == score.recommendation,
+                                            action: { selectedRecommendation = score.recommendation }
+                                        )
+                                    }
+                                }
+
+                                // Chart Preview
+                                if let selected = selectedRecommendation {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text("Chart Preview")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+
+                                        SampleChartView(data: csvData!, recommendation: selected)
+                                    }
+                                }
+                            }
+                            .padding()
+                        }
+
+                        // Bottom toolbar
+                        HStack {
+                            Button(action: { isImporting = true }) {
+                                Label("Import New CSV", systemImage: "arrow.up.doc")
+                            }
+
+                            Spacer()
+
+                            if selectedRecommendation != nil {
+                                Button(action: generateFullChart) {
+                                    Label("Generate Full Chart", systemImage: "wand.and.stars")
+                                        .font(.headline)
+                                }
+                                .buttonStyle(.borderedProminent)
                             }
                         }
                         .padding()
                     }
-                    
-                    // Bottom toolbar
-                    HStack {
-                        Button(action: { isImporting = true }) {
-                            Label("Import New CSV", systemImage: "arrow.up.doc")
-                        }
-                        
-                        Spacer()
-                        
-                        if selectedRecommendation != nil {
-                            Button(action: generateFullChart) {
-                                Label("Generate Full Chart", systemImage: "wand.and.stars")
-                                    .font(.headline)
-                            }
-                            .buttonStyle(.borderedProminent)
+                }
+                .toolbar { // Add a toolbar
+                    ToolbarItem(placement: .navigationBarTrailing) { // Place the button on the trailing edge
+                        Button("Dismiss") { // Create a button with the text "Dismiss"
+                            dismiss() // Dismiss the current view
                         }
                     }
-                    .padding()
+                }
+                .navigationTitle("Chart Recommender")
+                .navigationBarTitleDisplayMode(.inline)
+                .fileImporter(
+                    isPresented: $isImporting,
+                    allowedContentTypes: [UTType.commaSeparatedText],
+                    allowsMultipleSelection: false
+                ) { result in
+                    handleFileImport(result)
+                }
+                .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                    Button("OK") { errorMessage = nil }
+                } message: {
+                    Text(errorMessage ?? "")
                 }
             }
-            .navigationTitle("Chart Recommender")
-            .navigationBarTitleDisplayMode(.inline)
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: [UTType.commaSeparatedText],
-                allowsMultipleSelection: false
-            ) { result in
-                handleFileImport(result)
-            }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
-            } message: {
-                Text(errorMessage ?? "")
-            }
         }
-    }
-    
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):

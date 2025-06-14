@@ -528,13 +528,25 @@ struct SettingsView: View {
 struct LoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var userName: String
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 24) {
-            Text("Sign In to Pulto")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+            HStack{
+                Text("Sign In to Pulto")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding()
+                Button(action: {
+                    dismiss()
+                }) {
+                    Label("Close", systemImage: "xmark.circle.fill")
+                        .font(.title2)
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
 
             // Placeholder login form
             VStack(spacing: 16) {
@@ -558,6 +570,7 @@ struct LoginView: View {
         .frame(width: 400, height: 300)
         .padding()
     }
+
 }
 
 // HeroSection that references SpatialHeroSection

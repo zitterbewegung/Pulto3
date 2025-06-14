@@ -16,7 +16,7 @@ struct EntryPoint: App {
         WindowGroup(id: "main") {
             PultoHomeView()
         }
-        .defaultSize(width: 1280, height: 900) // Add explicit sizing
+        .defaultSize(width: 1280, height: 850) // Add explicit sizing
 
         WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
             NewWindow(id: id ?? 1)
