@@ -1,154 +1,234 @@
 import SwiftUI
 import RealityKit
 
-struct PultoHomeView: View {
-    @State private var selectedSection: HomeSection? = nil
-    @State private var showCreateProject = false
-    @State private var showOpenProject = false  // Can be removed if not used elsewhere
-    @State private var showSettings = false
-    @State private var showLogin = false
-    @State private var isUserLoggedIn = false
-    @State private var userName = "Guest"
-    @State private var recentProjects: [Project] = Project.sampleProjects
-    @State private var isDarkMode = true
-    @Environment(\.colorScheme) var colorScheme
-    @Environment(\.openWindow) private var openWindow  // Add this environment value
+// MARK: - View Models
+@MainActor
+final class PultoHomeViewModel: ObservableObject {
+    @Published var selectedSection: HomeSection? = nil
+    @Published var recentProjects: [Project] = []
+    @Published var isUserLoggedIn = false
+    @Published var userName = "Guest"
+    @Published var isDarkMode = true
+    @Published var isLoadingProjects = false
+    @Published var stats: UserStats?
 
-    enum HomeSection: String, CaseIterable {
-        case create = "Create Project"
-        case open = "Open Project"
-        case recent = "Recent"
-        case settings = "Settings"
+    // Cache computed values
+    private var projectsCache: [Project]?
 
-        var icon: String {
-            switch self {
-            case .create: return "plus.square.on.square"
-            case .open: return "folder"
-            case .recent: return "clock"
-            case .settings: return "gearshape"
-            }
+    func loadInitialData() async {
+        // Simulate async data loading
+        isLoadingProjects = true
+
+        // Load user authentication state
+        await loadUserState()
+
+        // Load projects only if user is logged in
+        if isUserLoggedIn {
+            await loadRecentProjects()
+            await loadUserStats()
         }
 
-        var description: String {
-            switch self {
-            case .create: return "Start a new visualization project"
-            case .open: return "Browse and open existing projects"
-            case .recent: return "Continue where you left off"
-            case .settings: return "Customize your experience"
-            }
+        isLoadingProjects = false
+    }
+
+    private func loadUserState() async {
+        // Simulate checking authentication
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        // In real app, check actual auth state
+    }
+
+    private func loadRecentProjects() async {
+        // Simulate network delay
+        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+
+        // Use cached projects if available
+        if let cached = projectsCache {
+            recentProjects = cached
+        } else {
+            let projects = Project.sampleProjects
+            projectsCache = projects
+            recentProjects = projects
         }
     }
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: isDarkMode ? [
-                        Color(red: 0.07, green: 0.07, blue: 0.12),
-                        Color(red: 0.05, green: 0.05, blue: 0.08)
-                    ] : [
-                        Color(red: 0.98, green: 0.98, blue: 1.0),
-                        Color(red: 0.95, green: 0.95, blue: 0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+    private func loadUserStats() async {
+        // Simulate loading stats
+        try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 seconds
+        stats = UserStats(
+            totalProjects: 12,
+            visualizations: 47,
+            dataPoints: "3.2K",
+            collaborators: 8
+        )
+    }
+}
 
-                VStack(spacing: 40) {
-                    // Header
-                    HeaderView(
-                        userName: userName,
-                        isLoggedIn: isUserLoggedIn,
-                        isDarkMode: isDarkMode,
-                        onLoginTap: { showLogin = true }
-                    )
+// MARK: - Models
+struct UserStats {
+    let totalProjects: Int
+    let visualizations: Int
+    let dataPoints: String
+    let collaborators: Int
+}
 
-                    // Main Content
-                    ScrollView {
-                        VStack(spacing: 32) {
-                            // Hero Section
-                            HeroSection(isDarkMode: isDarkMode)
+enum HomeSection: String, CaseIterable {
+    case create = "Create Project"
+    case open = "Open Project"
+    case recent = "Recent"
+    case settings = "Settings"
 
-                            // Primary Actions - Updated to use openWindow for Open Project
-                            PrimaryActionsGrid(
-                                showCreateProject: $showCreateProject,
-                                onOpenProject: {
-                                    openWindow(id: "open-project-window")
-                                },
-                                isDarkMode: isDarkMode
-                            )
-
-                            // Recent Projects
-                            if !recentProjects.isEmpty && isUserLoggedIn {
-                                RecentProjectsSection(
-                                    projects: recentProjects,
-                                    isDarkMode: isDarkMode,
-                                    onProjectTap: { project in
-                                        // Handle project opening
-                                    }
-                                )
-                            }
-
-                            // Quick Stats (if logged in)
-                            if isUserLoggedIn {
-                                QuickStatsSection(isDarkMode: isDarkMode)
-                            }
-                        }
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, 20)
-                    }
-                }
-            }
-            .preferredColorScheme(isDarkMode ? .dark : .light)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                isDarkMode.toggle()
-                            }
-                        } label: {
-                            Image(systemName: isDarkMode ? "sun.max" : "moon")
-                                .symbolRenderingMode(.hierarchical)
-                                .font(.title2)
-                                .foregroundStyle(isDarkMode ? .yellow : .indigo)
-                        }
-                        .buttonStyle(.borderless)
-
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .symbolRenderingMode(.hierarchical)
-                                .font(.title2)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-            }
+    var icon: String {
+        switch self {
+        case .create: return "plus.square.on.square"
+        case .open: return "folder"
+        case .recent: return "clock"
+        case .settings: return "gearshape"
         }
-        .sheet(isPresented: $showCreateProject) {
-            //CreateProjectView()
-            //
-            CSVChartRecommenderView().frame(width: 600, height: 750)
-            //DataImportView().frame(width: 600, height: 750)
-        }
-        // Removed the sheet for showOpenProject since it now opens in volumetric window
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-        }
-        .sheet(isPresented: $showLogin) {
-            LoginView(isLoggedIn: $isUserLoggedIn, userName: $userName)
+    }
+
+    var description: String {
+        switch self {
+        case .create: return "Start a new visualization project"
+        case .open: return "Browse and open existing projects"
+        case .recent: return "Continue where you left off"
+        case .settings: return "Customize your experience"
         }
     }
 }
 
+// MARK: - Main View
+struct PultoHomeView: View {
+    @StateObject private var viewModel = PultoHomeViewModel()
+    @State private var showCreateProject = false
+    @State private var showSettings = false
+    @State private var showLogin = false
+    @State private var showTemplates = false
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                backgroundGradient
+
+                VStack(spacing: 40) {
+                    HeaderView(viewModel: viewModel) {
+                        showLogin = true
+                    }
+
+                    mainContent
+                }
+            }
+            .preferredColorScheme(viewModel.isDarkMode ? .dark : .light)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    toolbarButtons
+                }
+            }
+            .task {
+                await viewModel.loadInitialData()
+            }
+            .sheet(isPresented: $showCreateProject) {
+                CSVChartRecommenderView()
+                    .frame(width: 600, height: 750)
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+            }
+            .sheet(isPresented: $showLogin) {
+                LoginView(
+                    isLoggedIn: $viewModel.isUserLoggedIn,
+                    userName: $viewModel.userName
+                )
+            }
+            .sheet(isPresented: $showTemplates) {
+                VisualizationWindowView()
+                    .frame(width: 800, height: 600)
+            }
+        }
+    }
+
+    // MARK: - Subviews
+    private var backgroundGradient: some View {
+        LinearGradient(
+            colors: viewModel.isDarkMode ? [
+                Color(red: 0.07, green: 0.07, blue: 0.12),
+                Color(red: 0.05, green: 0.05, blue: 0.08)
+            ] : [
+                Color(red: 0.98, green: 0.98, blue: 1.0),
+                Color(red: 0.95, green: 0.95, blue: 0.98)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+
+    private var mainContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 32) {
+                PrimaryActionsGrid(
+                    showCreateProject: $showCreateProject,
+                    showTemplates: $showTemplates,
+                    onOpenProject: {
+                        openWindow(id: "open-project-window")
+                    },
+                    isDarkMode: viewModel.isDarkMode
+                )
+
+                if viewModel.isUserLoggedIn {
+                    if viewModel.isLoadingProjects {
+                        ProgressView("Loading projects...")
+                            .frame(height: 200)
+                    } else if !viewModel.recentProjects.isEmpty {
+                        RecentProjectsSection(
+                            projects: viewModel.recentProjects,
+                            isDarkMode: viewModel.isDarkMode
+                        )
+                    }
+
+                    if let stats = viewModel.stats {
+                        QuickStatsSection(
+                            stats: stats,
+                            isDarkMode: viewModel.isDarkMode
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 20)
+        }
+    }
+
+    private var toolbarButtons: some View {
+        HStack(spacing: 16) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    viewModel.isDarkMode.toggle()
+                }
+            } label: {
+                Image(systemName: viewModel.isDarkMode ? "sun.max" : "moon")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.title2)
+                    .foregroundStyle(viewModel.isDarkMode ? .yellow : .indigo)
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.title2)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+}
+
+// MARK: - Header View
 struct HeaderView: View {
-    let userName: String
-    let isLoggedIn: Bool
-    let isDarkMode: Bool
+    @ObservedObject var viewModel: PultoHomeViewModel
     let onLoginTap: () -> Void
 
     var body: some View {
@@ -167,90 +247,60 @@ struct HeaderView: View {
                 Text("Spatial Data Visualization Platform")
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(isDarkMode ? .white : .black)
+                    .foregroundColor(viewModel.isDarkMode ? .white : .black)
             }
 
             Spacer()
 
-            // User Profile
-            Button(action: onLoginTap) {
-                HStack(spacing: 12) {
-                    Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
-                        .font(.title)
-                        .symbolRenderingMode(.hierarchical)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(isLoggedIn ? userName : "Sign In")
-                            .font(.headline)
-
-                        if isLoggedIn {
-                            Text("View Profile")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .background(.ultraThinMaterial)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
+            UserProfileButton(
+                userName: viewModel.userName,
+                isLoggedIn: viewModel.isUserLoggedIn,
+                onTap: onLoginTap
+            )
         }
         .padding(.horizontal, 40)
         .padding(.top, 40)
     }
 }
 
-struct SpatialHeroSection: View {
-    let isDarkMode: Bool
+// MARK: - User Profile Button
+struct UserProfileButton: View {
+    let userName: String
+    let isLoggedIn: Bool
+    let onTap: () -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
-            // 3D Visualization Preview
-            ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(.ultraThinMaterial)
-                    .frame(height: 300)
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
+                    .font(.title)
+                    .symbolRenderingMode(.hierarchical)
 
-                // Animated gradient background
-                LinearGradient(
-                    colors: [
-                        .blue.opacity(0.3),
-                        .purple.opacity(0.3),
-                        .pink.opacity(0.3)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .overlay(
-                    VStack {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 80))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(isDarkMode ? .white.opacity(0.8) : .black.opacity(0.8))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isLoggedIn ? userName : "Sign In")
+                        .font(.headline)
 
-                        Text("Visualize Your Data in 2D & 3D")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(isDarkMode ? .white : .black)
-
-                        Text("Create stunning interactive visualizations")
-                            .font(.body)
-                            .foregroundStyle(isDarkMode ? .white.opacity(0.8) : .black.opacity(0.8))
+                    if isLoggedIn {
+                        Text("View Profile")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding()
-                )
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 }
 
-// Updated PrimaryActionsGrid to use closure for Open Project
+// MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
-    let onOpenProject: () -> Void  // Changed from @Binding
+    @Binding var showTemplates: Bool
+    let onOpenProject: () -> Void
     let isDarkMode: Bool
 
     var body: some View {
@@ -274,10 +324,9 @@ struct PrimaryActionsGrid: View {
                     title: "Open Project",
                     subtitle: "Continue working",
                     icon: "folder",
-                    color: .purple
-                ) {
-                    onOpenProject()  // Call the closure instead of setting state
-                }
+                    color: .purple,
+                    action: onOpenProject
+                )
 
                 ActionCard(
                     title: "Templates",
@@ -285,13 +334,14 @@ struct PrimaryActionsGrid: View {
                     icon: "square.grid.2x2",
                     color: .green
                 ) {
-                    // Handle templates
+                    showTemplates = true
                 }
             }
         }
     }
 }
 
+// MARK: - Action Card
 struct ActionCard: View {
     let title: String
     let subtitle: String
@@ -331,19 +381,20 @@ struct ActionCard: View {
                     .stroke(color.opacity(isHovered ? 0.5 : 0), lineWidth: 2)
             )
             .scaleEffect(isHovered ? 1.02 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: isHovered)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            isHovered = hovering
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
         }
     }
 }
 
+// MARK: - Recent Projects Section
 struct RecentProjectsSection: View {
     let projects: [Project]
     let isDarkMode: Bool
-    let onProjectTap: (Project) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -362,12 +413,9 @@ struct RecentProjectsSection: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
+                LazyHStack(spacing: 16) {
                     ForEach(projects) { project in
-                        RecentProjectCard(
-                            project: project,
-                            onTap: { onProjectTap(project) }
-                        )
+                        RecentProjectCard(project: project)
                     }
                 }
             }
@@ -375,16 +423,16 @@ struct RecentProjectsSection: View {
     }
 }
 
+// MARK: - Recent Project Card
 struct RecentProjectCard: View {
     let project: Project
-    let onTap: () -> Void
-
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: onTap) {
+        Button {
+            // Handle project tap
+        } label: {
             VStack(alignment: .leading, spacing: 12) {
-                // Preview
                 RoundedRectangle(cornerRadius: 12)
                     .fill(project.color.opacity(0.3))
                     .frame(width: 200, height: 120)
@@ -414,16 +462,19 @@ struct RecentProjectCard: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .scaleEffect(isHovered ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: isHovered)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            isHovered = hovering
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
         }
     }
 }
 
+// MARK: - Quick Stats Section
 struct QuickStatsSection: View {
+    let stats: UserStats
     let isDarkMode: Bool
 
     var body: some View {
@@ -435,28 +486,28 @@ struct QuickStatsSection: View {
 
             HStack(spacing: 20) {
                 StatCard(
-                    value: "12",
+                    value: "\(stats.totalProjects)",
                     label: "Total Projects",
                     icon: "square.stack.3d.up",
                     color: .blue
                 )
 
                 StatCard(
-                    value: "47",
+                    value: "\(stats.visualizations)",
                     label: "Visualizations",
                     icon: "chart.bar.xaxis",
                     color: .purple
                 )
 
                 StatCard(
-                    value: "3.2K",
+                    value: stats.dataPoints,
                     label: "Data Points",
                     icon: "circle.grid.3x3",
                     color: .green
                 )
 
                 StatCard(
-                    value: "8",
+                    value: "\(stats.collaborators)",
                     label: "Collaborators",
                     icon: "person.2",
                     color: .orange
@@ -466,6 +517,7 @@ struct QuickStatsSection: View {
     }
 }
 
+// MARK: - Stat Card
 struct StatCard: View {
     let value: String
     let label: String
@@ -493,7 +545,7 @@ struct StatCard: View {
     }
 }
 
-// Supporting Models
+// MARK: - Supporting Models
 struct Project: Identifiable {
     let id = UUID()
     let name: String
@@ -503,21 +555,52 @@ struct Project: Identifiable {
     let lastModified: Date
 
     static let sampleProjects = [
-        Project(name: "Sales Dashboard", type: "2D Chart", icon: "chart.bar", color: .blue, lastModified: Date().addingTimeInterval(-3600)),
-        Project(name: "Climate Model", type: "3D Visualization", icon: "globe", color: .green, lastModified: Date().addingTimeInterval(-7200)),
-        Project(name: "Stock Analysis", type: "Time Series", icon: "chart.line.uptrend.xyaxis", color: .purple, lastModified: Date().addingTimeInterval(-86400)),
-        Project(name: "Population Data", type: "Heatmap", icon: "map", color: .orange, lastModified: Date().addingTimeInterval(-172800))
+        Project(
+            name: "Sales Dashboard",
+            type: "2D Chart",
+            icon: "chart.bar",
+            color: .blue,
+            lastModified: Date().addingTimeInterval(-3600)
+        ),
+        Project(
+            name: "Climate Model",
+            type: "3D Visualization",
+            icon: "globe",
+            color: .green,
+            lastModified: Date().addingTimeInterval(-7200)
+        ),
+        Project(
+            name: "Stock Analysis",
+            type: "Time Series",
+            icon: "chart.line.uptrend.xyaxis",
+            color: .purple,
+            lastModified: Date().addingTimeInterval(-86400)
+        ),
+        Project(
+            name: "Population Data",
+            type: "Heatmap",
+            icon: "map",
+            color: .orange,
+            lastModified: Date().addingTimeInterval(-172800)
+        )
     ]
 }
 
-// Placeholder Views
-struct CreateProjectView: View {
+// MARK: - Placeholder Views
+/*struct CSVChartRecommenderView: View {
     var body: some View {
-        Text("Create Project View")
-            .frame(width: 600, height: 400)
+        Text("CSV Chart Recommender View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
+struct VisualizationWindowView: View {
+    var body: some View {
+        Text("Visualization Window View")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+*/
 struct SettingsView: View {
     var body: some View {
         Text("Settings View")
@@ -529,17 +612,17 @@ struct LoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var userName: String
     @Environment(\.dismiss) private var dismiss
+    @State private var password = ""
 
     var body: some View {
         VStack(spacing: 24) {
-            HStack{
+            HStack {
                 Text("Sign In to Pulto")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding()
-                Button(action: {
-                    dismiss()
-                }) {
+
+                Button(action: { dismiss() }) {
                     Label("Close", systemImage: "xmark.circle.fill")
                         .font(.title2)
                         .labelStyle(.titleAndIcon)
@@ -547,20 +630,21 @@ struct LoginView: View {
                 .buttonStyle(.borderedProminent)
             }
 
-
-            // Placeholder login form
             VStack(spacing: 16) {
                 TextField("Username", text: $userName)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 300)
 
-                SecureField("Password", text: .constant(""))
+                SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 300)
 
                 Button("Sign In") {
-                    isLoggedIn = true
-                    dismiss()
+                    Task {
+                        // Simulate login
+                        isLoggedIn = true
+                        dismiss()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -570,28 +654,9 @@ struct LoginView: View {
         .frame(width: 400, height: 300)
         .padding()
     }
-
 }
 
-// HeroSection that references SpatialHeroSection
-/*struct HeroSection: View {
-    let isDarkMode: Bool
-
-    var body: some View {
-        SpatialHeroSection(isDarkMode: isDarkMode)
-    }
-}*/
-
-/* CSVChartRecommenderView placeholder
-struct CSVChartRecommenderView: View {
-    var body: some View {
-        Text("CSV Chart Recommender View")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-*/
-
-// Preview
+// MARK: - Preview
 struct PultoHomeView_Previews: PreviewProvider {
     static var previews: some View {
         PultoHomeView()
