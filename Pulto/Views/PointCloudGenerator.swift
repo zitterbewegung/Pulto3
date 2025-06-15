@@ -1,3 +1,4 @@
+/*
 import SwiftUI
 import RealityKit
 
@@ -314,3 +315,4 @@ struct PointCloudContentView: View {
 #Preview {
     PointCloudContentView()
 }
+*/

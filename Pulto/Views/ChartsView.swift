@@ -3,7 +3,8 @@ import RealityKit
 import UIKit
 
 
-struct TemplatesContentView: View {
+
+struct ChartsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
     @State private var selectedVisualizationType: VisualizationType = .pointCloud
@@ -164,7 +165,7 @@ struct VisualizationView: View {
             case .threeDimensional:
                 ThreeDimensionalView(settings: settings)
             case .pointCloud:
-                TemplatePointCloudView(settings: settings)
+                PointCloudView(settings: settings)
             }
 
             // Overlay controls
@@ -589,7 +590,7 @@ struct ThreeDimensionalView: View {
     }
 }
 
-struct TemplatePointCloudView: View {
+struct PointCloudView: View {
     let settings: VisualizationSettings
     @State private var pointCloudData: [PointCloudPoint] = []
     @State private var rotation: Angle = .zero

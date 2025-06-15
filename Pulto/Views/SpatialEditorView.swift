@@ -25,97 +25,166 @@ let stackedBarData: [ToyShape] = [
     .init(color: "Yellow", type: "Pyramid", count: 2)
 ]
 
+// MARK: - Window Model
+
+struct SpatialWindow: Identifiable {
+    let id = UUID()
+    var title: String
+    var offset: CGSize
+    var rotation: Angle
+    var isVisible: Bool
+    var color: Color
+    var contentType: WindowContentType
+
+    enum WindowContentType {
+        case chart
+        case text(String)
+        case custom
+    }
+}
+
 // MARK: - ViewModel
 
-@MainActor // Ensures all code runs on the main thread
-class SpatialEditorViewModel: ObservableObject {
-    // Window A States
-    @Published var windowAOffset: CGSize = .zero
-    @Published var windowARotation: Angle = .degrees(0)
+@MainActor
+class ChartViewModel: ObservableObject {
+    // Grid Configuration
+    @Published var gridColumns: Int = 3
+    @Published var gridRows: Int = 3
 
-    // Window B States
-    @Published var windowBOffset: CGSize = CGSize(width: -500, height: 0) // Start off-screen to the left
-    @Published var windowBRotation: Angle = .degrees(0)
+    // Windows Array
+    @Published var windows: [SpatialWindow] = []
 
     // Control Window States
     @Published var controlOffset: CGSize = CGSize(width: 0, height: 0)
     @Published var controlRotation: Angle = .degrees(0)
 
-    // Visibility States
-    @Published var showWindowA: Bool = true
-    @Published var showWindowB: Bool = false
-
     // Window Dimensions and Settings
-    let windowWidth: CGFloat = 400
-    let windowHeight: CGFloat = 300
-    let gap: CGFloat = 20
+    let windowWidth: CGFloat = 300
+    let windowHeight: CGFloat = 200
+    let gridSpacing: CGFloat = 20
     let animationDuration: Double = 0.5
 
+    // Grid Layout Mode
+    @Published var isGridMode: Bool = true
+
     init() {
+        setupDefaultWindows()
         loadWindowStates()
+    }
+
+    // MARK: - Setup Functions
+
+    func setupDefaultWindows() {
+        let colors: [Color] = [.blue, .red, .green, .purple, .orange, .pink, .yellow, .mint, .teal]
+        let totalWindows = gridColumns * gridRows
+
+        for i in 0..<totalWindows {
+            let window = SpatialWindow(
+                title: "Window \(i + 1)",
+                offset: calculateGridPosition(for: i),
+                rotation: .degrees(0),
+                isVisible: false,
+                color: colors[i % colors.count].opacity(0.8),
+                contentType: i % 3 == 0 ? .chart : .text("Content for Window \(i + 1)")
+            )
+            windows.append(window)
+        }
+    }
+
+    func calculateGridPosition(for index: Int) -> CGSize {
+        let row = index / gridColumns
+        let col = index % gridColumns
+
+        let totalWidth = CGFloat(gridColumns) * windowWidth + CGFloat(gridColumns - 1) * gridSpacing
+        let totalHeight = CGFloat(gridRows) * windowHeight + CGFloat(gridRows - 1) * gridSpacing
+
+        let startX = -totalWidth / 2 + windowWidth / 2
+        let startY = -totalHeight / 2 + windowHeight / 2
+
+        let x = startX + CGFloat(col) * (windowWidth + gridSpacing)
+        let y = startY + CGFloat(row) * (windowHeight + gridSpacing)
+
+        return CGSize(width: x, height: y)
     }
 
     // MARK: - Control Functions
 
-    func showSpatialWindowA() {
+    func toggleWindow(at index: Int) {
+        guard index < windows.count else { return }
+
         withAnimation(.easeInOut(duration: animationDuration)) {
-            showWindowA = true
+            windows[index].isVisible.toggle()
+
+            if isGridMode && windows[index].isVisible {
+                windows[index].offset = calculateGridPosition(for: index)
+            }
         }
         saveWindowStates()
     }
 
-    func hideWindowA() {
+    func showAllWindows() {
         withAnimation(.easeInOut(duration: animationDuration)) {
-            showWindowA = false
+            for i in 0..<windows.count {
+                windows[i].isVisible = true
+                if isGridMode {
+                    windows[i].offset = calculateGridPosition(for: i)
+                }
+            }
         }
         saveWindowStates()
     }
 
-    func showSpatialWindowB() {
+    func hideAllWindows() {
         withAnimation(.easeInOut(duration: animationDuration)) {
-            showWindowB = true
-            snapWindowBToLeftOfWindowA()
+            for i in 0..<windows.count {
+                windows[i].isVisible = false
+            }
         }
         saveWindowStates()
     }
 
-    func hideWindowB() {
+    func arrangeInGrid() {
         withAnimation(.easeInOut(duration: animationDuration)) {
-            showWindowB = false
-            windowBOffset = CGSize(width: -500, height: 0) // Move Window B off-screen
+            isGridMode = true
+            for i in 0..<windows.count {
+                windows[i].offset = calculateGridPosition(for: i)
+                windows[i].rotation = .degrees(0)
+            }
         }
         saveWindowStates()
     }
 
-    /// Snaps Window B to the left of Window A with animation.
-    func snapWindowBToLeftOfWindowA() {
+    func randomizePositions() {
         withAnimation(.easeInOut(duration: animationDuration)) {
-            let offsetX = -windowWidth - gap
-            windowBOffset = CGSize(width: offsetX, height: 0)
+            isGridMode = false
+            for i in 0..<windows.count {
+                windows[i].offset = CGSize(
+                    width: CGFloat.random(in: -300...300),
+                    height: CGFloat.random(in: -300...300)
+                )
+                windows[i].rotation = .degrees(Double.random(in: -45...45))
+            }
         }
+        saveWindowStates()
+    }
+
+    func updateWindowPosition(at index: Int, offset: CGSize) {
+        guard index < windows.count else { return }
+        windows[index].offset = offset
+        isGridMode = false
+        saveWindowStates()
+    }
+
+    func updateWindowRotation(at index: Int, rotation: Angle) {
+        guard index < windows.count else { return }
+        windows[index].rotation = rotation
+        saveWindowStates()
     }
 
     // MARK: - State Persistence
 
-    /// Loads the window states from UserDefaults.
     func loadWindowStates() {
-        // Window A
-        let windowAOffsetWidth = UserDefaults.standard.object(forKey: "windowAOffsetWidth") as? CGFloat ?? 0
-        let windowAOffsetHeight = UserDefaults.standard.object(forKey: "windowAOffsetHeight") as? CGFloat ?? 0
-        windowAOffset = CGSize(width: windowAOffsetWidth, height: windowAOffsetHeight)
-
-        let rotationA = UserDefaults.standard.double(forKey: "windowARotation")
-        windowARotation = .degrees(rotationA)
-
-        // Window B
-        let windowBOffsetWidth = UserDefaults.standard.object(forKey: "windowBOffsetWidth") as? CGFloat ?? -500
-        let windowBOffsetHeight = UserDefaults.standard.object(forKey: "windowBOffsetHeight") as? CGFloat ?? 0
-        windowBOffset = CGSize(width: windowBOffsetWidth, height: windowBOffsetHeight)
-
-        let rotationB = UserDefaults.standard.double(forKey: "windowBRotation")
-        windowBRotation = .degrees(rotationB)
-
-        // Control Window
+        // Load control window state
         let controlOffsetWidth = UserDefaults.standard.object(forKey: "controlOffsetWidth") as? CGFloat ?? 0
         let controlOffsetHeight = UserDefaults.standard.object(forKey: "controlOffsetHeight") as? CGFloat ?? 0
         controlOffset = CGSize(width: controlOffsetWidth, height: controlOffsetHeight)
@@ -123,141 +192,110 @@ class SpatialEditorViewModel: ObservableObject {
         let controlRotationValue = UserDefaults.standard.double(forKey: "controlRotation")
         controlRotation = .degrees(controlRotationValue)
 
-        // Visibility States
-        showWindowA = UserDefaults.standard.object(forKey: "showWindowA") as? Bool ?? true
-        showWindowB = UserDefaults.standard.object(forKey: "showWindowB") as? Bool ?? false
+        // Load grid mode
+        isGridMode = UserDefaults.standard.object(forKey: "isGridMode") as? Bool ?? true
 
-        print("Loaded states - WindowA: \(windowAOffset), WindowB: \(windowBOffset), Control: \(controlOffset)")
+        // Load window states
+        if let savedWindowsData = UserDefaults.standard.data(forKey: "windowStates") {
+            do {
+                let savedStates = try JSONDecoder().decode([ChartWindowState].self, from: savedWindowsData)
+                for (index, state) in savedStates.enumerated() {
+                    if index < windows.count {
+                        windows[index].offset = CGSize(width: state.offsetWidth, height: state.offsetHeight)
+                        windows[index].rotation = .degrees(state.rotation)
+                        windows[index].isVisible = state.isVisible
+                    }
+                }
+            } catch {
+                print("Failed to decode window states: \(error)")
+            }
+        }
     }
 
-    /// Saves the window states to UserDefaults.
     func saveWindowStates() {
-        // Window A
-        UserDefaults.standard.set(windowAOffset.width, forKey: "windowAOffsetWidth")
-        UserDefaults.standard.set(windowAOffset.height, forKey: "windowAOffsetHeight")
-        UserDefaults.standard.set(windowARotation.degrees, forKey: "windowARotation")
-
-        // Window B
-        UserDefaults.standard.set(windowBOffset.width, forKey: "windowBOffsetWidth")
-        UserDefaults.standard.set(windowBOffset.height, forKey: "windowBOffsetHeight")
-        UserDefaults.standard.set(windowBRotation.degrees, forKey: "windowBRotation")
-
-        // Control Window
+        // Save control window state
         UserDefaults.standard.set(controlOffset.width, forKey: "controlOffsetWidth")
         UserDefaults.standard.set(controlOffset.height, forKey: "controlOffsetHeight")
         UserDefaults.standard.set(controlRotation.degrees, forKey: "controlRotation")
 
-        // Visibility States
-        UserDefaults.standard.set(showWindowA, forKey: "showWindowA")
-        UserDefaults.standard.set(showWindowB, forKey: "showWindowB")
+        // Save grid mode
+        UserDefaults.standard.set(isGridMode, forKey: "isGridMode")
 
-        print("Saved states - WindowA: \(windowAOffset), WindowB: \(windowBOffset), Control: \(controlOffset)")
+        // Save window states
+        let states = windows.map { window in
+            ChartWindowState(
+                offsetWidth: window.offset.width,
+                offsetHeight: window.offset.height,
+                rotation: window.rotation.degrees,
+                isVisible: window.isVisible
+            )
+        }
+
+        if let encoded = try? JSONEncoder().encode(states) {
+            UserDefaults.standard.set(encoded, forKey: "windowStates")
+        }
     }
 
     // MARK: - Debug Functions
 
-    /// Resets all saved positions to default values
-    func resetPositions() {
-        windowAOffset = .zero
-        windowBOffset = CGSize(width: -500, height: 0)
-        controlOffset = .zero
-        windowARotation = .degrees(0)
-        windowBRotation = .degrees(0)
-        controlRotation = .degrees(0)
-        showWindowA = true
-        showWindowB = false
+    func resetAll() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            isGridMode = true
+            for i in 0..<windows.count {
+                windows[i].offset = calculateGridPosition(for: i)
+                windows[i].rotation = .degrees(0)
+                windows[i].isVisible = false
+            }
+            controlOffset = .zero
+            controlRotation = .degrees(0)
+        }
         saveWindowStates()
     }
 }
 
-// MARK: - SpatialEditorView
+// MARK: - Codable State for Persistence
+
+struct ChartWindowState: Codable {
+    let offsetWidth: CGFloat
+    let offsetHeight: CGFloat
+    let rotation: Double
+    let isVisible: Bool
+}
+
+// MARK: - Main View
 
 struct SpatialEditorView: View {
-    @StateObject private var viewModel = SpatialEditorViewModel()
-
-    // Gesture States
-    @State private var draggingOffsetA: CGSize = .zero
-    @State private var draggingOffsetB: CGSize = .zero
+    @StateObject private var viewModel = ChartViewModel()
+    @State private var draggingOffsets: [UUID: CGSize] = [:]
     @State private var draggingOffsetControl: CGSize = .zero
 
     var body: some View {
         ZStack {
-            // Window A
-            if viewModel.showWindowA {
-                WindowAView()
-                    .frame(width: viewModel.windowWidth, height: viewModel.windowHeight)
-                    .background(Color.blue.opacity(0.8))
-                    .cornerRadius(15)
-                    .offset(x: viewModel.windowAOffset.width + draggingOffsetA.width,
-                            y: viewModel.windowAOffset.height + draggingOffsetA.height)
-                    .rotationEffect(viewModel.windowARotation)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { gesture in
-                                draggingOffsetA = gesture.translation
-                            }
-                            .onEnded { gesture in
-                                viewModel.windowAOffset.width += gesture.translation.width
-                                viewModel.windowAOffset.height += gesture.translation.height
-                                draggingOffsetA = .zero
-                                viewModel.saveWindowStates()
-                            }
-                    )
-                    .simultaneousGesture(
-                        RotationGesture()
-                            .onChanged { angle in
-                                viewModel.windowARotation = angle
-                            }
-                            .onEnded { angle in
-                                viewModel.windowARotation = angle
-                                viewModel.saveWindowStates()
-                            }
-                    )
-                    .zIndex(1) // Ensure Window A is on top if overlapping occurs
-            }
-
-            // Window B
-            if viewModel.showWindowB {
-                WindowBView()
-                    .frame(width: viewModel.windowWidth, height: viewModel.windowHeight)
-                    .background(Color.red.opacity(0.8))
-                    .cornerRadius(15)
-                    .offset(x: viewModel.windowBOffset.width + draggingOffsetB.width,
-                            y: viewModel.windowBOffset.height + draggingOffsetB.height)
-                    .rotationEffect(viewModel.windowBRotation)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { gesture in
-                                draggingOffsetB = gesture.translation
-                            }
-                            .onEnded { gesture in
-                                viewModel.windowBOffset.width += gesture.translation.width
-                                viewModel.windowBOffset.height += gesture.translation.height
-                                draggingOffsetB = .zero
-                                viewModel.saveWindowStates()
-                            }
-                    )
-                    .simultaneousGesture(
-                        RotationGesture()
-                            .onChanged { angle in
-                                viewModel.windowBRotation = angle
-                            }
-                            .onEnded { angle in
-                                viewModel.windowBRotation = angle
-                                viewModel.saveWindowStates()
-                            }
-                    )
-                    .zIndex(0) // Behind Window A
+            // Windows
+            ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
+                if window.isVisible {
+                    DraggableWindow(
+                        window: window,
+                        index: index,
+                        viewModel: viewModel,
+                        draggingOffset: draggingOffsets[window.id] ?? .zero
+                    ) { newOffset in
+                        draggingOffsets[window.id] = newOffset
+                    }
+                    .zIndex(Double(index))
+                }
             }
 
             // Control Window
-            let shouldHide = false
             ControlWindowView(viewModel: viewModel)
-                .frame(width: 300, height: 200)
-                .background(Color.gray.opacity(0.8))
+                .frame(width: 350, height: 500)
+                .background(Color.gray.opacity(0.9))
                 .cornerRadius(15)
-                .offset(x: viewModel.controlOffset.width + draggingOffsetControl.width,
-                        y: viewModel.controlOffset.height + draggingOffsetControl.height)
+                .shadow(radius: 10)
+                .offset(
+                    x: viewModel.controlOffset.width + draggingOffsetControl.width,
+                    y: viewModel.controlOffset.height + draggingOffsetControl.height
+                )
                 .rotationEffect(viewModel.controlRotation)
                 .gesture(
                     DragGesture()
@@ -271,60 +309,94 @@ struct SpatialEditorView: View {
                             viewModel.saveWindowStates()
                         }
                 )
-                .simultaneousGesture(
-                    RotationGesture()
-                        .onChanged { angle in
-                            viewModel.controlRotation = angle
-                        }
-                        .onEnded { angle in
-                            viewModel.controlRotation = angle
-                            viewModel.saveWindowStates()
-                        }
-                )
-                .zIndex(2) // Always on top
-                .opacity(shouldHide ? 0 : 1)
+                .zIndex(1000) // Always on top
         }
-        .edgesIgnoringSafeArea(.all) // Optional: Extend views to edges
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.1))
     }
 }
 
-// MARK: - Window A View
+// MARK: - Draggable Window Component
 
-struct WindowAView: View {
+struct DraggableWindow: View {
+    let window: SpatialWindow
+    let index: Int
+    let viewModel: ChartViewModel
+    let draggingOffset: CGSize
+    let onDragChanged: (CGSize) -> Void
+
+    var body: some View {
+        WindowContentView(window: window)
+            .frame(width: viewModel.windowWidth, height: viewModel.windowHeight)
+            .background(window.color)
+            .cornerRadius(15)
+            .shadow(radius: 5)
+            .offset(
+                x: window.offset.width + draggingOffset.width,
+                y: window.offset.height + draggingOffset.height
+            )
+            .rotationEffect(window.rotation)
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        onDragChanged(gesture.translation)
+                    }
+                    .onEnded { gesture in
+                        let newOffset = CGSize(
+                            width: window.offset.width + gesture.translation.width,
+                            height: window.offset.height + gesture.translation.height
+                        )
+                        viewModel.updateWindowPosition(at: index, offset: newOffset)
+                        onDragChanged(.zero)
+                    }
+            )
+            .simultaneousGesture(
+                RotationGesture()
+                    .onChanged { angle in
+                        viewModel.updateWindowRotation(at: index, rotation: angle)
+                    }
+            )
+    }
+}
+
+// MARK: - Window Content View
+
+struct WindowContentView: View {
+    let window: SpatialWindow
+
     var body: some View {
         VStack {
-            Text("Window A")
-                .font(.largeTitle)
-                .padding()
+            Text(window.title)
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.top)
 
-            Chart {
-                ForEach(stackedBarData) { shape in
-                    BarMark(
-                        x: .value("Shape Type", shape.type),
-                        y: .value("Total Count", shape.count)
-                    )
-                    .foregroundStyle(by: .value("Shape Color", shape.color))
+            switch window.contentType {
+            case .chart:
+                Chart {
+                    ForEach(stackedBarData) { shape in
+                        BarMark(
+                            x: .value("Shape Type", shape.type),
+                            y: .value("Total Count", shape.count)
+                        )
+                        .foregroundStyle(by: .value("Shape Color", shape.color))
+                    }
                 }
+                .padding()
+
+            case .text(let content):
+                Text(content)
+                    .foregroundColor(.white)
+                    .padding()
+
+            case .custom:
+                // Add custom content here
+                Image(systemName: "star.fill")
+                    .font(.largeTitle)
+                    .foregroundColor(.white)
             }
-            .padding()
-        }
-    }
-}
 
-// MARK: - Window B View
-
-struct WindowBView: View {
-    var body: some View {
-        VStack {
-            Text("Window B")
-                .font(.largeTitle)
-                .padding()
-
-            // Add content specific to Window B here
-            
-            //Text("Additional Content for Window B")
-                .padding()
-            // PlotlyView() // Commented out as it's not defined
+            Spacer()
         }
     }
 }
@@ -332,69 +404,120 @@ struct WindowBView: View {
 // MARK: - Control Window View
 
 struct ControlWindowView: View {
-    @ObservedObject var viewModel: SpatialEditorViewModel
+    @ObservedObject var viewModel: ChartViewModel
 
     var body: some View {
         VStack(spacing: 15) {
             Text("Control Panel")
-                .font(.headline)
+                .font(.title2)
+                .fontWeight(.bold)
                 .padding(.top)
 
-            // Toggle Window A
-            Button(action: {
-                if viewModel.showWindowA {
-                    viewModel.hideWindowA()
-                } else {
-                    viewModel.showSpatialWindowA()
-                }
-            }) {
-                Text(viewModel.showWindowA ? "Hide Window A" : "Show Window A")
-                    .foregroundColor(.white)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(viewModel.showWindowA ? Color.red : Color.green)
-                    .cornerRadius(8)
-            }
+            Divider()
 
-            // Toggle Window B
-            Button(action: {
-                if viewModel.showWindowB {
-                    viewModel.hideWindowB()
-                } else {
-                    viewModel.showSpatialWindowB()
-                }
-            }) {
-                Text(viewModel.showWindowB ? "Hide Window B" : "Show Window B")
-                    .foregroundColor(.white)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(viewModel.showWindowB ? Color.red : Color.green)
-                    .cornerRadius(8)
-            }
+            // Grid Controls
+            VStack(spacing: 10) {
+                Text("Grid Layout")
+                    .font(.headline)
 
-            // Reset Positions Button (for debugging)
-            Button(action: {
-                viewModel.resetPositions()
-            }) {
-                Text("Reset Positions")
-                    .foregroundColor(.white)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.orange)
-                    .cornerRadius(8)
+                HStack(spacing: 20) {
+                    Button(action: viewModel.arrangeInGrid) {
+                        Label("Arrange Grid", systemImage: "square.grid.3x3")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button(action: viewModel.randomizePositions) {
+                        Label("Randomize", systemImage: "shuffle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
+            .padding(.horizontal)
+
+            Divider()
+
+            // Batch Controls
+            VStack(spacing: 10) {
+                Text("Window Controls")
+                    .font(.headline)
+
+                HStack(spacing: 20) {
+                    Button(action: viewModel.showAllWindows) {
+                        Text("Show All")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+
+                    Button(action: viewModel.hideAllWindows) {
+                        Text("Hide All")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                }
+            }
+            .padding(.horizontal)
+
+            Divider()
+
+            // Individual Window Controls
+            ScrollView {
+                VStack(spacing: 8) {
+                    Text("Individual Windows")
+                        .font(.headline)
+                        .padding(.bottom, 5)
+
+                    ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
+                        HStack {
+                            Circle()
+                                .fill(window.color)
+                                .frame(width: 10, height: 10)
+
+                            Text(window.title)
+                                .font(.subheadline)
+
+                            Spacer()
+
+                            Button(action: {
+                                viewModel.toggleWindow(at: index)
+                            }) {
+                                Text(window.isVisible ? "Hide" : "Show")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(window.isVisible ? Color.red : Color.green)
+                                    .cornerRadius(6)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+
+            Divider()
+
+            // Reset Button
+            Button(action: viewModel.resetAll) {
+                Label("Reset All", systemImage: "arrow.counterclockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .padding(.horizontal)
 
             Spacer()
         }
-        .padding()
+        .padding(.vertical)
     }
 }
 
 // MARK: - Preview Provider
 #Preview {
     SpatialEditorView()
-        .frame(width: 600, height: 800)
+        .frame(width: 1200, height: 800)
 }

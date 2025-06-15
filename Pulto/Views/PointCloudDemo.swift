@@ -337,12 +337,10 @@ struct PointCloudPreview: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Point Cloud Demo")
-                .font(.largeTitle)
-                .bold()
+
 
             // Demo selector
-            Picker("Select Demo", selection: $selectedDemo) {
+            Picker("Select Data", selection: $selectedDemo) {
                 ForEach(0..<demoNames.count, id: \.self) { index in
                     Text(demoNames[index]).tag(index)
                 }
@@ -450,7 +448,7 @@ struct PointCloudPreview: View {
 // MARK: - Preview Provider
 #Preview {
     PointCloudPreview()
-        .frame(width: 600, height: 800)
+        //.frame(width: 600, height: 800)
 }
 
 // MARK: - Example Usage

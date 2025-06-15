@@ -142,8 +142,8 @@ struct PultoHomeView: View {
                 )
             }
             .sheet(isPresented: $showTemplates) {
-                VisualizationWindowView()
-                    .frame(width: 800, height: 600)
+                //TemplateView()
+
             }
         }
     }

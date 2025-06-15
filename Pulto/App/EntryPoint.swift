@@ -36,6 +36,7 @@ struct EntryPoint: App {
             }
             .windowStyle(.volumetric)
             .defaultSize(width: 600, height: 400, depth: 300, in: .millimeters)
+            
         }
     }
 }
