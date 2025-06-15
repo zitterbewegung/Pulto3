@@ -2,8 +2,7 @@ import SwiftUI
 import RealityKit
 import UIKit
 
-
-
+// MARK: - Charts View
 struct ChartsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
@@ -261,7 +260,7 @@ struct ControlPanelView: View {
                             StatRow(label: "Objects", value: "7")
                             StatRow(label: "Memory", value: "8 MB")
                         case .pointCloud:
-                            StatRow(label: "Points", value: "16,400")
+                            StatRow(label: "Points", value: "16 400")
                             StatRow(label: "Memory", value: "64 MB")
                             StatRow(label: "Density", value: "2.5k/m²")
                         }
@@ -513,8 +512,6 @@ struct ThreeDimensionalView: View {
                 // Add lighting
                 let lightEntity = DirectionalLight()
                 lightEntity.light.intensity = 10000
-                //lightEntity.light.isRealWorldProxy = true
-                //lightEntity.shadow?.isEnabled = settings.enableShadows
                 lightEntity.orientation = simd_quatf(angle: -.pi/4, axis: [1, 0, 0])
                 content.add(lightEntity)
 
@@ -586,7 +583,7 @@ struct ThreeDimensionalView: View {
 
     func colorToUIColor(_ color: Color) -> UIColor {
         // Convert SwiftUI Color to UIColor for visionOS
-        return UIColor(color)
+        UIColor(color)
     }
 }
 
@@ -682,8 +679,8 @@ struct PointCloudView: View {
             for z in stride(from: -2.0, to: 2.0, by: 0.1) {
                 // Create height variation
                 let height = sin(x * 2) * cos(z * 2) * 0.5 +
-                           sin(x * 5) * sin(z * 5) * 0.1 +
-                           Double.random(in: -0.05...0.05)
+                             sin(x * 5) * sin(z * 5) * 0.1 +
+                             Double.random(in: -0.05...0.05)
 
                 // Calculate intensity based on height
                 let intensity = (height + 1) / 2
@@ -806,7 +803,7 @@ struct PointCloudView: View {
             lineWidth: 2
         )
 
-        // Y-axis (green) - vertical, no rotation
+        // Y-axis (green) – vertical, no rotation
         context.stroke(
             Path { path in
                 path.move(to: CGPoint(x: centerX, y: centerY))
@@ -831,7 +828,7 @@ struct PointCloudView: View {
     }
 }
 
-// Point cloud data structure
+// Point-cloud point model
 struct PointCloudPoint {
     let x: Double
     let y: Double
@@ -848,11 +845,11 @@ struct Dataset: Identifiable {
     var pointCount: Int {
         switch type {
         case .twoDimensional:
-            return Int.random(in: 400...2000) // Grid cells or scatter points
+            return Int.random(in: 400...2_000)     // Grid cells or scatter points
         case .threeDimensional:
-            return Int.random(in: 1000...50000) // Vertices
+            return Int.random(in: 1_000...50_000) // Vertices
         case .pointCloud:
-            return Int.random(in: 100000...5000000) // Point cloud points
+            return Int.random(in: 100_000...5_000_000) // Point-cloud points
         }
     }
 }
@@ -874,4 +871,9 @@ enum ColorMode {
 
 enum Quality {
     case low, medium, high
+}
+
+// MARK: - Previews
+#Preview("ChartsView", traits: .fixedLayout(width: 1600, height: 900)) {
+    ChartsView()
 }
