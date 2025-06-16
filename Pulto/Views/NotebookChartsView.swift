@@ -666,7 +666,6 @@ extension Data {
 #Preview {
     NotebookChartsView()
 }
-
 /*
 import SwiftUI
 import UIKit

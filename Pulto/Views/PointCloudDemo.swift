@@ -4,7 +4,7 @@
 //
 //  Point Cloud Demonstration
 //
-
+/*
 import Foundation
 
 class PointCloudDemo {
@@ -469,3 +469,4 @@ struct PointCloudPreview: View {
  let pythonCode = ChartDataExtractor.generateJupyterPythonCode(sphereChart)
  let plotlyCode = ChartDataExtractor.generateJupyterPlotlyCode(sphereChart)
  */
+*/

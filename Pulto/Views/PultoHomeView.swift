@@ -315,18 +315,19 @@ struct PrimaryActionsGrid: View {
                     title: "Create New",
                     subtitle: "Start a visualization",
                     icon: "plus.square.on.square",
-                    color: .blue
-                ) {
-                    showCreateProject = true
-                }
+                    color: .blue,
+                    action: onOpenProject
+                )
 
                 ActionCard(
                     title: "Open Project",
                     subtitle: "Continue working",
                     icon: "folder",
                     color: .purple,
-                    action: onOpenProject
-                )
+
+                ){
+                    showCreateProject = true
+                }
 
                 ActionCard(
                     title: "Templates",
