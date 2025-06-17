@@ -9,7 +9,16 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 		<key>UISceneConfigurations</key>
-		<dict/>
+        
+        <dict/>
 	</dict>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+        <string>visionos</string>
+    </array>
+
+    <key>UIApplicationSupportsMultipleScenes</key>
+    <true/>
 </dict>
 </plist>

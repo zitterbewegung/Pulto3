@@ -9,7 +9,7 @@ import Foundation
 import Charts
 
 enum WindowType: String, CaseIterable, Codable, Hashable {
-    case notebook = "Notebook Chart"
+    case charts = "Charts"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
     //case pointcloud = "Point Cloud Viewer"
@@ -20,7 +20,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     // Jupyter cell type mapping
     var jupyterCellType: String {
         switch self {
-        case .notebook:
+        case .charts:
             return "code"
         case .spatial:
             return "spatial"
@@ -980,7 +980,7 @@ class WindowTypeManager: ObservableObject {
 
     private func generateCellContent(for window: NewWindowID) -> String {
         switch window.windowType {
-        case .notebook:
+        case .charts:
             return generateNotebookCellContent(for: window)
         case .spatial:
             return generateSpatialCellContent(for: window)
@@ -1828,8 +1828,9 @@ struct NewWindow: View {
 
                 // Display the appropriate view based on window type
                 switch window.windowType {
-                case .notebook:
-                    NotebookChartsView()
+                case .charts:
+                    WindowChartView()
+                
                 case .spatial:
                     SpatialEditorView(windowID: id)
                 case .column:

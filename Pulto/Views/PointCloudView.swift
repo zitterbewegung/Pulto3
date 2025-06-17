@@ -808,6 +808,219 @@ struct ControlWindowView: View {
     }
 }
 
+
+
+// MARK: - ViewModel
+
+@MainActor
+class FlatViewModel: ObservableObject {
+    // Grid Configuration
+    @Published var gridColumns: Int = 3
+    @Published var gridRows: Int = 3
+
+    // Windows Array
+    @Published var windows: [SpatialWindow] = []
+
+    // Control Window States
+    @Published var controlOffset: CGSize = CGSize(width: 0, height: 0)
+    @Published var controlRotation: Angle = .degrees(0)
+
+    // Window Dimensions and Settings
+    let windowWidth: CGFloat = 300
+    let windowHeight: CGFloat = 200
+    let gridSpacing: CGFloat = 20
+    let animationDuration: Double = 0.5
+
+    // Grid Layout Mode
+    @Published var isGridMode: Bool = true
+
+    init() {
+        setupDefaultWindows()
+        loadWindowStates()
+    }
+
+    // MARK: - Setup Functions
+
+    func setupDefaultWindows() {
+        let colors: [Color] = [.blue, .red, .green, .purple, .orange, .pink, .yellow, .mint, .teal]
+        let totalWindows = gridColumns * gridRows
+
+        for i in 0..<totalWindows {
+            let window = SpatialWindow(
+                title: "Window \(i + 1)",
+                offset: calculateGridPosition(for: i),
+                rotation: .degrees(0),
+                isVisible: false,
+                color: colors[i % colors.count].opacity(0.8),
+                contentType: i % 3 == 0 ? .chart : .text("Content for Window \(i + 1)")
+            )
+            windows.append(window)
+        }
+    }
+
+    func calculateGridPosition(for index: Int) -> CGSize {
+        let row = index / gridColumns
+        let col = index % gridColumns
+
+        let totalWidth = CGFloat(gridColumns) * windowWidth + CGFloat(gridColumns - 1) * gridSpacing
+        let totalHeight = CGFloat(gridRows) * windowHeight + CGFloat(gridRows - 1) * gridSpacing
+
+        let startX = -totalWidth / 2 + windowWidth / 2
+        let startY = -totalHeight / 2 + windowHeight / 2
+
+        let x = startX + CGFloat(col) * (windowWidth + gridSpacing)
+        let y = startY + CGFloat(row) * (windowHeight + gridSpacing)
+
+        return CGSize(width: x, height: y)
+    }
+
+    // MARK: - Control Functions
+
+    func toggleWindow(at index: Int) {
+        guard index < windows.count else { return }
+
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            windows[index].isVisible.toggle()
+
+            if isGridMode && windows[index].isVisible {
+                windows[index].offset = calculateGridPosition(for: index)
+            }
+        }
+        saveWindowStates()
+    }
+
+    func showAllWindows() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            for i in 0..<windows.count {
+                windows[i].isVisible = true
+                if isGridMode {
+                    windows[i].offset = calculateGridPosition(for: i)
+                }
+            }
+        }
+        saveWindowStates()
+    }
+
+    func hideAllWindows() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            for i in 0..<windows.count {
+                windows[i].isVisible = false
+            }
+        }
+        saveWindowStates()
+    }
+
+    func arrangeInGrid() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            isGridMode = true
+            for i in 0..<windows.count {
+                windows[i].offset = calculateGridPosition(for: i)
+                windows[i].rotation = .degrees(0)
+            }
+        }
+        saveWindowStates()
+    }
+
+    func randomizePositions() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            isGridMode = false
+            for i in 0..<windows.count {
+                windows[i].offset = CGSize(
+                    width: CGFloat.random(in: -300...300),
+                    height: CGFloat.random(in: -300...300)
+                )
+                windows[i].rotation = .degrees(Double.random(in: -45...45))
+            }
+        }
+        saveWindowStates()
+    }
+
+    func updateWindowPosition(at index: Int, offset: CGSize) {
+        guard index < windows.count else { return }
+        windows[index].offset = offset
+        isGridMode = false
+        saveWindowStates()
+    }
+
+    func updateWindowRotation(at index: Int, rotation: Angle) {
+        guard index < windows.count else { return }
+        windows[index].rotation = rotation
+        saveWindowStates()
+    }
+
+    // MARK: - State Persistence
+
+    func loadWindowStates() {
+        // Load control window state
+        let controlOffsetWidth = UserDefaults.standard.object(forKey: "controlOffsetWidth") as? CGFloat ?? 0
+        let controlOffsetHeight = UserDefaults.standard.object(forKey: "controlOffsetHeight") as? CGFloat ?? 0
+        controlOffset = CGSize(width: controlOffsetWidth, height: controlOffsetHeight)
+
+        let controlRotationValue = UserDefaults.standard.double(forKey: "controlRotation")
+        controlRotation = .degrees(controlRotationValue)
+
+        // Load grid mode
+        isGridMode = UserDefaults.standard.object(forKey: "isGridMode") as? Bool ?? true
+
+        // Load window states
+        if let savedWindowsData = UserDefaults.standard.data(forKey: "windowStates") {
+            do {
+                let savedStates = try JSONDecoder().decode([ChartWindowState].self, from: savedWindowsData)
+                for (index, state) in savedStates.enumerated() {
+                    if index < windows.count {
+                        windows[index].offset = CGSize(width: state.offsetWidth, height: state.offsetHeight)
+                        windows[index].rotation = .degrees(state.rotation)
+                        windows[index].isVisible = state.isVisible
+                    }
+                }
+            } catch {
+                print("Failed to decode window states: \(error)")
+            }
+        }
+    }
+
+    func saveWindowStates() {
+        // Save control window state
+        UserDefaults.standard.set(controlOffset.width, forKey: "controlOffsetWidth")
+        UserDefaults.standard.set(controlOffset.height, forKey: "controlOffsetHeight")
+        UserDefaults.standard.set(controlRotation.degrees, forKey: "controlRotation")
+
+        // Save grid mode
+        UserDefaults.standard.set(isGridMode, forKey: "isGridMode")
+
+        // Save window states
+        let states = windows.map { window in
+            ChartWindowState(
+                offsetWidth: window.offset.width,
+                offsetHeight: window.offset.height,
+                rotation: window.rotation.degrees,
+                isVisible: window.isVisible
+            )
+        }
+
+        if let encoded = try? JSONEncoder().encode(states) {
+            UserDefaults.standard.set(encoded, forKey: "windowStates")
+        }
+    }
+
+    // MARK: - Debug Functions
+
+    func resetAll() {
+        withAnimation(.easeInOut(duration: animationDuration)) {
+            isGridMode = true
+            for i in 0..<windows.count {
+                windows[i].offset = calculateGridPosition(for: i)
+                windows[i].rotation = .degrees(0)
+                windows[i].isVisible = false
+            }
+            controlOffset = .zero
+            controlRotation = .degrees(0)
+        }
+        saveWindowStates()
+    }
+}
+
+
 // MARK: - Preview Provider
 #Preview {
     SpatialEditorView()
