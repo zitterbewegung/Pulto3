@@ -12,7 +12,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     case notebook = "Notebook Chart"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
-
+    //case pointcloud = "Point Cloud Viewer"
     var displayName: String {
         return self.rawValue
     }
@@ -26,6 +26,8 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
             return "spatial"
         case .column:
             return "code"
+        //case .pointcloud:
+        //    return "code"
         }
     }
 }
@@ -984,6 +986,8 @@ class WindowTypeManager: ObservableObject {
             return generateSpatialCellContent(for: window)
         case .column:
             return generateDataFrameCellContent(for: window)
+        //case .pointcloud:
+        //    return PointCloudPreview(for: window)
         }
     }
 
@@ -1375,7 +1379,7 @@ struct ExportConfigurationSidebar: View {
     }
 }
 
-struct OpenWindowView: View {
+/*struct OpenWindowView: View {
     @State var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
     @StateObject private var windowManager = WindowTypeManager.shared
@@ -1486,6 +1490,313 @@ struct OpenWindowView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: showExportSidebar)
     }
+}*/
+
+struct OpenWindowView: View {
+    @State var nextWindowID = 1
+    @Environment(\.openWindow) private var openWindow
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @State private var showExportSidebar = false
+
+    // HIG-compliant sizing constants
+    private let standardPadding: CGFloat = 20
+    private let sectionSpacing: CGFloat = 32
+    private let itemSpacing: CGFloat = 16
+    private let cornerRadius: CGFloat = 12
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Main content with proper sizing
+            ScrollView {
+                VStack(spacing: sectionSpacing) {
+                    // Header section
+                    headerSection
+
+                    // Window type selection
+                    windowTypeSection
+
+                    // Quick actions section
+                    quickActionsSection
+
+                    // Active windows overview
+                    if !windowManager.getAllWindows().isEmpty {
+                        activeWindowsSection
+                    }
+                }
+                .padding(standardPadding * 2) // Doubled padding
+                .frame(minWidth: 800) // Ensure minimum width
+            }
+            .frame(maxWidth: .infinity)
+
+            // Export configuration sidebar
+            if showExportSidebar {
+                ExportConfigurationSidebar()
+                    .frame(width: 400) // Fixed width for sidebar
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showExportSidebar)
+        .frame(minHeight: 800) // Minimum height for the view
+    }
+
+    // MARK: - View Components
+
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Text("Window Manager")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+
+            Text("Create and manage volumetric windows")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, itemSpacing)
+    }
+
+    private var windowTypeSection: some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            Text("Create New Window")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            // Grid layout for window type buttons
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: itemSpacing),
+                GridItem(.flexible(), spacing: itemSpacing)
+            ], spacing: itemSpacing) {
+                ForEach(WindowType.allCases, id: \.self) { windowType in
+                    windowTypeButton(for: windowType)
+                }
+            }
+        }
+        .padding(standardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    private func windowTypeButton(for windowType: WindowType) -> some View {
+        Button(action: {
+            createWindow(type: windowType)
+        }) {
+            VStack(spacing: 12) {
+                // You can add SF Symbol icons here based on window type
+                Image(systemName: iconForWindowType(windowType))
+                    .font(.system(size: 40))
+                    .fontWeight(.light)
+                    .foregroundStyle(.tint)
+
+                Text(windowType.displayName)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Text("Tap to create")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140) // Fixed height for consistency
+            .padding(standardPadding)
+        }
+        .buttonStyle(.plain)
+        .background(.quaternary.opacity(0.5))
+        .backgroundStyle(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .hoverEffect()
+    }
+
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Quick Actions")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("Manage your workspace")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button(action: { showExportSidebar.toggle() }) {
+                    Label(
+                        showExportSidebar ? "Hide Configuration" : "Show Configuration",
+                        systemImage: showExportSidebar ? "sidebar.trailing" : "sidebar.leading"
+                    )
+                    .font(.body)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+
+            HStack(spacing: itemSpacing) {
+                Button(action: exportToJupyter) {
+                    Label("Export to Jupyter", systemImage: "square.and.arrow.up")
+                        .font(.body)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button(action: {}) {
+                    Label("Import Configuration", systemImage: "square.and.arrow.down")
+                        .font(.body)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+        }
+        .padding(standardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    private var activeWindowsSection: some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Active Windows")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("\(windowManager.getAllWindows().count) window\(windowManager.getAllWindows().count == 1 ? "" : "s") open")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button("Close All") {
+                    // Implement close all functionality
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .foregroundStyle(.red)
+            }
+
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(windowManager.getAllWindows()) { window in
+                        HStack(spacing: 12) {
+                            // Window icon
+                            Image(systemName: iconForWindowType(window.windowType))
+                                .font(.title3)
+                                .foregroundStyle(.tint)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(window.windowType.displayName)")
+                                    .font(.headline)
+
+                                HStack(spacing: 8) {
+                                    Label("ID: #\(window.id)", systemImage: "number")
+                                        .font(.caption)
+
+                                    Label("\(window.state.exportTemplate.rawValue)", systemImage: "doc.text")
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            // Position badge
+                            Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                                .font(.caption2)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.quaternary)
+                                .clipShape(Capsule())
+                                .foregroundStyle(.secondary)
+
+                            // Window controls
+                            HStack(spacing: 8) {
+                                Button(action: {}) {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.callout)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .help("Focus Window")
+
+                                Button(action: {}) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.callout)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .help("Close Window")
+                            }
+                        }
+                        .padding(12)
+                        .background(.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+            .frame(maxHeight: 400) // Increased from 200
+            .background(.quaternary.opacity(0.3))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(standardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    // MARK: - Helper Functions
+
+    private func createWindow(type: WindowType) {
+        let position = WindowPosition(
+            x: Double.random(in: -200...200),
+            y: Double.random(in: -100...100),
+            z: Double.random(in: -50...50),
+            width: 600,  // Increased from 400
+            height: 450  // Increased from 300
+        )
+
+        _ = windowManager.createWindow(type, id: nextWindowID, position: position)
+        openWindow(value: nextWindowID)
+        nextWindowID += 1
+    }
+
+    private func exportToJupyter() {
+        if let fileURL = windowManager.saveNotebookToFile() {
+            print("Notebook saved to: \(fileURL.path)")
+            // Show success feedback
+        }
+    }
+
+    private func iconForWindowType(_ type: WindowType) -> String {
+        // Map window types to appropriate SF Symbols
+        // Update these cases to match your actual WindowType enum cases
+        let typeString = String(describing: type).lowercased()
+
+        if typeString.contains("markdown") || typeString.contains("text") {
+            return "doc.text"
+        } else if typeString.contains("code") {
+            return "chevron.left.forwardslash.chevron.right"
+        } else if typeString.contains("plot") || typeString.contains("chart") {
+            return "chart.line.uptrend.xyaxis"
+        } else if typeString.contains("data") || typeString.contains("frame") || typeString.contains("table") {
+            return "tablecells"
+        } else if typeString.contains("image") || typeString.contains("photo") {
+            return "photo"
+        } else if typeString.contains("model") || typeString.contains("3d") {
+            return "cube"
+        } else if typeString.contains("point") || typeString.contains("cloud") {
+            return "point.3.connected.trianglepath.dotted"
+        } else {
+            return "square.stack.3d"
+        }
+    }
 }
 
 struct NewWindow: View {
@@ -1523,6 +1834,9 @@ struct NewWindow: View {
                     SpatialEditorView(windowID: id)
                 case .column:
                     DataTableContentView(windowID: id)
+                //case .pointcloud:
+                //    PointCloudPreview(windowID: id)
+
                 }
 
                 Spacer()
@@ -1535,318 +1849,6 @@ struct NewWindow: View {
     }
 }
 
-// Enhanced DataFrame viewer with data editing capabilities
-struct DataTableContentView: View {
-    let windowID: Int?
-    @StateObject private var windowManager = WindowTypeManager.shared
-    @State private var sampleData = DataFrameData(
-        columns: ["Name", "Age", "City", "Salary"],
-        rows: [
-            ["Alice", "28", "New York", "75000"],
-            ["Bob", "35", "San Francisco", "95000"],
-            ["Charlie", "42", "Austin", "68000"],
-            ["Diana", "31", "Seattle", "82000"]
-        ],
-        dtypes: ["Name": "string", "Age": "int", "City": "string", "Salary": "float"]
-    )
-    @State private var editingData = false
-
-    init(windowID: Int? = nil) {
-        self.windowID = windowID
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            headerView
-
-            if editingData {
-                dataEditorView
-            } else {
-                dataDisplayView
-            }
-
-            controlsView
-        }
-        .padding()
-        .onAppear {
-            loadDataFromWindow()
-        }
-    }
-
-    private var headerView: some View {
-        HStack {
-            Text("DataFrame Viewer")
-                .font(.headline)
-            Spacer()
-            Text("Shape: \(sampleData.shapeRows) × \(sampleData.shapeColumns)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-
-    private var dataDisplayView: some View {
-        ScrollView([.horizontal, .vertical]) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header row
-                HStack(spacing: 1) {
-                    ForEach(sampleData.columns, id: \.self) { column in
-                        Text(column)
-                            .font(.caption)
-                            .bold()
-                            .padding(6)
-                            .frame(minWidth: 80)
-                            .background(Color.blue.opacity(0.1))
-                            .border(Color.gray.opacity(0.3), width: 0.5)
-                    }
-                }
-
-                // Data rows
-                ForEach(0..<min(sampleData.rows.count, 10), id: \.self) { rowIndex in
-                    HStack(spacing: 1) {
-                        ForEach(0..<sampleData.columns.count, id: \.self) { colIndex in
-                            let value = rowIndex < sampleData.rows.count && colIndex < sampleData.rows[rowIndex].count
-                                ? sampleData.rows[rowIndex][colIndex]
-                                : ""
-                            Text(value)
-                                .font(.caption)
-                                .padding(6)
-                                .frame(minWidth: 80)
-                                .background(Color.white)
-                                .border(Color.gray.opacity(0.3), width: 0.5)
-                        }
-                    }
-                }
-
-                if sampleData.rows.count > 10 {
-                    Text("... and \(sampleData.rows.count - 10) more rows")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding()
-                }
-            }
-        }
-        .frame(maxHeight: 200)
-        .border(Color.gray.opacity(0.3))
-    }
-
-    private var dataEditorView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Edit DataFrame Data")
-                .font(.subheadline)
-                .bold()
-
-            Text("Paste CSV data or edit manually:")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            TextEditor(text: .constant(sampleData.toCSVString()))
-                .frame(height: 150)
-                .border(Color.gray.opacity(0.3))
-                .font(.system(.caption, design: .monospaced))
-        }
-    }
-
-    private var controlsView: some View {
-        HStack {
-            Button(editingData ? "Save Data" : "Edit Data") {
-                if editingData {
-                    saveDataToWindow()
-                }
-                editingData.toggle()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(6)
-
-            Button("Load Sample Data") {
-                loadSampleData()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(6)
-
-            Spacer()
-
-            Button("Export DataFrame") {
-                saveDataToWindow()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.orange.opacity(0.1))
-            .cornerRadius(6)
-        }
-    }
-
-    private func loadDataFromWindow() {
-        guard let windowID = windowID,
-              let existingData = windowManager.getWindowDataFrame(for: windowID) else {
-            return
-        }
-        sampleData = existingData
-    }
-
-    private func saveDataToWindow() {
-        guard let windowID = windowID else { return }
-        windowManager.updateWindowDataFrame(windowID, dataFrame: sampleData)
-    }
-
-    private func loadSampleData() {
-        sampleData = DataFrameData(
-            columns: ["Product", "Category", "Price", "Quantity", "Revenue"],
-            rows: [
-                ["iPhone 15", "Electronics", "999.00", "150", "149850.00"],
-                ["MacBook Pro", "Electronics", "2399.00", "75", "179925.00"],
-                ["AirPods Pro", "Electronics", "249.00", "300", "74700.00"],
-                ["iPad Air", "Electronics", "599.00", "120", "71880.00"],
-                ["Apple Watch", "Electronics", "399.00", "200", "79800.00"]
-            ],
-            dtypes: ["Product": "string", "Category": "string", "Price": "float", "Quantity": "int", "Revenue": "float"]
-        )
-
-        if let windowID = windowID {
-            saveDataToWindow()
-        }
-    }
-}
-
-// MARK: - SwiftUI Preview for Point Cloud
-struct PointCloudPreview: View {
-    @State private var selectedDemo = 0
-    @State private var rotationAngle = 0.0
-
-    let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube"]
-
-    var currentPointCloud: [(x: Double, y: Double, z: Double, intensity: Double?)] {
-        switch selectedDemo {
-        case 0:
-            return PointCloudDemo.generateSpherePointCloud(radius: 10, points: 500)
-                .map { (x: $0.x, y: $0.y, z: $0.z, intensity: nil) }
-        case 1:
-            return PointCloudDemo.generateTorusPointCloud(majorRadius: 10, minorRadius: 3, points: 800)
-                .map { (x: $0.x, y: $0.y, z: $0.z, intensity: $0.intensity) }
-        case 2:
-            return PointCloudDemo.generateWaveSurface(size: 20, resolution: 30)
-                .map { (x: $0.x, y: $0.y, z: $0.z, intensity: $0.intensity) }
-        case 3:
-            return PointCloudDemo.generateSpiralGalaxy(arms: 3, points: 1000)
-                .map { (x: $0.x, y: $0.y, z: $0.z, intensity: $0.intensity) }
-        case 4:
-            return PointCloudDemo.generateNoisyCube(size: 10, pointsPerFace: 200)
-                .map { (x: $0.x, y: $0.y, z: $0.z, intensity: nil) }
-        default:
-            return []
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 20) {
-            // Demo selector
-            Picker("Select Data", selection: $selectedDemo) {
-                ForEach(0..<demoNames.count, id: \.self) { index in
-                    Text(demoNames[index]).tag(index)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
-
-            // 3D visualization using 2D projection
-            ZStack {
-                // Background
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(height: 400)
-
-                // Point cloud visualization
-                GeometryReader { geometry in
-                    Canvas { context, size in
-                        let centerX = size.width / 2
-                        let centerY = size.height / 2
-                        let scale = min(size.width, size.height) / 40
-
-                        // Apply rotation
-                        let angle = rotationAngle * .pi / 180
-
-                        for point in currentPointCloud {
-                            // Simple 3D rotation around Y axis
-                            let rotatedX = point.x * cos(angle) - point.z * sin(angle)
-                            let rotatedZ = point.x * sin(angle) + point.z * cos(angle)
-
-                            // Project to 2D (simple orthographic projection)
-                            let projectedX = centerX + rotatedX * scale
-                            let projectedY = centerY - point.y * scale
-
-                            // Size based on Z depth
-                            let pointSize = 2.0 + (rotatedZ + 20) / 20
-
-                            // Color based on intensity or Z depth
-                            let intensity = point.intensity ?? ((point.z + 10) / 20)
-                            let color = Color(
-                                hue: 0.6 - intensity * 0.4,
-                                saturation: 0.8,
-                                brightness: 0.9
-                            )
-
-                            context.fill(
-                                Path(ellipseIn: CGRect(
-                                    x: projectedX - pointSize/2,
-                                    y: projectedY - pointSize/2,
-                                    width: pointSize,
-                                    height: pointSize
-                                )),
-                                with: .color(color.opacity(0.8))
-                            )
-                        }
-                    }
-                }
-                .frame(height: 400)
-                .onAppear {
-                    // Auto-rotate animation
-                    withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
-                        rotationAngle = 360
-                    }
-                }
-            }
-            .padding()
-
-            // Stats
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Statistics")
-                    .font(.headline)
-
-                HStack {
-                    Label("\(currentPointCloud.count) points", systemImage: "circle.grid.3x3.fill")
-                    Spacer()
-                    Label(String(format: "%.1f°", rotationAngle.truncatingRemainder(dividingBy: 360)), systemImage: "rotate.3d")
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
-            .padding(.horizontal)
-
-            // Export button
-            Button(action: {
-                PointCloudDemo.runAllDemos()
-                print("✅ Exported all demos to Python files!")
-            }) {
-                Label("Export to Jupyter", systemImage: "square.and.arrow.up")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
-            .padding(.horizontal)
-
-            Spacer()
-        }
-        .padding(.vertical)
-    }
-}
 
 // MARK: - Preview Provider
 #Preview("Main Interface") {

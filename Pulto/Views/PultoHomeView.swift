@@ -33,13 +33,13 @@ final class PultoHomeViewModel: ObservableObject {
 
     private func loadUserState() async {
         // Simulate checking authentication
-        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        //try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         // In real app, check actual auth state
     }
 
     private func loadRecentProjects() async {
         // Simulate network delay
-        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        //try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
 
         // Use cached projects if available
         if let cached = projectsCache {
@@ -53,7 +53,7 @@ final class PultoHomeViewModel: ObservableObject {
 
     private func loadUserStats() async {
         // Simulate loading stats
-        try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 seconds
+        //try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 seconds
         stats = UserStats(
             totalProjects: 12,
             visualizations: 47,
@@ -129,8 +129,9 @@ struct PultoHomeView: View {
                 await viewModel.loadInitialData()
             }
             .sheet(isPresented: $showCreateProject) {
-                CSVChartRecommenderView()
-                    .frame(width: 600, height: 750)
+                NotebookChartsView().frame(width:1280, height:720)
+                //CSVChartRecommenderView()
+                //    .frame(width: 600, height: 750)
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()

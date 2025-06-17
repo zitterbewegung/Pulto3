@@ -16,6 +16,8 @@
 		DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */; };
 		DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */; };
 		DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */; };
+		DC5CB4222E00DF7700B59F38 /* DataTableContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */; };
+		DC5CB4242E00E09600B59F38 /* PointCloudPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5CB4232E00E09600B59F38 /* PointCloudPreview.swift */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
@@ -42,6 +44,8 @@
 		DC0E899E2DE36A5F00B27198 /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotlyWebView.swift; sourceTree = "<group>"; };
 		DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartDataPoint.swift; sourceTree = "<group>"; };
+		DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataTableContentView.swift; sourceTree = "<group>"; };
+		DC5CB4232E00E09600B59F38 /* PointCloudPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudPreview.swift; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
@@ -61,6 +65,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		DC11C83F2E00765900385620 /* Controller */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Controller; sourceTree = "<group>"; };
 		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -125,6 +130,7 @@
 		DF58AE1D2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXGroup;
 			children = (
+				DC11C83F2E00765900385620 /* Controller */,
 				DC71196E2DE778C8005F916A /* Backend */,
 				F5CE2A592C2B2A00009123E2 /* Views */,
 				DF58AE3D2BCD8D8200C8F737 /* Resources */,
@@ -161,6 +167,8 @@
 				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
+				DC5CB4232E00E09600B59F38 /* PointCloudPreview.swift */,
 				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
 				DC77C8E22DF29207002A3EDA /* PointCloudDemo.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
@@ -191,6 +199,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				DC11C83F2E00765900385620 /* Controller */,
 				DC71196E2DE778C8005F916A /* Backend */,
 			);
 			name = Pulto;
@@ -206,7 +215,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1530;
-				LastUpgradeCheck = 1530;
+				LastUpgradeCheck = 2600;
 				ORGANIZATIONNAME = Apple;
 				TargetAttributes = {
 					DF58AE1A2BCD826D00C8F737 = {
@@ -259,6 +268,7 @@
 				DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */,
 				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
+				DC5CB4222E00DF7700B59F38 /* DataTableContentView.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
 				DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */,
 				DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */,
@@ -267,6 +277,7 @@
 				DC0E899F2DE36A5F00B27198 /* SpatialEditorView.swift in Sources */,
 				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
 				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
+				DC5CB4242E00E09600B59F38 /* PointCloudPreview.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +320,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -331,6 +343,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				XROS_DEPLOYMENT_TARGET = 1.1;
@@ -373,6 +386,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -388,6 +402,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 				XROS_DEPLOYMENT_TARGET = 1.1;
@@ -404,7 +419,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = Pulto;
-				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -436,7 +450,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = Pulto;
-				DEVELOPMENT_TEAM = WRNM3984BA;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;

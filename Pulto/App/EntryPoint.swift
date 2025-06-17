@@ -11,7 +11,7 @@ import SwiftUI
 @main
 struct EntryPoint: App {
 
-    let heightModifier: CGFloat = 0.25
+    let heightModifier: CGFloat = 1.25
     var body: some Scene {
         // Primary window - always loaded
         WindowGroup(id: "main") {
