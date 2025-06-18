@@ -12,6 +12,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     case charts = "Charts"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
+    case volume = "Model Metric Viewer"
     //case pointcloud = "Point Cloud Viewer"
     var displayName: String {
         return self.rawValue
@@ -26,8 +27,8 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
             return "spatial"
         case .column:
             return "code"
-        //case .pointcloud:
-        //    return "code"
+        case .volume:
+            return "code"
         }
     }
 }
@@ -986,9 +987,18 @@ class WindowTypeManager: ObservableObject {
             return generateSpatialCellContent(for: window)
         case .column:
             return generateDataFrameCellContent(for: window)
+        case .volume:
+            return generateModelCellContent(for: window)
+
         //case .pointcloud:
         //    return PointCloudPreview(for: window)
         }
+    }
+    private func generateModelCellContent(for window: NewWindowID) -> String {
+        let baseContent = """
+        pass
+        """
+        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
     }
 
     private func generateNotebookCellContent(for window: NewWindowID) -> String {
@@ -1506,249 +1516,206 @@ struct OpenWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Main content with proper sizing
-            ScrollView {
-                VStack(spacing: sectionSpacing) {
-                    // Header section
-                    headerSection
+            mainContentView
 
-                    // Window type selection
-                    windowTypeSection
-
-                    // Quick actions section
-                    quickActionsSection
-
-                    // Active windows overview
-                    if !windowManager.getAllWindows().isEmpty {
-                        activeWindowsSection
-                    }
-                }
-                .padding(standardPadding * 2) // Doubled padding
-                .frame(minWidth: 800) // Ensure minimum width
-            }
-            .frame(maxWidth: .infinity)
-
-            // Export configuration sidebar
             if showExportSidebar {
-                ExportConfigurationSidebar()
-                    .frame(width: 400) // Fixed width for sidebar
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                sidebarView
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showExportSidebar)
-        .frame(minHeight: 800) // Minimum height for the view
+        .frame(minHeight: 800)
     }
 
-    // MARK: - View Components
+    // MARK: - Main Content
+
+    private var mainContentView: some View {
+        ScrollView {
+            VStack(spacing: sectionSpacing) {
+                headerSection
+                windowTypeSection
+                quickActionsSection
+
+                if !windowManager.getAllWindows().isEmpty {
+                    activeWindowsSection
+                }
+            }
+            .padding(standardPadding * 2)
+            .frame(minWidth: 800)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemBackground))
+    }
+
+    private var sidebarView: some View {
+        ExportConfigurationSidebar()
+            .frame(width: 400)
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+
+    // MARK: - Header Section
 
     private var headerSection: some View {
         VStack(spacing: 8) {
             Text("Window Manager")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                .font(.system(size: 40, weight: .bold))
 
             Text("Create and manage volumetric windows")
-                .font(.title3)
+                .font(.title2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, itemSpacing)
     }
 
+    // MARK: - Window Type Section
+
     private var windowTypeSection: some View {
         VStack(alignment: .leading, spacing: itemSpacing) {
             Text("Create New Window")
-                .font(.title2)
+                .font(.title)
                 .fontWeight(.semibold)
 
-            // Grid layout for window type buttons
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: itemSpacing),
-                GridItem(.flexible(), spacing: itemSpacing)
-            ], spacing: itemSpacing) {
-                ForEach(WindowType.allCases, id: \.self) { windowType in
-                    windowTypeButton(for: windowType)
-                }
-            }
+            windowTypeGrid
         }
         .padding(standardPadding)
-        .background(.regularMaterial)
+        .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 
-    private func windowTypeButton(for windowType: WindowType) -> some View {
-        Button(action: {
-            createWindow(type: windowType)
-        }) {
-            VStack(spacing: 12) {
-                // You can add SF Symbol icons here based on window type
-                Image(systemName: iconForWindowType(windowType))
-                    .font(.system(size: 40))
-                    .fontWeight(.light)
-                    .foregroundStyle(.tint)
-
-                Text(windowType.displayName)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Text("Tap to create")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var windowTypeGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: itemSpacing),
+            GridItem(.flexible(), spacing: itemSpacing)
+        ], spacing: itemSpacing) {
+            ForEach(WindowType.allCases, id: \.self) { windowType in
+                WindowTypeButtonView(
+                    windowType: windowType,
+                    standardPadding: standardPadding,
+                    cornerRadius: cornerRadius,
+                    createAction: { createWindow(type: windowType) }
+                )
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 140) // Fixed height for consistency
-            .padding(standardPadding)
         }
-        .buttonStyle(.plain)
-        .background(.quaternary.opacity(0.5))
-        .backgroundStyle(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .hoverEffect()
     }
+
+    // MARK: - Quick Actions Section
 
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: itemSpacing) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Quick Actions")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    Text("Manage your workspace")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: { showExportSidebar.toggle() }) {
-                    Label(
-                        showExportSidebar ? "Hide Configuration" : "Show Configuration",
-                        systemImage: showExportSidebar ? "sidebar.trailing" : "sidebar.leading"
-                    )
-                    .font(.body)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-
-            HStack(spacing: itemSpacing) {
-                Button(action: exportToJupyter) {
-                    Label("Export to Jupyter", systemImage: "square.and.arrow.up")
-                        .font(.body)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                Button(action: {}) {
-                    Label("Import Configuration", systemImage: "square.and.arrow.down")
-                        .font(.body)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
+            quickActionsHeader
+            quickActionsButtons
         }
         .padding(standardPadding)
-        .background(.regularMaterial)
+        .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
+
+    private var quickActionsHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Quick Actions")
+                    .font(.title)
+                    .fontWeight(.semibold)
+
+                Text("Manage your workspace")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: { showExportSidebar.toggle() }) {
+                Label(
+                    showExportSidebar ? "Hide Configuration" : "Show Configuration",
+                    systemImage: showExportSidebar ? "sidebar.trailing" : "sidebar.leading"
+                )
+                .font(.headline)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
+    }
+
+    private var quickActionsButtons: some View {
+        HStack(spacing: itemSpacing) {
+            Button(action: exportToJupyter) {
+                Label("Export to Jupyter", systemImage: "square.and.arrow.up")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+
+            Button(action: {}) {
+                Label("Import Configuration", systemImage: "square.and.arrow.down")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
+    }
+
+    // MARK: - Active Windows Section
 
     private var activeWindowsSection: some View {
         VStack(alignment: .leading, spacing: itemSpacing) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Active Windows")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    Text("\(windowManager.getAllWindows().count) window\(windowManager.getAllWindows().count == 1 ? "" : "s") open")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button("Close All") {
-                    // Implement close all functionality
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .foregroundStyle(.red)
-            }
-
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(windowManager.getAllWindows()) { window in
-                        HStack(spacing: 12) {
-                            // Window icon
-                            Image(systemName: iconForWindowType(window.windowType))
-                                .font(.title3)
-                                .foregroundStyle(.tint)
-                                .frame(width: 32)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("\(window.windowType.displayName)")
-                                    .font(.headline)
-
-                                HStack(spacing: 8) {
-                                    Label("ID: #\(window.id)", systemImage: "number")
-                                        .font(.caption)
-
-                                    Label("\(window.state.exportTemplate.rawValue)", systemImage: "doc.text")
-                                        .font(.caption)
-                                }
-                                .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            // Position badge
-                            Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
-                                .font(.caption2)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(.quaternary)
-                                .clipShape(Capsule())
-                                .foregroundStyle(.secondary)
-
-                            // Window controls
-                            HStack(spacing: 8) {
-                                Button(action: {}) {
-                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                        .font(.callout)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.secondary)
-                                .help("Focus Window")
-
-                                Button(action: {}) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.callout)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.secondary)
-                                .help("Close Window")
-                            }
-                        }
-                        .padding(12)
-                        .background(.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                }
-            }
-            .frame(maxHeight: 400) // Increased from 200
-            .background(.quaternary.opacity(0.3))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            activeWindowsHeader
+            activeWindowsList
         }
         .padding(standardPadding)
-        .background(.regularMaterial)
+        .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+    }
+
+    private var activeWindowsHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Active Windows")
+                    .font(.title)
+                    .fontWeight(.semibold)
+
+                Text("\(windowManager.getAllWindows().count) window\(windowManager.getAllWindows().count == 1 ? "" : "s") open")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Close All") {
+                // Implement close all functionality
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .foregroundStyle(.red)
+        }
+    }
+
+    private var activeWindowsList: some View {
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                ForEach(windowManager.getAllWindows()) { window in
+                    ActiveWindowRowView(
+                        window: window,
+                        cornerRadius: 8
+                    )
+                }
+            }
+        }
+        .frame(maxHeight: 400)
+        .background(Color(.systemGroupedBackground).opacity(0.8))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(.separator).opacity(0.2), lineWidth: 1)
+        )
     }
 
     // MARK: - Helper Functions
@@ -1758,8 +1725,8 @@ struct OpenWindowView: View {
             x: Double.random(in: -200...200),
             y: Double.random(in: -100...100),
             z: Double.random(in: -50...50),
-            width: 600,  // Increased from 400
-            height: 450  // Increased from 300
+            width: 600,
+            height: 450
         )
 
         _ = windowManager.createWindow(type, id: nextWindowID, position: position)
@@ -1770,13 +1737,180 @@ struct OpenWindowView: View {
     private func exportToJupyter() {
         if let fileURL = windowManager.saveNotebookToFile() {
             print("Notebook saved to: \(fileURL.path)")
-            // Show success feedback
         }
     }
 
     private func iconForWindowType(_ type: WindowType) -> String {
-        // Map window types to appropriate SF Symbols
-        // Update these cases to match your actual WindowType enum cases
+        let typeString = String(describing: type).lowercased()
+
+        if typeString.contains("markdown") || typeString.contains("text") {
+            return "doc.text"
+        } else if typeString.contains("code") {
+            return "chevron.left.forwardslash.chevron.right"
+        } else if typeString.contains("plot") || typeString.contains("chart") {
+            return "chart.line.uptrend.xyaxis"
+        } else if typeString.contains("data") || typeString.contains("frame") || typeString.contains("table") {
+            return "tablecells"
+        } else if typeString.contains("image") || typeString.contains("photo") {
+            return "photo"
+        } else if typeString.contains("model") || typeString.contains("3d") {
+            return "cube"
+        } else if typeString.contains("point") || typeString.contains("cloud") {
+            return "point.3.connected.trianglepath.dotted"
+        } else {
+            return "square.stack.3d"
+        }
+    }
+}
+
+// MARK: - Supporting Views
+
+struct WindowTypeButtonView: View {
+    let windowType: WindowType
+    let standardPadding: CGFloat
+    let cornerRadius: CGFloat
+    let createAction: () -> Void
+
+    var body: some View {
+        Button(action: createAction) {
+            buttonContent
+        }
+        .buttonStyle(.plain)
+                    .background(Color(.systemGray5).opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(borderOverlay)
+        .hoverEffect()
+    }
+
+    private var buttonContent: some View {
+        VStack(spacing: 12) {
+            Image(systemName: iconForWindowType(windowType))
+                .font(.system(size: 50))
+                .fontWeight(.light)
+                .foregroundStyle(.tint)
+
+            Text(windowType.displayName)
+                .font(.title2)
+                .foregroundStyle(.primary)
+
+            Text("Tap to create")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 160)
+        .padding(standardPadding)
+    }
+
+    private var borderOverlay: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+    }
+
+    private func iconForWindowType(_ type: WindowType) -> String {
+        let typeString = String(describing: type).lowercased()
+
+        if typeString.contains("markdown") || typeString.contains("text") {
+            return "doc.text"
+        } else if typeString.contains("code") {
+            return "chevron.left.forwardslash.chevron.right"
+        } else if typeString.contains("plot") || typeString.contains("chart") {
+            return "chart.line.uptrend.xyaxis"
+        } else if typeString.contains("data") || typeString.contains("frame") || typeString.contains("table") {
+            return "tablecells"
+        } else if typeString.contains("image") || typeString.contains("photo") {
+            return "photo"
+        } else if typeString.contains("model") || typeString.contains("3d") {
+            return "cube"
+        } else if typeString.contains("point") || typeString.contains("cloud") {
+            return "point.3.connected.trianglepath.dotted"
+        } else {
+            return "square.stack.3d"
+        }
+    }
+}
+
+struct ActiveWindowRowView: View {
+    let window: NewWindowID
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        HStack(spacing: 12) {
+            windowIcon
+            windowInfo
+            Spacer()
+            positionBadge
+            windowControls
+        }
+        .padding(12)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .overlay(borderOverlay)
+    }
+
+    private var windowIcon: some View {
+        Image(systemName: iconForWindowType(window.windowType))
+            .font(.title2)
+            .foregroundStyle(.tint)
+            .frame(width: 32)
+    }
+
+    private var windowInfo: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(window.windowType.displayName)")
+                .font(.title3)
+
+            windowLabels
+        }
+    }
+
+    private var windowLabels: some View {
+        HStack(spacing: 8) {
+            Label("ID: #\(window.id)", systemImage: "number")
+                .font(.callout)
+
+            Label("\(window.state.exportTemplate.rawValue)", systemImage: "doc.text")
+                .font(.callout)
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private var positionBadge: some View {
+        Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+            .font(.callout)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(.systemGray6).opacity(0.9))
+            .clipShape(Capsule())
+            .foregroundStyle(.secondary)
+    }
+
+    private var windowControls: some View {
+        HStack(spacing: 8) {
+            Button(action: {}) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Focus Window")
+
+            Button(action: {}) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Close Window")
+        }
+    }
+
+    private var borderOverlay: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .stroke(Color(.separator).opacity(0.2), lineWidth: 1)
+    }
+
+    private func iconForWindowType(_ type: WindowType) -> String {
         let typeString = String(describing: type).lowercased()
 
         if typeString.contains("markdown") || typeString.contains("text") {
@@ -1830,7 +1964,9 @@ struct NewWindow: View {
                 switch window.windowType {
                 case .charts:
                     WindowChartView()
-                
+                case .volume:
+                    //VolumeEditorView(windowID: id)
+                    ModelViewerView()
                 case .spatial:
                     SpatialEditorView(windowID: id)
                 case .column:

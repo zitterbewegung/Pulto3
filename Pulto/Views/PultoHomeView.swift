@@ -643,6 +643,7 @@ struct LoginView: View {
 
                 Button("Sign In") {
                     Task {
+
                         // Simulate login
                         isLoggedIn = true
                         dismiss()
