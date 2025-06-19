@@ -7,10 +7,20 @@
 //
 import SwiftUI
 
-
 // Enhanced DataFrame viewer with spreadsheet-like appearance - Cross-platform version
 struct DataTableContentView: View {
+
     let windowID: Int?
+    let initialDataFrame: DataFrameData?
+
+    // use an existing frame, a window-saved frame, or fall back to a sample
+    init(windowID: Int? = nil, initialDataFrame: DataFrameData? = nil) {
+        self.windowID = windowID
+        self.initialDataFrame = initialDataFrame
+        let seed = initialDataFrame ?? Self.defaultSample()
+        _sampleData = State(initialValue: seed)
+    }
+
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var sampleData = DataFrameData(
         columns: ["Name", "Age", "City", "Salary"],
@@ -50,8 +60,18 @@ struct DataTableContentView: View {
     let selectedContentColor = Color(UIColor.systemGray3)
     #endif
 
-    init(windowID: Int? = nil) {
-        self.windowID = windowID
+    // Static method to provide default sample data
+    static func defaultSample() -> DataFrameData {
+        return DataFrameData(
+            columns: ["Name", "Age", "City", "Salary"],
+            rows: [
+                ["Alice", "28", "New York", "75000"],
+                ["Bob", "35", "San Francisco", "95000"],
+                ["Charlie", "42", "Austin", "68000"],
+                ["Diana", "31", "Seattle", "82000"]
+            ],
+            dtypes: ["Name": "string", "Age": "int", "City": "string", "Salary": "float"]
+        )
     }
 
     var body: some View {
@@ -75,6 +95,8 @@ struct DataTableContentView: View {
             initializeColumnWidths()
         }
     }
+
+    // ... rest of your methods remain the same
 
     private var toolbarView: some View {
         HStack(spacing: 16) {

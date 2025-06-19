@@ -93,9 +93,9 @@ struct NotebookImportDialog: View {
 
     private var headerView: some View {
         VStack(spacing: 8) {
-            Image(systemName: "square.and.arrow.down.on.square")
-                .font(.system(size: 50))
-                .foregroundStyle(.blue)
+            //Image(systemName: "square.and.arrow.down.on.square")
+            //    .font(.system(size: 50))
+            //    .foregroundStyle(.blue)
         }
         .padding(.top)
     }

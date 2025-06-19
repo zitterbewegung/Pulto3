@@ -12,6 +12,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     case charts = "Charts"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
+    //case volume = "volume"  // Add this line
     //case pointcloud = "Point Cloud Viewer"
     var displayName: String {
         return self.rawValue
@@ -26,6 +27,8 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
             return "spatial"
         case .column:
             return "code"
+        //case .volume:
+            
         //case .pointcloud:
         //    return "code"
         }
@@ -1773,6 +1776,10 @@ struct OpenWindowView: View {
             )
         }
         .sheet(isPresented: $showRestoreDialog) {
+            TemplateView()
+                 .frame(minWidth: 1000, minHeight: 700)
+        }
+        .sheet(isPresented: $showRestoreDialog) {
             // NEW: Environment restoration dialog
             EnvironmentRestoreDialog(
                     isPresented: $showRestoreDialog,
@@ -2152,53 +2159,136 @@ struct OpenWindowView: View {
 }
 
 
+// Replace the NewWindow struct in OpenWindowView.swift with this updated version:
+
 struct NewWindow: View {
     let id: Int
     @StateObject private var windowTypeManager = WindowTypeManager.shared
 
     var body: some View {
         if let window = windowTypeManager.getWindow(for: id) {
-            VStack {
+            VStack(spacing: 0) {
+                // Window header
                 HStack {
-                    Text("\(window.windowType.displayName) - Window #\(id)")
-                        .font(.title2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(window.windowType.displayName) - Window #\(id)")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        if !window.state.tags.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "tag")
+                                    .font(.caption)
+                                Text(window.state.tags.joined(separator: ", "))
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+
                     Spacer()
-                    VStack(alignment: .trailing) {
+
+                    VStack(alignment: .trailing, spacing: 2) {
                         Text("Pos: (\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
+
                         Text("Template: \(window.state.exportTemplate.rawValue)")
                             .font(.caption)
-                            .foregroundColor(.blue)
-                        if !window.state.tags.isEmpty {
-                            Text("Tags: \(window.state.tags.joined(separator: ", "))")
-                                .font(.caption)
-                                .foregroundColor(.green)
+                            .foregroundStyle(.blue)
+
+                        if !window.state.content.isEmpty {
+                            Text("Has Content")
+                                .font(.caption2)
+                                .foregroundStyle(.green)
                         }
                     }
                 }
                 .padding()
+                .background(Color(.secondarySystemBackground).opacity(0.3))
 
-                // Display the appropriate view based on window type
-                switch window.windowType {
-                case .charts:
-                    WindowChartView()
-                
-                case .spatial:
-                    SpatialEditorView(windowID: id)
-                case .column:
-                    DataTableContentView(windowID: id)
-                //case .pointcloud:
-                //    PointCloudPreview(windowID: id)
+                Divider()
 
+                // Display the appropriate view based on window type with restored data
+                Group {
+                    switch window.windowType {
+                    case .charts:
+                        VStack {
+                            if !window.state.content.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Restored Content:")
+                                            .font(.headline)
+
+                                        Text(window.state.content)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.tertiarySystemBackground))
+                                            .cornerRadius(8)
+                                    }
+                                    .padding()
+                                }
+                                .frame(maxHeight: 200)
+
+                                Divider()
+                            }
+
+                            WindowChartView()
+                        }
+
+                    case .spatial:
+                        // Use the initializer with point cloud data if available
+                        if let pointCloud = window.state.pointCloudData {
+                            SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
+                        } else {
+                            SpatialEditorView(windowID: id)
+                        }
+
+                    case .column:
+                        // Use the initializer with DataFrame data if available
+                        if let df = window.state.dataFrameData {
+                            DataTableContentView(windowID: id, initialDataFrame: df)
+                        } else {
+                            DataTableContentView(windowID: id)   // falls back to saved window or sample
+                        }
+
+
+                    // If you have a .volume case, handle it here
+                    // case .volume:
+                    //     ModelViewerView()
+                    }
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
-            Text("Window #\(id) not found")
-                .font(.title2)
-                .padding()
+            // Window not found
+            VStack(spacing: 20) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 50))
+                    .foregroundStyle(.orange)
+
+                Text("Window #\(id) not found")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("This window may have been closed or not properly initialized.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Button("Check Window Manager") {
+                    print("=== Window Manager Debug ===")
+                    print("Looking for window ID: \(id)")
+                    print("All windows:")
+                    for window in windowTypeManager.getAllWindows() {
+                        print("  - Window #\(window.id): \(window.windowType.rawValue)")
+                    }
+                    print("========================")
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(40)
         }
     }
 }

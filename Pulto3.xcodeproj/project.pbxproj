@@ -25,6 +25,8 @@
 		DC5CB4242E00E09600B59F38 /* PointCloudPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5CB4232E00E09600B59F38 /* PointCloudPreview.swift */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
+		DC661B312E049681005454FE /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B302E049681005454FE /* TemplateView.swift */; };
+		DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B342E04A126005454FE /* SpatialEditorView.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
 		DC85D5802E0399A900559301 /* NotebookFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D57F2E0399A900559301 /* NotebookFile.swift */; };
 		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
@@ -63,6 +65,10 @@
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
+		DC661B302E049681005454FE /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
+		DC661B322E049EE0005454FE /* temp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = temp.swift; sourceTree = "<group>"; };
+		DC661B332E04A089005454FE /* SpatialEditorView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpatialEditorView 2.swift"; sourceTree = "<group>"; };
+		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
 		DC85D57F2E0399A900559301 /* NotebookFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFile.swift; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
@@ -146,6 +152,7 @@
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
+				DC661B322E049EE0005454FE /* temp.swift */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DF58AE1D2BCD826D00C8F737 /* Pulto */,
@@ -208,6 +215,8 @@
 				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC661B302E049681005454FE /* TemplateView.swift */,
+				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
 				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
 				DC85D57F2E0399A900559301 /* NotebookFile.swift */,
@@ -223,6 +232,7 @@
 				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
+				DC661B332E04A089005454FE /* SpatialEditorView 2.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
 			);
@@ -327,9 +337,11 @@
 				DC28CF6E2E026E2300F3705E /* TemplateNotebook.swift in Sources */,
 				DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */,
 				DC0E899B2DE3697400B27198 /* PultoEnviroment.swift in Sources */,
+				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
 				DC28CF652E02390500F3705E /* ModelViewerView.swift in Sources */,
+				DC661B312E049681005454FE /* TemplateView.swift in Sources */,
 				DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */,
 				DC85D5802E0399A900559301 /* NotebookFile.swift in Sources */,
 				DC5CB4242E00E09600B59F38 /* PointCloudPreview.swift in Sources */,
