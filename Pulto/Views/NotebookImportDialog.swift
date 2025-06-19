@@ -96,15 +96,6 @@ struct NotebookImportDialog: View {
             Image(systemName: "square.and.arrow.down.on.square")
                 .font(.system(size: 50))
                 .foregroundStyle(.blue)
-
-            Text("Import Jupyter Notebook")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("Restore your VisionOS windows from a saved notebook")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
         }
         .padding(.top)
     }
