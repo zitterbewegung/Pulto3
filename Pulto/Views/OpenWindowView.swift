@@ -811,6 +811,42 @@ class WindowTypeManager: ObservableObject {
 
     private init() {}
 
+    // ADD THIS METHOD ANYWHERE INSIDE THE CLASS:
+    func getNextWindowID() -> Int {
+        let currentMaxID = getAllWindows().map { $0.id }.max() ?? 0
+        return currentMaxID + 1
+    }
+
+    // Add this method to WindowTypeManager
+    func importAndRestoreEnvironment(
+        fileURL: URL,
+        clearExisting: Bool = false,
+        openWindow: @escaping (Int) -> Void
+    ) async throws -> EnvironmentRestoreResult {
+
+        // Import the data first
+        let importResult = try importFromGenericNotebook(fileURL: fileURL)
+
+        // Then actually open the windows visually
+        var openedWindows: [NewWindowID] = []
+
+        for window in importResult.restoredWindows {
+            await MainActor.run {
+                openWindow(window.id) // This actually creates the visual window
+                openedWindows.append(window)
+            }
+
+            // Small delay for smooth animation
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        return EnvironmentRestoreResult(
+            importResult: importResult,
+            openedWindows: openedWindows,
+            failedWindows: []
+        )
+    }
+
     // MARK: - Import Methods
 
     func importFromGenericNotebook(data: Data) throws -> ImportResult {
@@ -1687,124 +1723,15 @@ struct ExportConfigurationSidebar: View {
     }
 }
 
-/*struct OpenWindowView: View {
-    @State var nextWindowID = 1
-    @Environment(\.openWindow) private var openWindow
-    @StateObject private var windowManager = WindowTypeManager.shared
-    @State private var showExportSidebar = false
+// MARK: - Updated OpenWindowView with Environment Restoration
 
-    var body: some View {
-        HStack(spacing: 0) {
-            // Main content
-            VStack(spacing: 20) {
-                Text("Choose Window Type")
-                    .font(.title2)
-                    .padding()
-
-                // Create buttons for each window type
-                ForEach(WindowType.allCases, id: \.self) { windowType in
-                    Button("Open \(windowType.displayName) Window") {
-                        // Create and store the complete window configuration
-                        let position = WindowPosition(
-                            x: Double.random(in: -200...200),
-                            y: Double.random(in: -100...100),
-                            z: Double.random(in: -50...50),
-                            width: 400,
-                            height: 300
-                        )
-
-                        _ = windowManager.createWindow(windowType, id: nextWindowID, position: position)
-                        openWindow(value: nextWindowID)
-                        nextWindowID += 1
-                    }
-                    .padding()
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                Divider()
-
-                // Quick actions
-                VStack(spacing: 10) {
-                    HStack {
-                        Text("Quick Actions")
-                            .font(.headline)
-                        Spacer()
-                        Button(action: {
-                            showExportSidebar.toggle()
-                        }) {
-                            Image(systemName: showExportSidebar ? "sidebar.right" : "sidebar.left")
-                            Text(showExportSidebar ? "Hide Config" : "Show Config")
-                        }
-                    }
-
-                    Button("Export All to Jupyter") {
-                        if let fileURL = windowManager.saveNotebookToFile() {
-                            print("Notebook saved to: \(fileURL.path)")
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                // Window overview
-                if !windowManager.getAllWindows().isEmpty {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Active Windows (\(windowManager.getAllWindows().count))")
-                            .font(.headline)
-
-                        ScrollView {
-                            LazyVStack(spacing: 4) {
-                                ForEach(windowManager.getAllWindows()) { window in
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text("\(window.windowType.displayName) #\(window.id)")
-                                                .font(.subheadline)
-                                            Text("\(window.state.exportTemplate.rawValue)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 8)
-                                    .background(Color.gray.opacity(0.05))
-                                    .cornerRadius(4)
-                                }
-                            }
-                        }
-                        .frame(maxHeight: 200)
-                    }
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                Spacer()
-            }
-            .padding()
-            .frame(maxWidth: .infinity)
-
-            // Export configuration sidebar
-            if showExportSidebar {
-                ExportConfigurationSidebar()
-                    .transition(.move(edge: .trailing))
-            }
-        }
-        .animation(.easeInOut(duration: 0.3), value: showExportSidebar)
-    }
-}*/
 struct OpenWindowView: View {
     @State var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var showExportSidebar = false
     @State private var showImportDialog = false
+    @State private var showRestoreDialog = false // NEW: Environment restoration
 
     // HIG-compliant sizing constants
     private let standardPadding: CGFloat = 20
@@ -1814,116 +1741,66 @@ struct OpenWindowView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Main content with proper sizing
+            // Main content
             ScrollView {
                 VStack(spacing: sectionSpacing) {
-                    // Header section
                     headerSection
-
-                    // Window type selection
                     windowTypeSection
+                    quickActionsSection // Updated with restore functionality
 
-                    // Quick actions section
-                    quickActionsSection
-
-                    // Active windows overview
                     if !windowManager.getAllWindows().isEmpty {
                         activeWindowsSection
                     }
                 }
-                .padding(standardPadding * 2) // Doubled padding
-                .frame(minWidth: 800) // Ensure minimum width
+                .padding(standardPadding * 2)
+                .frame(minWidth: 800)
             }
             .frame(maxWidth: .infinity)
 
             // Export configuration sidebar
             if showExportSidebar {
                 ExportConfigurationSidebar()
-                    .frame(width: 400) // Fixed width for sidebar
+                    .frame(width: 400)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showExportSidebar)
-        .frame(minHeight: 800) // Minimum height for the view
-    }
-
-    // MARK: - View Components
-
-    private var headerSection: some View {
-        VStack(spacing: 8) {
-            Text("Window Manager")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-
-            Text("Create and manage volumetric windows")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+        .frame(minHeight: 800)
+        .sheet(isPresented: $showImportDialog) {
+            NotebookImportDialog(
+                isPresented: $showImportDialog,
+                windowManager: windowManager
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, itemSpacing)
-    }
+        .sheet(isPresented: $showRestoreDialog) {
+            // NEW: Environment restoration dialog
+            EnvironmentRestoreDialog(
+                    isPresented: $showRestoreDialog,
+                    windowManager: windowManager,
+                    onEnvironmentRestored: { (result: EnvironmentRestoreResult) -> Void in
+                        let manager = windowManager
+                        Task { @MainActor in
+                            let currentMaxID = manager.getAllWindows().map { $0.id }.max() ?? 0
+                            nextWindowID = currentMaxID + 1
+                            print("🎉 Environment restored: \(result.summary)")
+                        }
+                    }
+                )
 
-    private var windowTypeSection: some View {
-        VStack(alignment: .leading, spacing: itemSpacing) {
-            Text("Create New Window")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            // Grid layout for window type buttons
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: itemSpacing),
-                GridItem(.flexible(), spacing: itemSpacing)
-            ], spacing: itemSpacing) {
-                ForEach(WindowType.allCases, id: \.self) { windowType in
-                    windowTypeButton(for: windowType)
-                }
-            }
         }
-        .padding(standardPadding)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 
-    private func windowTypeButton(for windowType: WindowType) -> some View {
-        Button(action: {
-            createWindow(type: windowType)
-        }) {
-            VStack(spacing: 12) {
-                // You can add SF Symbol icons here based on window type
-                Image(systemName: iconForWindowType(windowType))
-                    .font(.system(size: 40))
-                    .fontWeight(.light)
-                    .foregroundStyle(.tint)
+    // MARK: - Updated Quick Actions with Environment Restoration
 
-                Text(windowType.displayName)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Text("Tap to create")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 140) // Fixed height for consistency
-            .padding(standardPadding)
-        }
-        .buttonStyle(.plain)
-        .background(.quaternary.opacity(0.5))
-        .backgroundStyle(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .hoverEffect()
-    }
-
-    // Just update your quickActionsSection to this:
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: itemSpacing) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Quick Actions")
+                    Text("Workspace Management")
                         .font(.title2)
                         .fontWeight(.semibold)
 
-                    Text("Manage your workspace")
+                    Text("Save, load, and manage your 3D workspace")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -1943,31 +1820,149 @@ struct OpenWindowView: View {
                 .controlSize(.large)
             }
 
+            // Primary Actions - Save and Restore
             VStack(spacing: itemSpacing) {
                 HStack(spacing: itemSpacing) {
                     Button(action: exportToJupyter) {
-                        Label("Export to Jupyter", systemImage: "square.and.arrow.up")
-                            .font(.body)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                        VStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title2)
+
+                            VStack(spacing: 4) {
+                                Text("Save Workspace")
+                                    .font(.headline)
+                                Text("Export current state")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
 
-                    Button(action: { showImportDialog = true }) {
-                        Label("Import Notebook", systemImage: "square.and.arrow.down")
-                            .font(.body)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                    Button(action: { showRestoreDialog = true }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "cube.box.fill")
+                                .font(.title2)
+
+                            VStack(spacing: 4) {
+                                Text("Restore Environment")
+                                    .font(.headline)
+                                Text("Load saved workspace")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
+                }
+
+                // Secondary Actions
+                HStack(spacing: itemSpacing) {
+                    Button(action: { showImportDialog = true }) {
+                        Label("Import Data Only", systemImage: "square.and.arrow.down")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    Button(action: createSampleWorkspace) {
+                        Label("Create Demo", systemImage: "doc.badge.plus")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    Button(action: clearAllWindowsWithConfirmation) {
+                        Label("Clear All", systemImage: "trash")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .foregroundStyle(.red)
                 }
             }
         }
         .padding(standardPadding)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    // MARK: - Keep all your existing view components
+    // (headerSection, windowTypeSection, activeWindowsSection, etc.)
+
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Text("VisionOS Workspace")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+
+            Text("Create and manage volumetric windows in 3D space")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, itemSpacing)
+    }
+
+    private var windowTypeSection: some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            Text("Create New Window")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: itemSpacing),
+                GridItem(.flexible(), spacing: itemSpacing)
+            ], spacing: itemSpacing) {
+                ForEach(WindowType.allCases, id: \.self) { windowType in
+                    windowTypeButton(for: windowType)
+                }
+            }
+        }
+        .padding(standardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    private func windowTypeButton(for windowType: WindowType) -> some View {
+        Button(action: {
+            createWindow(type: windowType)
+        }) {
+            VStack(spacing: 12) {
+                Image(systemName: iconForWindowType(windowType))
+                    .font(.system(size: 40))
+                    .fontWeight(.light)
+                    .foregroundStyle(.tint)
+
+                Text(windowType.displayName)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Text("Tap to create")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .padding(standardPadding)
+        }
+        .buttonStyle(.plain)
+        .background(.quaternary.opacity(0.5))
+        .backgroundStyle(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .hoverEffect()
     }
 
     private var activeWindowsSection: some View {
@@ -1986,7 +1981,7 @@ struct OpenWindowView: View {
                 Spacer()
 
                 Button("Close All") {
-                    // Implement close all functionality
+                    clearAllWindowsWithConfirmation()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -1997,7 +1992,6 @@ struct OpenWindowView: View {
                 LazyVStack(spacing: 8) {
                     ForEach(windowManager.getAllWindows()) { window in
                         HStack(spacing: 12) {
-                            // Window icon
                             Image(systemName: iconForWindowType(window.windowType))
                                 .font(.title3)
                                 .foregroundStyle(.tint)
@@ -2019,7 +2013,6 @@ struct OpenWindowView: View {
 
                             Spacer()
 
-                            // Position badge
                             Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
                                 .font(.caption2)
                                 .padding(.horizontal, 12)
@@ -2028,9 +2021,10 @@ struct OpenWindowView: View {
                                 .clipShape(Capsule())
                                 .foregroundStyle(.secondary)
 
-                            // Window controls
                             HStack(spacing: 8) {
-                                Button(action: {}) {
+                                Button(action: {
+                                    openWindow(value: window.id)
+                                }) {
                                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                                         .font(.callout)
                                 }
@@ -2038,7 +2032,9 @@ struct OpenWindowView: View {
                                 .foregroundStyle(.secondary)
                                 .help("Focus Window")
 
-                                Button(action: {}) {
+                                Button(action: {
+                                    windowManager.removeWindow(window.id)
+                                }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.callout)
                                 }
@@ -2053,7 +2049,7 @@ struct OpenWindowView: View {
                     }
                 }
             }
-            .frame(maxHeight: 400) // Increased from 200
+            .frame(maxHeight: 400)
             .background(.quaternary.opacity(0.3))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
@@ -2069,8 +2065,8 @@ struct OpenWindowView: View {
             x: Double.random(in: -200...200),
             y: Double.random(in: -100...100),
             z: Double.random(in: -50...50),
-            width: 600,  // Increased from 400
-            height: 450  // Increased from 300
+            width: 600,
+            height: 450
         )
 
         _ = windowManager.createWindow(type, id: nextWindowID, position: position)
@@ -2080,35 +2076,81 @@ struct OpenWindowView: View {
 
     private func exportToJupyter() {
         if let fileURL = windowManager.saveNotebookToFile() {
-            print("Notebook saved to: \(fileURL.path)")
-            // Show success feedback
+            print("✅ Workspace saved to: \(fileURL.path)")
+            // You could show a success alert here
+        }
+    }
+
+    private func createSampleWorkspace() {
+        let windowTypes: [WindowType] = [.charts, .spatial, .column]
+
+        for (index, type) in windowTypes.enumerated() {
+            let position = WindowPosition(
+                x: Double(index * 150 - 150),
+                y: Double(index * 75),
+                z: Double(index * 50),
+                width: 500,
+                height: 400
+            )
+
+            _ = windowManager.createWindow(type, id: nextWindowID, position: position)
+
+            switch type {
+            case .charts:
+                windowManager.updateWindowContent(nextWindowID, content: """
+                # Sample Chart
+                plt.figure(figsize=(10, 6))
+                x = np.linspace(0, 10, 100)
+                y = np.sin(x)
+                plt.plot(x, y)
+                plt.title('Sample Sine Wave')
+                plt.show()
+                """)
+                windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
+
+            case .spatial:
+                let samplePointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
+                windowManager.updateWindowPointCloud(nextWindowID, pointCloud: samplePointCloud)
+
+            case .column:
+                let sampleDataFrame = DataFrameData(
+                    columns: ["Name", "Value", "Category"],
+                    rows: [
+                        ["Sample A", "100", "Type 1"],
+                        ["Sample B", "200", "Type 2"],
+                        ["Sample C", "150", "Type 1"]
+                    ],
+                    dtypes: ["Name": "string", "Value": "int", "Category": "string"]
+                )
+                windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
+                windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
+            }
+
+            windowManager.addWindowTag(nextWindowID, tag: "demo")
+            openWindow(value: nextWindowID)
+            nextWindowID += 1
+        }
+    }
+
+    private func clearAllWindowsWithConfirmation() {
+        let allWindows = windowManager.getAllWindows()
+        for window in allWindows {
+            windowManager.removeWindow(window.id)
         }
     }
 
     private func iconForWindowType(_ type: WindowType) -> String {
-        // Map window types to appropriate SF Symbols
-        // Update these cases to match your actual WindowType enum cases
-        let typeString = String(describing: type).lowercased()
-
-        if typeString.contains("markdown") || typeString.contains("text") {
-            return "doc.text"
-        } else if typeString.contains("code") {
-            return "chevron.left.forwardslash.chevron.right"
-        } else if typeString.contains("plot") || typeString.contains("chart") {
+        switch type {
+        case .charts:
             return "chart.line.uptrend.xyaxis"
-        } else if typeString.contains("data") || typeString.contains("frame") || typeString.contains("table") {
-            return "tablecells"
-        } else if typeString.contains("image") || typeString.contains("photo") {
-            return "photo"
-        } else if typeString.contains("model") || typeString.contains("3d") {
+        case .spatial:
             return "cube"
-        } else if typeString.contains("point") || typeString.contains("cloud") {
-            return "point.3.connected.trianglepath.dotted"
-        } else {
-            return "square.stack.3d"
+        case .column:
+            return "tablecells"
         }
     }
 }
+
 
 struct NewWindow: View {
     let id: Int
@@ -2167,9 +2209,9 @@ struct NewWindow: View {
     OpenWindowView()
 }
 
-//#Preview("Point Cloud Preview") {
-//  PointCloudPreview()
-//}
+#Preview("Point Cloud Preview") {
+  PointCloudPreview()
+}
 
 #Preview("Spatial Editor") {
     SpatialEditorView()

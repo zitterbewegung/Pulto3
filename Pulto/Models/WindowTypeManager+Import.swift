@@ -317,4 +317,33 @@ extension WindowTypeManager {
         let formatter = ISO8601DateFormatter()
         return formatter.date(from: dateString)
     }
+    // Add this method to WindowTypeManager
+    func importAndRestoreEnvironment(
+        fileURL: URL,
+        clearExisting: Bool = false,
+        openWindow: @escaping (Int) -> Void
+    ) async throws -> WindowTypeManagerRestoreResult {
+
+        // Import the data first
+        let importResult = try importFromGenericNotebook(fileURL: fileURL)
+
+        // Then actually open the windows visually
+        var openedWindows: [NewWindowID] = []
+
+        for window in importResult.restoredWindows {
+            await MainActor.run {
+                openWindow(window.id) // This actually creates the visual window
+                openedWindows.append(window)
+            }
+
+            // Small delay for smooth animation
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        return EnvironmentRestoreResult(
+            importResult: importResult,
+            openedWindows: openedWindows,
+            failedWindows: []
+        )
+    }
 }

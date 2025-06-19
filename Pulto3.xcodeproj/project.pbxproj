@@ -26,6 +26,9 @@
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
+		DC85D5802E0399A900559301 /* NotebookFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D57F2E0399A900559301 /* NotebookFile.swift */; };
+		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
+		DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */; };
 		DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
 		DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */; };
@@ -61,6 +64,9 @@
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
+		DC85D57F2E0399A900559301 /* NotebookFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFile.swift; sourceTree = "<group>"; };
+		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
+		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
 		DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricWindow.swift; sourceTree = "<group>"; };
@@ -196,12 +202,15 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
 				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
 				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
 				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E899A2DE3697400B27198 /* PultoEnviroment.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
+				DC85D57F2E0399A900559301 /* NotebookFile.swift */,
 				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
 				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
 				DC5CB4232E00E09600B59F38 /* PointCloudPreview.swift */,
@@ -311,6 +320,7 @@
 				DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
 				DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */,
+				DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */,
 				DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */,
 				DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */,
 				DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */,
@@ -320,6 +330,8 @@
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
 				DC28CF652E02390500F3705E /* ModelViewerView.swift in Sources */,
+				DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */,
+				DC85D5802E0399A900559301 /* NotebookFile.swift in Sources */,
 				DC5CB4242E00E09600B59F38 /* PointCloudPreview.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

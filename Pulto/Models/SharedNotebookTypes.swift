@@ -1,11 +1,47 @@
 //
-//  ImportTypes.swift
+//  NotebookFile.swift
 //  Pulto
 //
-//  Central store for every runtime-created window.
-//  Updated 2025-06-18 for VisionOS 2.4
-/*
+//  Created by Joshua Herman on 6/18/25.
+//  Copyright © 2025 Apple. All rights reserved.
+//
+
+
+//
+//  SharedNotebookTypes.swift
+//  All shared types for notebook import and environment restoration
+//
+
 import Foundation
+
+// MARK: - Notebook File Type
+
+struct NotebookFile: Identifiable, Hashable {
+    let id = UUID()
+    let url: URL
+    let name: String
+    let size: Int64
+    let createdDate: Date
+    let modifiedDate: Date
+    
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    var formattedCreatedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: createdDate)
+    }
+    
+    var formattedModifiedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: modifiedDate)
+    }
+}
 
 // MARK: - Import Result Types
 
@@ -14,15 +50,15 @@ struct ImportResult {
     let errors: [ImportError]
     let originalMetadata: VisionOSExportInfo?
     let idMapping: [Int: Int] // old ID -> new ID
-
+    
     var isSuccessful: Bool {
         return !restoredWindows.isEmpty
     }
-
+    
     var summary: String {
         let windowCount = restoredWindows.count
         let errorCount = errors.count
-
+        
         if windowCount > 0 && errorCount == 0 {
             return "Successfully restored \(windowCount) window\(windowCount == 1 ? "" : "s")"
         } else if windowCount > 0 && errorCount > 0 {
@@ -39,7 +75,7 @@ struct NotebookAnalysis {
     let windowTypes: [String]
     let exportTemplates: [String]
     let metadata: VisionOSExportInfo?
-
+    
     var hasVisionOSData: Bool {
         return windowCells > 0 || metadata != nil
     }
@@ -60,7 +96,7 @@ enum ImportError: Error, LocalizedError {
     case unsupportedWindowType
     case invalidMetadata
     case fileReadError
-
+    
     var errorDescription: String? {
         switch self {
         case .invalidJSON:
@@ -78,4 +114,33 @@ enum ImportError: Error, LocalizedError {
         }
     }
 }
-*/
+
+// MARK: - Environment Restore Result
+
+struct EnvironmentRestoreResult {
+    let importResult: ImportResult
+    let openedWindows: [NewWindowID]
+    let failedWindows: [NewWindowID]
+    
+    var totalRestored: Int {
+        return openedWindows.count
+    }
+    
+    var totalFailed: Int {
+        return failedWindows.count
+    }
+    
+    var isFullySuccessful: Bool {
+        return failedWindows.isEmpty && importResult.isSuccessful
+    }
+    
+    var summary: String {
+        if isFullySuccessful {
+            return "Successfully restored \(totalRestored) window\(totalRestored == 1 ? "" : "s") to your 3D environment"
+        } else if totalRestored > 0 {
+            return "Restored \(totalRestored) window\(totalRestored == 1 ? "" : "s"), \(totalFailed) failed to open"
+        } else {
+            return "Failed to restore environment: \(importResult.errors.count) error\(importResult.errors.count == 1 ? "" : "s")"
+        }
+    }
+}

@@ -1,74 +1,116 @@
+/*
 //
-//  Enhanced NotebookImportDialog.swift
-//  Now scans for existing notebook files automatically
+//  NotebookFile.swift
+//  Pulto
+//
+//  Created by Joshua Herman on 6/18/25.
+//  Copyright © 2025 Apple. All rights reserved.
+//
+
+
+//
+//  EnvironmentRestoreDialog.swift
+//  Complete implementation for restoring 3D environments
 //
 
 import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
 
+struct NotebookFile: Identifiable, Hashable {
+    let id = UUID()
+    let url: URL
+    let name: String
+    let size: Int64
+    let createdDate: Date
+    let modifiedDate: Date
+    
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    var formattedCreatedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: createdDate)
+    }
+    
+    var formattedModifiedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: modifiedDate)
+    }
+}
 
-struct NotebookImportDialog: View {
+struct EnvironmentRestoreDialog: View {
     @Binding var isPresented: Bool
     @ObservedObject var windowManager: WindowTypeManager
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.openWindow) private var openWindow
+    
+    let onEnvironmentRestored: (EnvironmentRestoreResult) -> Void
+    
     @State private var availableNotebooks: [NotebookFile] = []
     @State private var selectedNotebook: NotebookFile?
     @State private var isLoadingFiles = true
     @State private var notebookAnalysis: NotebookAnalysis?
     @State private var isAnalyzing = false
     @State private var analysisError: String?
-    @State private var clearExistingWindows = false
-    @State private var importResult: ImportResult?
-    @State private var isImporting = false
+    @State private var clearExistingWindows = true
+    @State private var environmentRestoreResult: EnvironmentRestoreResult?
+    @State private var isRestoring = false
     @State private var showingFilePicker = false
     @State private var fileLoadError: String?
-
+    @State private var restoreProgress: Double = 0.0
+    @State private var currentlyOpeningWindow: String = ""
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
                 headerView
-
+                
                 if isLoadingFiles {
                     loadingView
-                } else if !availableNotebooks.isEmpty || selectedNotebook != nil {
-                    if selectedNotebook == nil {
-                        notebookListView
-                    } else {
-                        selectedNotebookView
-
-                        if let analysis = notebookAnalysis {
-                            analysisView(analysis)
-                            importOptionsView
-                            importActionsView
-                        } else if let error = analysisError {
-                            errorView(error)
-                        } else if isAnalyzing {
-                            ProgressView("Analyzing notebook...")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
+                } else if let notebook = selectedNotebook {
+                    selectedNotebookView
+                    
+                    if let analysis = notebookAnalysis {
+                        environmentAnalysisView(analysis)
+                        environmentRestoreOptionsView
+                        environmentRestoreActionsView
+                    } else if let error = analysisError {
+                        errorView(error)
+                    } else if isAnalyzing {
+                        ProgressView("Analyzing workspace...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                } else if !availableNotebooks.isEmpty {
+                    availableNotebooksView
                 } else {
                     emptyStateView
                 }
-
-                if let result = importResult {
-                    importResultView(result)
+                
+                if isRestoring {
+                    environmentRestoreProgressView
                 }
-
+                
+                if let result = environmentRestoreResult {
+                    environmentRestoreResultView(result)
+                }
+                
                 Spacer()
             }
             .padding()
-            .navigationTitle("Import Notebook")
+            .navigationTitle("Restore Environment")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        //isPresented = false
-                        dismiss()
+                        isPresented = false
                     }
                 }
-
+                
                 ToolbarItem(placement: .primaryAction) {
                     Button("Browse Files") {
                         showingFilePicker = true
@@ -88,61 +130,61 @@ struct NotebookImportDialog: View {
             loadAvailableNotebooks()
         }
     }
-
+    
     // MARK: - View Components
-
+    
     private var headerView: some View {
         VStack(spacing: 8) {
-            Image(systemName: "square.and.arrow.down.on.square")
+            Image(systemName: "cube.box.fill")
                 .font(.system(size: 50))
                 .foregroundStyle(.blue)
-
-            Text("Import Jupyter Notebook")
+            
+            Text("Restore 3D Environment")
                 .font(.title2)
                 .fontWeight(.semibold)
-
-            Text("Restore your VisionOS windows from a saved notebook")
+            
+            Text("Load a saved workspace with windows positioned in 3D space")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.top)
     }
-
+    
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-
-            Text("Scanning for notebook files...")
+            
+            Text("Scanning for saved workspaces...")
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    private var notebookListView: some View {
+    
+    private var availableNotebooksView: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label("Available Notebooks", systemImage: "doc.text")
+                Label("Available Workspaces", systemImage: "cube.box")
                     .font(.headline)
-
+                
                 Spacer()
-
+                
                 Button("Refresh") {
                     loadAvailableNotebooks()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
-
+            
             if let error = fileLoadError {
                 Text("Error loading files: \(error)")
                     .font(.caption)
                     .foregroundStyle(.red)
                     .padding(.bottom, 8)
             }
-
+            
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(availableNotebooks) { notebook in
@@ -155,37 +197,35 @@ struct NotebookImportDialog: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
-
+    
     private func notebookRowView(_ notebook: NotebookFile) -> some View {
         Button(action: {
             selectNotebook(notebook)
         }) {
             HStack(spacing: 12) {
-                // File icon
-                Image(systemName: "doc.text")
+                Image(systemName: "cube.box")
                     .font(.title2)
                     .foregroundStyle(.blue)
                     .frame(width: 32)
-
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(notebook.name)
                         .font(.headline)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-
+                    
                     HStack(spacing: 12) {
                         Label(notebook.formattedSize, systemImage: "doc")
                             .font(.caption)
-
+                        
                         Label(notebook.formattedModifiedDate, systemImage: "clock")
                             .font(.caption)
                     }
                     .foregroundStyle(.secondary)
                 }
-
+                
                 Spacer()
-
-                // Quick preview info
+                
                 VStack(alignment: .trailing, spacing: 2) {
                     Image(systemName: "chevron.right")
                         .font(.caption)
@@ -198,31 +238,31 @@ struct NotebookImportDialog: View {
         }
         .buttonStyle(.plain)
     }
-
+    
     private var selectedNotebookView: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Selected Notebook", systemImage: "doc.text")
+                Label("Selected Workspace", systemImage: "cube.box")
                     .font(.headline)
-
+                
                 Spacer()
-
+                
                 Button("Change") {
                     selectedNotebook = nil
                     notebookAnalysis = nil
                     analysisError = nil
-                    importResult = nil
+                    environmentRestoreResult = nil
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
-
+            
             if let notebook = selectedNotebook {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(notebook.name)
                         .font(.title3)
                         .fontWeight(.semibold)
-
+                    
                     HStack(spacing: 16) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Size")
@@ -231,7 +271,7 @@ struct NotebookImportDialog: View {
                             Text(notebook.formattedSize)
                                 .font(.body)
                         }
-
+                        
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Modified")
                                 .font(.caption)
@@ -239,10 +279,10 @@ struct NotebookImportDialog: View {
                             Text(notebook.formattedModifiedDate)
                                 .font(.body)
                         }
-
+                        
                         Spacer()
                     }
-
+                    
                     Text(notebook.url.path)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -254,30 +294,30 @@ struct NotebookImportDialog: View {
             }
         }
     }
-
+    
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "doc.text.magnifyingglass")
+            Image(systemName: "cube.box.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
-
+            
             VStack(spacing: 8) {
-                Text("No Notebook Files Found")
+                Text("No Saved Workspaces Found")
                     .font(.headline)
-
-                Text("No .ipynb files were found in your Documents folder. Export a notebook first or browse for files from another location.")
+                
+                Text("No .ipynb workspace files were found in your Documents folder. Save a workspace first or browse for files from another location.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-
+            
             VStack(spacing: 12) {
                 Button("Browse for Files") {
                     showingFilePicker = true
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-
+                
                 Button("Refresh") {
                     loadAvailableNotebooks()
                 }
@@ -286,12 +326,12 @@ struct NotebookImportDialog: View {
         }
         .padding(40)
     }
-
-    private func analysisView(_ analysis: NotebookAnalysis) -> some View {
+    
+    private func environmentAnalysisView(_ analysis: NotebookAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Notebook Analysis", systemImage: "chart.bar.doc.horizontal")
+            Label("Workspace Analysis", systemImage: "chart.bar.doc.horizontal")
                 .font(.headline)
-
+            
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Total Cells:")
@@ -299,46 +339,50 @@ struct NotebookImportDialog: View {
                     Text("\(analysis.totalCells)")
                         .fontWeight(.medium)
                 }
-
+                
                 HStack {
-                    Text("Window Cells:")
+                    Text("3D Windows:")
                     Spacer()
                     Text("\(analysis.windowCells)")
                         .fontWeight(.medium)
                         .foregroundStyle(analysis.windowCells > 0 ? .green : .orange)
                 }
-
+                
                 if !analysis.windowTypes.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Window Types:")
                             .fontWeight(.medium)
-
+                        
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(analysis.windowTypes, id: \.self) { type in
-                                    Text(type)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(.blue.opacity(0.1))
-                                        .clipShape(Capsule())
-                                        .font(.caption)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: iconForWindowType(type))
+                                            .font(.caption2)
+                                        Text(type)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.blue.opacity(0.1))
+                                    .clipShape(Capsule())
+                                    .font(.caption)
                                 }
                             }
                         }
                     }
                 }
-
+                
                 if let metadata = analysis.metadata {
                     Divider()
-
+                    
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Export Info:")
+                        Text("Workspace Info:")
                             .fontWeight(.medium)
-
-                        Text("Exported: \(formatDate(metadata.export_date))")
+                        
+                        Text("Saved: \(formatDate(metadata.export_date))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Text("Original Windows: \(metadata.total_windows)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -350,61 +394,208 @@ struct NotebookImportDialog: View {
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
-
-    private var importOptionsView: some View {
+    
+    private var environmentRestoreOptionsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Import Options", systemImage: "gearshape")
+            Label("Environment Options", systemImage: "gearshape.2")
                 .font(.headline)
-
-            Toggle("Clear existing windows before import", isOn: $clearExistingWindows)
+            
+            Toggle("Clear current windows first", isOn: $clearExistingWindows)
                 .toggleStyle(SwitchToggleStyle())
-
-            if clearExistingWindows {
-                Text("⚠️ This will remove all current windows before importing")
+            
+            HStack {
+                Image(systemName: clearExistingWindows ? "sparkles" : "plus.circle")
+                    .foregroundStyle(clearExistingWindows ? .blue : .secondary)
+                
+                Text(clearExistingWindows ? 
+                     "This will create a clean environment with only the restored windows" :
+                     "Restored windows will be added to your current environment")
                     .font(.caption)
-                    .foregroundStyle(.orange)
-                    .padding(.leading, 20)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, 20)
+        }
+        .padding()
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+    
+    private var environmentRestoreActionsView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Restore to 3D Environment", systemImage: "cube.box")
+                .font(.headline)
+            
+            Text("This will restore \(notebookAnalysis?.windowCells ?? 0) windows to your 3D environment with their saved positions and content.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+            
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    selectedNotebook = nil
+                    notebookAnalysis = nil
+                    environmentRestoreResult = nil
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRestoring)
+                
+                Spacer()
+                
+                Button("Restore Environment") {
+                    performEnvironmentRestore()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRestoring || notebookAnalysis?.windowCells == 0)
             }
         }
         .padding()
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
-
-    private var importActionsView: some View {
-        HStack(spacing: 12) {
-            Button("Cancel Import") {
-                selectedNotebook = nil
-                notebookAnalysis = nil
-                importResult = nil
-            }
-            .buttonStyle(.bordered)
-            .disabled(isImporting)
-
-            Spacer()
-
-            Button("Import Windows") {
-                performImport()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isImporting || notebookAnalysis?.windowCells == 0)
+    
+    private var environmentRestoreProgressView: some View {
+        VStack(spacing: 12) {
+            Label("Restoring 3D Environment", systemImage: "cube.box.fill")
+                .font(.headline)
+            
+            ProgressView(value: restoreProgress, total: 1.0)
+                .progressViewStyle(LinearProgressViewStyle())
+                .scaleEffect(y: 2)
+            
+            Text(currentlyOpeningWindow)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .animation(.easeInOut(duration: 0.3), value: currentlyOpeningWindow)
+            
+            Text("\(Int(restoreProgress * 100))% Complete")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
+        .padding()
+        .background(.blue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
-
+    
+    private func environmentRestoreResultView(_ result: EnvironmentRestoreResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: result.isFullySuccessful ? "checkmark.circle.fill" : 
+                      result.totalRestored > 0 ? "exclamationmark.triangle.fill" : "xmark.circle.fill")
+                    .foregroundStyle(result.isFullySuccessful ? .green : 
+                                   result.totalRestored > 0 ? .orange : .red)
+                
+                Text("Environment Restore Result")
+                    .font(.headline)
+            }
+            
+            Text(result.summary)
+                .font(.body)
+            
+            if !result.openedWindows.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Opened Windows:")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    ScrollView {
+                        LazyVStack(spacing: 4) {
+                            ForEach(result.openedWindows, id: \.id) { window in
+                                HStack {
+                                    Image(systemName: iconForWindowType(window.windowType.rawValue))
+                                        .foregroundStyle(.green)
+                                        .frame(width: 20)
+                                    
+                                    Text("\(window.windowType.displayName) #\(window.id)")
+                                        .font(.caption)
+                                    
+                                    Spacer()
+                                    
+                                    Text("(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.quaternary.opacity(0.5))
+                                        .clipShape(Capsule())
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.green.opacity(0.05))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 120)
+                }
+            }
+            
+            if !result.failedWindows.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Failed to Open:")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    ForEach(result.failedWindows, id: \.id) { window in
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.red)
+                            Text("\(window.windowType.displayName) #\(window.id)")
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
+            
+            HStack(spacing: 12) {
+                if result.isFullySuccessful {
+                    Button("Explore Environment") {
+                        isPresented = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("Restore Another") {
+                        selectedNotebook = nil
+                        environmentRestoreResult = nil
+                        notebookAnalysis = nil
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    if result.totalRestored > 0 {
+                        Button("Try Again") {
+                            environmentRestoreResult = nil
+                            performEnvironmentRestore()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+        .padding()
+        .background(result.isFullySuccessful ? .green.opacity(0.1) : 
+                   result.totalRestored > 0 ? .orange.opacity(0.1) : .red.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+    
     private func errorView(_ error: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40))
                 .foregroundStyle(.orange)
-
+            
             Text("Analysis Failed")
                 .font(.headline)
-
+            
             Text(error)
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-
+            
             Button("Try Again") {
                 analyzeSelectedNotebook()
             }
@@ -414,60 +605,17 @@ struct NotebookImportDialog: View {
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
-
-    private func importResultView(_ result: ImportResult) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: result.isSuccessful ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundStyle(result.isSuccessful ? .green : .red)
-
-                Text("Import Result")
-                    .font(.headline)
-            }
-
-            Text(result.summary)
-                .font(.body)
-
-            if !result.errors.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Errors:")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-
-                    ForEach(Array(result.errors.enumerated()), id: \.offset) { index, error in
-                        Text("• \(error.localizedDescription)")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-            }
-
-            if result.isSuccessful {
-                HStack {
-                    Button("Done") {
-                        isPresented = false
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Spacer()
-                }
-            }
-        }
-        .padding()
-        .background(result.isSuccessful ? .green.opacity(0.1) : .red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
+    
     // MARK: - Helper Methods
-
+    
     private func loadAvailableNotebooks() {
         isLoadingFiles = true
         fileLoadError = nil
-
+        
         Task {
             do {
                 let notebooks = try await scanForNotebookFiles()
-
+                
                 await MainActor.run {
                     self.availableNotebooks = notebooks.sorted { $0.modifiedDate > $1.modifiedDate }
                     self.isLoadingFiles = false
@@ -481,15 +629,15 @@ struct NotebookImportDialog: View {
             }
         }
     }
-
+    
     private func scanForNotebookFiles() async throws -> [NotebookFile] {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             throw ImportError.fileReadError
         }
-
+        
         let fileManager = FileManager.default
         let resourceKeys: [URLResourceKey] = [.creationDateKey, .contentModificationDateKey, .fileSizeKey, .nameKey]
-
+        
         guard let enumerator = fileManager.enumerator(
             at: documentsDirectory,
             includingPropertiesForKeys: resourceKeys,
@@ -498,15 +646,15 @@ struct NotebookImportDialog: View {
         ) else {
             return []
         }
-
+        
         var notebooks: [NotebookFile] = []
-
+        
         for case let fileURL as URL in enumerator {
             guard fileURL.pathExtension.lowercased() == "ipynb" else { continue }
-
+            
             do {
                 let resourceValues = try fileURL.resourceValues(forKeys: Set(resourceKeys))
-
+                
                 let notebook = NotebookFile(
                     url: fileURL,
                     name: resourceValues.name ?? fileURL.lastPathComponent,
@@ -514,33 +662,33 @@ struct NotebookImportDialog: View {
                     createdDate: resourceValues.creationDate ?? Date(),
                     modifiedDate: resourceValues.contentModificationDate ?? Date()
                 )
-
+                
                 notebooks.append(notebook)
             } catch {
                 print("Error reading file attributes for \(fileURL): \(error)")
             }
         }
-
+        
         return notebooks
     }
-
+    
     private func selectNotebook(_ notebook: NotebookFile) {
         selectedNotebook = notebook
         analyzeSelectedNotebook()
     }
-
+    
     private func analyzeSelectedNotebook() {
         guard let notebook = selectedNotebook else { return }
-
+        
         isAnalyzing = true
         analysisError = nil
-
+        
         let manager = windowManager
-
+        
         Task {
             do {
                 let analysis = try manager.analyzeGenericNotebook(fileURL: notebook.url)
-
+                
                 await MainActor.run {
                     self.notebookAnalysis = analysis
                     self.isAnalyzing = false
@@ -553,16 +701,15 @@ struct NotebookImportDialog: View {
             }
         }
     }
-
+    
     private func handleExternalFileSelection(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-
-            // Create a NotebookFile from the external file
+            
             do {
                 let resourceValues = try url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey, .fileSizeKey, .nameKey])
-
+                
                 let notebook = NotebookFile(
                     url: url,
                     name: resourceValues.name ?? url.lastPathComponent,
@@ -570,53 +717,75 @@ struct NotebookImportDialog: View {
                     createdDate: resourceValues.creationDate ?? Date(),
                     modifiedDate: resourceValues.contentModificationDate ?? Date()
                 )
-
+                
                 selectNotebook(notebook)
             } catch {
                 analysisError = "Failed to read file information: \(error.localizedDescription)"
             }
-
+            
         case .failure(let error):
             analysisError = error.localizedDescription
         }
     }
-
-    private func performImport() {
+    
+    private func performEnvironmentRestore() {
         guard let notebook = selectedNotebook else { return }
-
-        isImporting = true
-
+        
+        isRestoring = true
+        restoreProgress = 0.0
+        currentlyOpeningWindow = "Preparing environment..."
+        
         let manager = windowManager
         let shouldClearWindows = clearExistingWindows
-
+        
         Task {
             do {
-                if shouldClearWindows {
-                    await MainActor.run {
-                        manager.clearAllWindows()
+                await MainActor.run {
+                    restoreProgress = 0.1
+                    currentlyOpeningWindow = "Loading workspace data..."
+                }
+                
+                // Use the environment restoration method
+                let result = try await manager.importAndRestoreEnvironment(
+                    fileURL: notebook.url,
+                    clearExisting: shouldClearWindows
+                ) { windowID in
+                    // This closure opens each window visually
+                    DispatchQueue.main.async {
+                        openWindow(value: windowID)
                     }
                 }
-
-                let result = try manager.importFromGenericNotebook(fileURL: notebook.url)
-
+                
                 await MainActor.run {
-                    self.importResult = result
-                    self.isImporting = false
+                    self.environmentRestoreResult = result
+                    self.isRestoring = false
+                    self.restoreProgress = 1.0
+                    self.currentlyOpeningWindow = "Environment restored!"
+                    
+                    // Notify parent about successful restoration
+                    onEnvironmentRestored(result)
                 }
+                
             } catch {
                 await MainActor.run {
-                    self.importResult = ImportResult(
-                        restoredWindows: [],
-                        errors: [ImportError.fileReadError],
-                        originalMetadata: nil,
-                        idMapping: [:]
+                    self.environmentRestoreResult = EnvironmentRestoreResult(
+                        importResult: ImportResult(
+                            restoredWindows: [],
+                            errors: [ImportError.fileReadError],
+                            originalMetadata: nil,
+                            idMapping: [:]
+                        ),
+                        openedWindows: [],
+                        failedWindows: []
                     )
-                    self.isImporting = false
+                    self.isRestoring = false
+                    self.restoreProgress = 1.0
+                    self.currentlyOpeningWindow = "Restoration failed"
                 }
             }
         }
     }
-
+    
     private func formatDate(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
         if let date = formatter.date(from: dateString) {
@@ -627,4 +796,18 @@ struct NotebookImportDialog: View {
         }
         return dateString
     }
+    
+    private func iconForWindowType(_ type: String) -> String {
+        switch type.lowercased() {
+        case "charts":
+            return "chart.line.uptrend.xyaxis"
+        case "spatial":
+            return "cube"
+        case "column":
+            return "tablecells"
+        default:
+            return "square.stack.3d"
+        }
+    }
 }
+*/
