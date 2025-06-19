@@ -67,7 +67,6 @@
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
 		DC661B302E049681005454FE /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
 		DC661B322E049EE0005454FE /* temp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = temp.swift; sourceTree = "<group>"; };
-		DC661B332E04A089005454FE /* SpatialEditorView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpatialEditorView 2.swift"; sourceTree = "<group>"; };
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
 		DC85D57F2E0399A900559301 /* NotebookFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFile.swift; sourceTree = "<group>"; };
@@ -232,7 +231,6 @@
 				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
-				DC661B332E04A089005454FE /* SpatialEditorView 2.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
 			);

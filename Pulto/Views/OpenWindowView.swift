@@ -7,7 +7,7 @@
 import SwiftUI
 import Foundation
 import Charts
-
+/*
 enum WindowType: String, CaseIterable, Codable, Hashable {
     case charts = "Charts"
     case spatial = "Spatial Editor"
@@ -31,6 +31,34 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
             
         //case .pointcloud:
         //    return "code"
+        }
+    }
+}
+ */
+enum WindowType: String, CaseIterable, Codable, Hashable {
+    case charts = "Charts"
+    case spatial = "Spatial Editor"
+    case column = "DataFrame Viewer"
+    case volume = "Model Metric Viewer"
+    // If you have pointcloud, add it here:
+    case pointcloud = "Point Cloud Viewer"  // Add this if needed
+
+    var displayName: String {
+        return self.rawValue
+    }
+
+    var jupyterCellType: String {
+        switch self {
+        case .charts:
+            return "code"
+        case .spatial:
+            return "spatial"
+        case .column:
+            return "code"
+        case .volume:
+            return "code"
+        case .pointcloud:
+             return "code"
         }
     }
 }
@@ -308,6 +336,187 @@ struct PointCloudData: Codable, Hashable {
     }
 }
 
+// Add this structure after PointCloudData
+struct VolumeData: Codable, Hashable {
+    var metrics: [String: Double]
+    var title: String
+    var category: String
+    var timestamp: Date
+    var unit: String?
+
+    init(title: String = "Volume Metrics",
+         category: String = "performance",
+         metrics: [String: Double] = [:],
+         unit: String? = nil) {
+        self.title = title
+        self.category = category
+        self.metrics = metrics
+        self.timestamp = Date()
+        self.unit = unit
+    }
+
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !metrics.isEmpty else {
+            return "# Empty volume data\nprint('No volume data available')"
+        }
+
+        let metricsDict = metrics.map { "\"\($0.key)\": \($0.value)" }.joined(separator: ",\n    ")
+
+        return """
+        # \(title)
+        # Generated from VisionOS Volume Window
+        # Category: \(category)
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        from datetime import datetime
+        
+        # Volume metrics data
+        metrics = {
+            \(metricsDict)
+        }
+        
+        # Create DataFrame for easy manipulation
+        df_metrics = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Value'])
+        
+        # Display metrics
+        print("Volume Metrics Summary:")
+        print("-" * 40)
+        for metric, value in metrics.items():
+            unit_str = "\(unit ?? "")"
+            print(f"{metric:20}: {value:10.3f} {unit_str}")
+        
+        # Create visualization
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # Bar chart
+        ax1.bar(df_metrics['Metric'], df_metrics['Value'])
+        ax1.set_title('\(title) - Bar Chart')
+        ax1.tick_params(axis='x', rotation=45)
+        
+        # Pie chart (for positive values only)
+        positive_metrics = {k: v for k, v in metrics.items() if v > 0}
+        if positive_metrics:
+            ax2.pie(positive_metrics.values(), labels=positive_metrics.keys(), autopct='%1.1f%%')
+            ax2.set_title('\(title) - Distribution')
+        else:
+            ax2.text(0.5, 0.5, 'No positive values\\nfor pie chart', 
+                    ha='center', va='center', transform=ax2.transAxes)
+            ax2.set_title('Distribution (N/A)')
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Statistics
+        print(f"\\nStatistics:")
+        print(f"Total metrics: {len(metrics)}")
+        print(f"Average value: {np.mean(list(metrics.values())):.3f}")
+        print(f"Max value: {max(metrics.values()):.3f}")
+        print(f"Min value: {min(metrics.values()):.3f}")
+        """
+    }
+}
+
+// Add this structure after VolumeData
+struct ChartData: Codable, Hashable {
+    var xData: [Double]
+    var yData: [Double]
+    var chartType: String
+    var title: String
+    var xLabel: String
+    var yLabel: String
+    var color: String?
+    var style: String?
+
+    init(title: String = "Chart Data",
+         chartType: String = "line",
+         xLabel: String = "X",
+         yLabel: String = "Y",
+         xData: [Double] = [],
+         yData: [Double] = [],
+         color: String? = nil,
+         style: String? = nil) {
+        self.title = title
+        self.chartType = chartType
+        self.xLabel = xLabel
+        self.yLabel = yLabel
+        self.xData = xData
+        self.yData = yData
+        self.color = color
+        self.style = style
+    }
+
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !xData.isEmpty && !yData.isEmpty else {
+            return "# Empty chart data\nprint('No chart data available')"
+        }
+
+        let xDataString = xData.map { String($0) }.joined(separator: ", ")
+        let yDataString = yData.map { String($0) }.joined(separator: ", ")
+
+        return """
+        # \(title)
+        # Generated from VisionOS Chart Window
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
+        # Chart data
+        x_data = np.array([\(xDataString)])
+        y_data = np.array([\(yDataString)])
+        
+        # Create the chart
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        \(generatePlotCode())
+        
+        ax.set_xlabel('\(xLabel)')
+        ax.set_ylabel('\(yLabel)')
+        ax.set_title('\(title)')
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Data statistics
+        print("Chart Data Statistics:")
+        print("-" * 30)
+        print(f"Data points: {len(x_data)}")
+        print(f"X range: [{np.min(x_data):.3f}, {np.max(x_data):.3f}]")
+        print(f"Y range: [{np.min(y_data):.3f}, {np.max(y_data):.3f}]")
+        print(f"Y mean: {np.mean(y_data):.3f}")
+        print(f"Y std: {np.std(y_data):.3f}")
+        
+        # Create DataFrame for further analysis
+        df = pd.DataFrame({'X': x_data, 'Y': y_data})
+        print("\\nDataFrame Preview:")
+        print(df.head())
+        """
+    }
+
+    private func generatePlotCode() -> String {
+        let colorCode = color != nil ? ", color='\(color!)'" : ""
+        let styleCode = style != nil ? ", linestyle='\(style!)'" : ""
+
+        switch chartType.lowercased() {
+        case "scatter":
+            return "ax.scatter(x_data, y_data\(colorCode), alpha=0.7)"
+        case "bar":
+            return "ax.bar(x_data, y_data\(colorCode))"
+        case "line":
+            return "ax.plot(x_data, y_data\(colorCode)\(styleCode), marker='o', markersize=4)"
+        case "area":
+            return "ax.fill_between(x_data, y_data\(colorCode), alpha=0.6)"
+        default:
+            return "ax.plot(x_data, y_data\(colorCode)\(styleCode))"
+        }
+    }
+}
+
 struct WindowState: Codable, Hashable {
     var isMinimized: Bool = false
     var isMaximized: Bool = false
@@ -318,7 +527,9 @@ struct WindowState: Codable, Hashable {
     var customImports: [String] = []
     var tags: [String] = []
     var dataFrameData: DataFrameData? = nil
-    var pointCloudData: PointCloudData? = nil // New field for point cloud data
+    var pointCloudData: PointCloudData? = nil
+    var volumeData: VolumeData? = nil        // Add this
+    var chartData: ChartData? = nil          // Add this
 
     init(isMinimized: Bool = false, isMaximized: Bool = false,
          opacity: Double = 1.0, content: String = "",
@@ -331,7 +542,6 @@ struct WindowState: Codable, Hashable {
         self.lastModified = Date()
     }
 }
-
 struct DataFrameData: Codable, Hashable {
     var columns: [String]
     var rows: [[String]]
@@ -991,7 +1201,35 @@ class WindowTypeManager: ObservableObject {
               let visionOSDict = metadata["visionos_export"] as? [String: Any] else {
             return nil
         }
+    // Add these methods to WindowTypeManager class
 
+    func updateWindowVolumeData(_ id: Int, volumeData: VolumeData) {
+        windows[id]?.state.volumeData = volumeData
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to custom if not already set
+        if let window = windows[id], window.windowType == .volume && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .custom
+        }
+    }
+
+    func getWindowVolumeData(for id: Int) -> VolumeData? {
+        return windows[id]?.state.volumeData
+    }
+
+    func updateWindowChartData(_ id: Int, chartData: ChartData) {
+        windows[id]?.state.chartData = chartData
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to matplotlib if not already set
+        if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .matplotlib
+        }
+    }
+
+    func getWindowChartData(for id: Int) -> ChartData? {
+        return windows[id]?.state.chartData
+    }
         return VisionOSExportInfo(
             export_date: visionOSDict["export_date"] as? String ?? "",
             total_windows: visionOSDict["total_windows"] as? Int ?? 0,
@@ -1011,13 +1249,25 @@ class WindowTypeManager: ObservableObject {
                 state.dataFrameData = dataFrame
             }
 
-        case .spatial:
+        case .pointcloud:
             if let pointCloud = try parsePointCloudFromContent(content) {
                 state.pointCloudData = pointCloud
             }
 
-        case .charts:
-            break
+        case .volume:
+            if let volumeData = try parseVolumeDataFromContent(content) {
+                state.volumeData = volumeData
+            }
+
+        case .charts:  // Add this case
+            if let chartData = try parseChartDataFromContent(content) {
+                state.chartData = chartData
+            }
+
+        case .spatial:
+            if let pointCloud = try parsePointCloudFromContent(content) {
+                state.pointCloudData = pointCloud
+            }
         }
     }
 
@@ -1150,6 +1400,266 @@ class WindowTypeManager: ObservableObject {
         pointCloudData.totalPoints = 1
 
         return pointCloudData
+    }
+
+    // Add these functions to WindowTypeManager class
+
+    private func parseVolumeDataFromContent(_ content: String) throws -> VolumeData? {
+        let patterns = [
+            #"metrics\s*=\s*\{([^}]+)\}"#,           // metrics = {...}
+            #"performance\s*=\s*\{([^}]+)\}"#,       // performance = {...}
+            #"volume_data\s*=\s*\{([^}]+)\}"#,       // volume_data = {...}
+            #"model_metrics\s*=\s*\{([^}]+)\}"#      // model_metrics = {...}
+        ]
+
+        for pattern in patterns {
+            if let match = content.range(of: pattern, options: .regularExpression) {
+                return try parseVolumeDataFromMatch(String(content[match]), fullContent: content)
+            }
+        }
+
+        // Look for individual metric patterns
+        return try parseIndividualMetrics(from: content)
+    }
+
+    private func parseVolumeDataFromMatch(_ match: String, fullContent: String) throws -> VolumeData? {
+        // Extract title from comments
+        let titlePattern = #"# (.+)"#
+        var title = "Imported Volume Data"
+
+        if let titleMatch = fullContent.range(of: titlePattern, options: .regularExpression) {
+            let titleLine = String(fullContent[titleMatch])
+            if let actualTitle = titleLine.components(separatedBy: "# ").last?.trimmingCharacters(in: .whitespaces) {
+                title = actualTitle
+            }
+        }
+
+        // Parse metrics from the match
+        var metrics: [String: Double] = [:]
+
+        // Simple regex to extract key-value pairs
+        let kvPattern = #"['""]([^'"",]+)['""]:\s*([0-9.]+)"#
+        let regex = try NSRegularExpression(pattern: kvPattern)
+        let nsString = match as NSString
+        let results = regex.matches(in: match, range: NSRange(location: 0, length: nsString.length))
+
+        for result in results {
+            if result.numberOfRanges >= 3 {
+                let keyRange = result.range(at: 1)
+                let valueRange = result.range(at: 2)
+
+                let key = nsString.substring(with: keyRange)
+                let valueString = nsString.substring(with: valueRange)
+
+                if let value = Double(valueString) {
+                    metrics[key] = value
+                }
+            }
+        }
+
+        // If no metrics found, add some sample data
+        if metrics.isEmpty {
+            metrics = [
+                "accuracy": 0.95,
+                "latency_ms": 120,
+                "throughput_rps": 300
+            ]
+        }
+
+        let category = determineVolumeCategory(from: fullContent)
+        let unit = extractUnit(from: fullContent)
+
+        return VolumeData(
+            title: title,
+            category: category,
+            metrics: metrics,
+            unit: unit
+        )
+    }
+
+    private func parseIndividualMetrics(from content: String) throws -> VolumeData? {
+        var metrics: [String: Double] = [:]
+
+        // Look for patterns like "accuracy = 0.95" or "latency: 120"
+        let patterns = [
+            #"(\w+)\s*=\s*([0-9.]+)"#,
+            #"(\w+):\s*([0-9.]+)"#,
+            #"print\(f?['""](\w+):\s*\{([^}]+)\}"#
+        ]
+
+        for pattern in patterns {
+            let regex = try NSRegularExpression(pattern: pattern)
+            let nsString = content as NSString
+            let results = regex.matches(in: content, range: NSRange(location: 0, length: nsString.length))
+
+            for result in results {
+                if result.numberOfRanges >= 3 {
+                    let keyRange = result.range(at: 1)
+                    let valueRange = result.range(at: 2)
+
+                    let key = nsString.substring(with: keyRange)
+                    let valueString = nsString.substring(with: valueRange)
+
+                    if let value = Double(valueString) {
+                        metrics[key] = value
+                    }
+                }
+            }
+        }
+
+        guard !metrics.isEmpty else { return nil }
+
+        return VolumeData(
+            title: "Extracted Metrics",
+            category: "general",
+            metrics: metrics
+        )
+    }
+
+    private func parseChartDataFromContent(_ content: String) throws -> ChartData? {
+        let patterns = [
+            #"x\s*=\s*\[([^\]]+)\]"#,               // x = [...]
+            #"y\s*=\s*\[([^\]]+)\]"#,               // y = [...]
+            #"x_data\s*=\s*\[([^\]]+)\]"#,          // x_data = [...]
+            #"y_data\s*=\s*\[([^\]]+)\]"#,          // y_data = [...]
+            #"plt\.plot\(([^)]+)\)"#,               // plt.plot(...)
+            #"ax\.plot\(([^)]+)\)"#                 // ax.plot(...)
+        ]
+
+        var xData: [Double] = []
+        var yData: [Double] = []
+        var chartType = "line"
+        var title = "Imported Chart"
+
+        // Extract title from comments or plot titles
+        let titlePattern = #"plt\.title\(['""]([^'""]+)['""]"#
+        if let titleMatch = content.range(of: titlePattern, options: .regularExpression) {
+            let titleLine = String(content[titleMatch])
+            if let extractedTitle = extractQuotedString(from: titleLine) {
+                title = extractedTitle
+            }
+        }
+
+        // Determine chart type
+        if content.contains("scatter") || content.contains("plt.scatter") {
+            chartType = "scatter"
+        } else if content.contains("bar") || content.contains("plt.bar") {
+            chartType = "bar"
+        } else if content.contains("fill_between") || content.contains("area") {
+            chartType = "area"
+        }
+
+        // Extract data arrays
+        for pattern in patterns {
+            if let match = content.range(of: pattern, options: .regularExpression) {
+                let matchString = String(content[match])
+
+                if matchString.contains("x") && !matchString.contains("y") {
+                    xData = extractNumberArray(from: matchString)
+                } else if matchString.contains("y") {
+                    yData = extractNumberArray(from: matchString)
+                } else if matchString.contains("plot") {
+                    let arrays = extractMultipleArrays(from: matchString)
+                    if arrays.count >= 2 {
+                        xData = arrays[0]
+                        yData = arrays[1]
+                    }
+                }
+            }
+        }
+
+        // Generate sample data if none found
+        if xData.isEmpty || yData.isEmpty {
+            xData = Array(stride(from: 0.0, through: 10.0, by: 0.5))
+            yData = xData.map { sin($0) }
+        }
+
+        // Extract labels
+        let xLabel = extractLabel(from: content, type: "xlabel") ?? "X"
+        let yLabel = extractLabel(from: content, type: "ylabel") ?? "Y"
+
+        return ChartData(
+            title: title,
+            chartType: chartType,
+            xLabel: xLabel,
+            yLabel: yLabel,
+            xData: xData,
+            yData: yData
+        )
+    }
+
+    // Helper functions for parsing
+    private func determineVolumeCategory(from content: String) -> String {
+        let lowercased = content.lowercased()
+        if lowercased.contains("performance") || lowercased.contains("metric") {
+            return "performance"
+        } else if lowercased.contains("model") || lowercased.contains("ml") {
+            return "model"
+        } else if lowercased.contains("system") || lowercased.contains("resource") {
+            return "system"
+        }
+        return "general"
+    }
+
+    private func extractUnit(from content: String) -> String? {
+        let unitPatterns = [
+            #"unit[s]?['""]:\s*['""]([^'""]+)['""]"#,
+            #"([a-zA-Z]+)\s*per\s*([a-zA-Z]+)"#
+        ]
+
+        for pattern in unitPatterns {
+            if let match = content.range(of: pattern, options: .regularExpression) {
+                return String(content[match])
+            }
+        }
+        return nil
+    }
+
+    private func extractQuotedString(from text: String) -> String? {
+        let pattern = #"['""]([^'""]+)['""]"#
+        if let match = text.range(of: pattern, options: .regularExpression) {
+            let matchString = String(text[match])
+            return matchString.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        }
+        return nil
+    }
+
+    private func extractNumberArray(from text: String) -> [Double] {
+        let pattern = #"\[([^\]]+)\]"#
+        guard let match = text.range(of: pattern, options: .regularExpression) else { return [] }
+
+        let arrayString = String(text[match])
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+
+        return arrayString.components(separatedBy: ",")
+            .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+    }
+
+    private func extractMultipleArrays(from text: String) -> [[Double]] {
+        let pattern = #"\[([^\]]+)\]"#
+        let regex = try? NSRegularExpression(pattern: pattern)
+        let nsString = text as NSString
+        let results = regex?.matches(in: text, range: NSRange(location: 0, length: nsString.length)) ?? []
+
+        var arrays: [[Double]] = []
+        for result in results {
+            let arrayString = nsString.substring(with: result.range(at: 1))
+            let numbers = arrayString.components(separatedBy: ",")
+                .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            if !numbers.isEmpty {
+                arrays.append(numbers)
+            }
+        }
+
+        return arrays
+    }
+
+    private func extractLabel(from content: String, type: String) -> String? {
+        let pattern = #"plt\.\#(type)\(['""]([^'""]+)['""]"#
+        if let match = content.range(of: pattern, options: .regularExpression) {
+            return extractQuotedString(from: String(content[match]))
+        }
+        return nil
     }
 
     private func parseISO8601Date(_ dateString: String) -> Date? {
@@ -1333,8 +1843,10 @@ class WindowTypeManager: ObservableObject {
             return generateSpatialCellContent(for: window)
         case .column:
             return generateDataFrameCellContent(for: window)
-        //case .pointcloud:
-        //    return PointCloudPreview(for: window)
+        case .volume:  // Add this case
+            return generateVolumeCellContent(for: window)
+        case .pointcloud:  // Add this case
+            return generateSpatialCellContent(for: window)
         }
     }
 
@@ -1349,6 +1861,29 @@ class WindowTypeManager: ObservableObject {
         
         # Chart configuration from VisionOS window
         fig, ax = plt.subplots(figsize=(\(window.position.width/50), \(window.position.height/50)))
+        
+        """
+
+        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
+    }
+
+    // Add this method inside the WindowTypeManager class, alongside the other generate methods
+    private func generateVolumeCellContent(for window: NewWindowID) -> String {
+        if let volumeData = window.state.volumeData {
+            return volumeData.toPythonCode()
+        }
+
+        let baseContent = """
+        # Volume Metrics Window #\(window.id)
+        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
+        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
+        # Volume metrics configuration from VisionOS window
+        # Window size: \(window.position.width) × \(window.position.height)
         
         """
 
@@ -1734,9 +2269,9 @@ struct OpenWindowView: View {
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var showExportSidebar = false
     @State private var showImportDialog = false
-    @State private var showRestoreDialog = false // NEW: Environment restoration
+    @State private var showTemplateGallery = false
 
-    // HIG-compliant sizing constants
+    // HIG-compliant sizing constants - ADD THESE
     private let standardPadding: CGFloat = 20
     private let sectionSpacing: CGFloat = 32
     private let itemSpacing: CGFloat = 16
@@ -1749,7 +2284,7 @@ struct OpenWindowView: View {
                 VStack(spacing: sectionSpacing) {
                     headerSection
                     windowTypeSection
-                    quickActionsSection // Updated with restore functionality
+                    quickActionsSection
 
                     if !windowManager.getAllWindows().isEmpty {
                         activeWindowsSection
@@ -1775,139 +2310,13 @@ struct OpenWindowView: View {
                 windowManager: windowManager
             )
         }
-        .sheet(isPresented: $showRestoreDialog) {
+        .sheet(isPresented: $showTemplateGallery) {
             TemplateView()
-                 .frame(minWidth: 1000, minHeight: 700)
-        }
-        .sheet(isPresented: $showRestoreDialog) {
-            // NEW: Environment restoration dialog
-            EnvironmentRestoreDialog(
-                    isPresented: $showRestoreDialog,
-                    windowManager: windowManager,
-                    onEnvironmentRestored: { (result: EnvironmentRestoreResult) -> Void in
-                        let manager = windowManager
-                        Task { @MainActor in
-                            let currentMaxID = manager.getAllWindows().map { $0.id }.max() ?? 0
-                            nextWindowID = currentMaxID + 1
-                            print("🎉 Environment restored: \(result.summary)")
-                        }
-                    }
-                )
-
+                .frame(minWidth: 1000, minHeight: 700)
         }
     }
 
-    // MARK: - Updated Quick Actions with Environment Restoration
-
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: itemSpacing) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Workspace Management")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    Text("Save, load, and manage your 3D workspace")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: { showExportSidebar.toggle() }) {
-                    Label(
-                        showExportSidebar ? "Hide Configuration" : "Show Configuration",
-                        systemImage: showExportSidebar ? "sidebar.trailing" : "sidebar.leading"
-                    )
-                    .font(.body)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-
-            // Primary Actions - Save and Restore
-            VStack(spacing: itemSpacing) {
-                HStack(spacing: itemSpacing) {
-                    Button(action: exportToJupyter) {
-                        VStack(spacing: 8) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title2)
-
-                            VStack(spacing: 4) {
-                                Text("Save Workspace")
-                                    .font(.headline)
-                                Text("Export current state")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-
-                    Button(action: { showRestoreDialog = true }) {
-                        VStack(spacing: 8) {
-                            Image(systemName: "cube.box.fill")
-                                .font(.title2)
-
-                            VStack(spacing: 4) {
-                                Text("Restore Environment")
-                                    .font(.headline)
-                                Text("Load saved workspace")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                }
-
-                // Secondary Actions
-                HStack(spacing: itemSpacing) {
-                    Button(action: { showImportDialog = true }) {
-                        Label("Import Data Only", systemImage: "square.and.arrow.down")
-                            .font(.body)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-
-                    Button(action: createSampleWorkspace) {
-                        Label("Create Demo", systemImage: "doc.badge.plus")
-                            .font(.body)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-
-                    Button(action: clearAllWindowsWithConfirmation) {
-                        Label("Clear All", systemImage: "trash")
-                            .font(.body)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-                    .foregroundStyle(.red)
-                }
-            }
-        }
-        .padding(standardPadding)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-    }
-
-    // MARK: - Keep all your existing view components
-    // (headerSection, windowTypeSection, activeWindowsSection, etc.)
+    // MARK: - View Components
 
     private var headerSection: some View {
         VStack(spacing: 8) {
@@ -1970,6 +2379,113 @@ struct OpenWindowView: View {
         .backgroundStyle(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .hoverEffect()
+    }
+
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Workspace Management")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("Save, load, and manage your 3D workspace")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button(action: { showExportSidebar.toggle() }) {
+                    Label(
+                        showExportSidebar ? "Hide Configuration" : "Show Configuration",
+                        systemImage: showExportSidebar ? "sidebar.trailing" : "sidebar.leading"
+                    )
+                    .font(.body)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+
+            // Primary Actions - Save and Restore
+            VStack(spacing: itemSpacing) {
+                HStack(spacing: itemSpacing) {
+                    Button(action: exportToJupyter) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title2)
+
+                            VStack(spacing: 4) {
+                                Text("Save Workspace")
+                                    .font(.headline)
+                                Text("Export current state")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+
+                    Button(action: { showTemplateGallery = true }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "cube.box.fill")
+                                .font(.title2)
+
+                            VStack(spacing: 4) {
+                                Text("Template Gallery")
+                                    .font(.headline)
+                                Text("Load pre-built workspace")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+
+                // Secondary Actions
+                HStack(spacing: itemSpacing) {
+                    Button(action: { showImportDialog = true }) {
+                        Label("Import Notebook", systemImage: "square.and.arrow.down")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    Button(action: createSampleWorkspace) {
+                        Label("Create Demo", systemImage: "doc.badge.plus")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+
+                    Button(action: clearAllWindowsWithConfirmation) {
+                        Label("Clear All", systemImage: "trash")
+                            .font(.body)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .foregroundStyle(.red)
+                }
+            }
+        }
+        .padding(standardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 
     private var activeWindowsSection: some View {
@@ -2084,12 +2600,11 @@ struct OpenWindowView: View {
     private func exportToJupyter() {
         if let fileURL = windowManager.saveNotebookToFile() {
             print("✅ Workspace saved to: \(fileURL.path)")
-            // You could show a success alert here
         }
     }
 
     private func createSampleWorkspace() {
-        let windowTypes: [WindowType] = [.charts, .spatial, .column]
+        let windowTypes: [WindowType] = [.charts, .spatial, .column, .volume]  // Add .volume here
 
         for (index, type) in windowTypes.enumerated() {
             let position = WindowPosition(
@@ -2131,6 +2646,54 @@ struct OpenWindowView: View {
                 )
                 windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
                 windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
+
+            case .volume:  // Add this case
+                windowManager.updateWindowContent(nextWindowID, content: """
+                # Model Performance Metrics
+                import numpy as np
+                import matplotlib.pyplot as plt
+                
+                # Sample metrics data
+                metrics = {
+                    'accuracy': 0.95,
+                    'precision': 0.92,
+                    'recall': 0.89,
+                    'f1_score': 0.90,
+                    'latency_ms': 120,
+                    'throughput_rps': 300,
+                    'memory_usage_mb': 512,
+                    'cpu_usage_percent': 45
+                }
+                
+                print("Model Performance Metrics:")
+                for key, value in metrics.items():
+                    print(f"{key}: {value}")
+                
+                # Create a simple metrics visualization
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                
+                # Performance metrics
+                perf_metrics = ['accuracy', 'precision', 'recall', 'f1_score']
+                perf_values = [metrics[m] for m in perf_metrics]
+                ax1.bar(perf_metrics, perf_values)
+                ax1.set_title('Model Performance')
+                ax1.set_ylim(0, 1)
+                
+                # System metrics
+                sys_metrics = ['latency_ms', 'throughput_rps', 'memory_usage_mb', 'cpu_usage_percent']
+                sys_values = [metrics[m] for m in sys_metrics]
+                ax2.bar(sys_metrics, sys_values)
+                ax2.set_title('System Metrics')
+                
+                plt.tight_layout()
+                plt.show()
+                """)
+                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
+            case .pointcloud:  // Add this case
+                    let sampleTorus = PointCloudDemo.generateTorusPointCloudData(majorRadius: 8.0, minorRadius: 3.0, points: 1000)
+                    windowManager.updateWindowPointCloud(nextWindowID, pointCloud: sampleTorus)
+                    windowManager.updateWindowTemplate(nextWindowID, template: .custom)
+
             }
 
             windowManager.addWindowTag(nextWindowID, tag: "demo")
@@ -2154,7 +2717,16 @@ struct OpenWindowView: View {
             return "cube"
         case .column:
             return "tablecells"
+        case .volume:
+            return "gauge"
+        case .pointcloud:  // Make sure this case exists
+            return "dot.scope"
         }
+    }
+
+    private func updateNextWindowID() {
+        let currentMaxID = windowManager.getAllWindows().map { $0.id }.max() ?? 0
+        nextWindowID = currentMaxID + 1
     }
 }
 
@@ -2252,11 +2824,65 @@ struct NewWindow: View {
                         } else {
                             DataTableContentView(windowID: id)   // falls back to saved window or sample
                         }
+                    case .pointcloud:  // Add this case
+                        VStack {
+                            if let pointCloud = window.state.pointCloudData {
+                                SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
+                            } else {
+                                VStack(spacing: 20) {
+                                    Image(systemName: "dot.scope")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.purple)
 
+                                    Text("Point Cloud Viewer")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
 
-                    // If you have a .volume case, handle it here
-                    // case .volume:
-                    //     ModelViewerView()
+                                    Text("3D point cloud visualization and analysis")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(40)
+                            }
+                        }
+
+                    case .volume:  // NEW: Handle volume windows
+                        VStack {
+                            if !window.state.content.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Model Metrics:")
+                                            .font(.headline)
+
+                                        Text(window.state.content)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.tertiarySystemBackground))
+                                            .cornerRadius(8)
+                                    }
+                                    .padding()
+                                }
+                            } else {
+                                VStack(spacing: 20) {
+                                    Image(systemName: "gauge")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.blue)
+
+                                    Text("Model Metrics Viewer")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Text("Performance metrics and monitoring dashboard")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(40)
+                            }
+                        }
+                        
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

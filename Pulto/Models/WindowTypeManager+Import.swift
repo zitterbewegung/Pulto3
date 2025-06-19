@@ -346,4 +346,26 @@ extension WindowTypeManager {
             failedWindows: []
         )
     }
+    // Add this method to WindowTypeManager
+    private func generateVolumeCellContent(for window: NewWindowID) -> String {
+        if let volumeData = window.state.volumeData {
+            return volumeData.toPythonCode()
+        }
+
+        let baseContent = """
+        # Volume Metrics Window #\(window.id)
+        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
+        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
+        # Volume metrics configuration from VisionOS window
+        # Window size: \(window.position.width) × \(window.position.height)
+        
+        """
+
+        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
+    }
 }

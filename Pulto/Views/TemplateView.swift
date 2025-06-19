@@ -5,14 +5,8 @@
 //  Created by Joshua Herman on 6/19/25.
 //  Copyright © 2025 Apple. All rights reserved.
 //
-
-
-//
-//  TemplateView.swift
-//  Pulto
-//
 //  Template Gallery for importing pre-configured window layouts
-//
+
 
 import SwiftUI
 import Foundation
@@ -301,7 +295,23 @@ struct TemplateView: View {
             }
         }
     }
-    
+
+    // Add this function inside TemplateView struct
+    private func iconForWindowType(_ type: String) -> String {
+        switch type {
+        case "Charts":
+            return "chart.line.uptrend.xyaxis"
+        case "Spatial Editor":
+            return "cube"
+        case "DataFrame Viewer":
+            return "tablecells"
+        case "Model Metric Viewer":
+            return "gauge"
+        default:
+            return "square.stack.3d"
+        }
+    }
+
     private func windowPreviewView(_ window: TemplateWindow) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -547,6 +557,7 @@ struct TemplateView: View {
         dismiss()
     }
     
+    // In TemplateView, update the importWindow method:
     private func importWindow(_ window: TemplateWindow) {
         // Map window type string to WindowType enum
         let windowType: WindowType
@@ -557,8 +568,8 @@ struct TemplateView: View {
             windowType = .spatial
         case "DataFrame Viewer":
             windowType = .column
-        //case "Model Metric Viewer":
-        //    windowType = .volume
+        case "Model Metric Viewer":
+            windowType = .volume  // Now this will work
         default:
             windowType = .spatial
         }
@@ -597,6 +608,31 @@ struct TemplateView: View {
             state.pointCloudData = PointCloudDemo.generateSpherePointCloudData(radius: 10.0, points: 500)
         }
         
+        // For volume/metric windows
+        if windowType == .volume {
+            // Add specific data for volume windows
+            state.content = """
+            # Model Performance Metrics
+            # Generated from template
+            
+            import numpy as np
+            import matplotlib.pyplot as plt
+            
+            # Sample metrics data
+            metrics = {
+                'accuracy': 0.94,
+                'latency_ms': 125,
+                'throughput_rps': 250,
+                'memory_mb': 512,
+                'cpu_percent': 35
+            }
+            
+            print("Model Metrics:")
+            for key, value in metrics.items():
+                print(f"{key}: {value}")
+            """
+        }
+        
         // Create the window with full configuration
         let newWindow = windowManager.createWindow(windowType, id: window.windowId, position: window.position)
         
@@ -606,21 +642,6 @@ struct TemplateView: View {
         // Add a small delay before opening to ensure the window is fully registered
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             openWindow(value: window.windowId)
-        }
-    }
-    
-    private func iconForWindowType(_ type: String) -> String {
-        switch type {
-        case "Charts":
-            return "chart.line.uptrend.xyaxis"
-        case "Spatial Editor":
-            return "cube"
-        case "DataFrame Viewer":
-            return "tablecells"
-        case "Model Metric Viewer":
-            return "gauge"
-        default:
-            return "square.stack.3d"
         }
     }
 }
