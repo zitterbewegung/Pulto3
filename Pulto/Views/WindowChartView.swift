@@ -14,6 +14,11 @@ struct WindowChartView: View {
     @StateObject private var viewModel = ChartViewModel()
     @State private var draggingOffsets: [UUID: CGSize] = [:]
     @State private var draggingOffsetControl: CGSize = .zero
+    let windowID: Int?
+
+    init(windowID: Int? = nil) {
+        self.windowID = windowID
+    }
 
     var body: some View {
         ZStack {

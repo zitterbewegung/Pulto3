@@ -99,10 +99,12 @@ enum HomeSection: String, CaseIterable {
 // MARK: - Main View
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
+    @StateObject private var windowManager = WindowTypeManager.shared
     @State private var showCreateProject = false
     @State private var showSettings = false
     @State private var showLogin = false
     @State private var showTemplates = false
+    @State private var showImportDialog = false
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
 
@@ -143,8 +145,10 @@ struct PultoHomeView: View {
                 )
             }
             .sheet(isPresented: $showTemplates) {
-                //TemplateView()
-
+                NotebookImportDialog(
+                    isPresented: $showImportDialog,
+                    windowManager: windowManager
+                ).frame(width:1280, height:720)
             }
         }
     }
@@ -643,9 +647,10 @@ struct LoginView: View {
 
                 Button("Sign In") {
                     Task {
+                        AppleSignInView()
                         // Simulate login
                         isLoggedIn = true
-                        dismiss()
+                        //dismiss()
                     }
                 }
                 .buttonStyle(.borderedProminent)
