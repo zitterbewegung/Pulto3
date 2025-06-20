@@ -367,5 +367,73 @@ extension WindowTypeManager {
         """
 
         return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
+        // Add this function to WindowTypeManager class
+        private func parseModel3DDataFromContent(_ content: String) throws -> Model3DData? {
+            let patterns = [
+                #"vertices\s*=\s*\[([^\]]+)\]"#,           // vertices = [...]
+                #"faces\s*=\s*\[([^\]]+)\]"#,              // faces = [...]
+                #"model_data\s*=\s*\{([^}]+)\}"#,          // model_data = {...}
+                #"mesh\s*=\s*\{([^}]+)\}"#                 // mesh = {...}
+            ]
+
+            for pattern in patterns {
+                if let match = content.range(of: pattern, options: .regularExpression) {
+                    return try parseModel3DFromMatch(String(content[match]), fullContent: content)
+                }
+            }
+
+            // Generate a default model if none found
+            return generateDefaultModel(from: content)
+        }
+
+        private func parseModel3DFromMatch(_ match: String, fullContent: String) throws -> Model3DData? {
+            // Extract title from comments
+            let titlePattern = #"# (.+)"#
+            var title = "Imported 3D Model"
+
+            if let titleMatch = fullContent.range(of: titlePattern, options: .regularExpression) {
+                let titleLine = String(fullContent[titleMatch])
+                if let actualTitle = titleLine.components(separatedBy: "# ").last?.trimmingCharacters(in: .whitespaces) {
+                    title = actualTitle
+                }
+            }
+
+            // Determine model type from content
+            let modelType = determineModelType(from: fullContent)
+
+            // For now, generate a sample model based on the detected type
+            switch modelType {
+            case "sphere":
+                return Model3DData.generateSphere(radius: 2.0, segments: 12)
+            case "cube":
+                return Model3DData.generateCube(size: 3.0)
+            default:
+                return Model3DData.generateCube(size: 2.0)
+            }
+        }
+
+        private func generateDefaultModel(from content: String) -> Model3DData? {
+            let modelType = determineModelType(from: content)
+
+            switch modelType {
+            case "sphere":
+                return Model3DData.generateSphere(radius: 1.5, segments: 16)
+            case "cube":
+                return Model3DData.generateCube(size: 2.0)
+            default:
+                return Model3DData.generateCube(size: 1.0)
+            }
+        }
+
+        private func determineModelType(from content: String) -> String {
+            let lowercased = content.lowercased()
+            if lowercased.contains("sphere") || lowercased.contains("ball") || lowercased.contains("round") {
+                return "sphere"
+            } else if lowercased.contains("cube") || lowercased.contains("box") || lowercased.contains("square") {
+                return "cube"
+            }
+            return "mesh"
+        }
+      
     }
 }

@@ -7,41 +7,14 @@
 import SwiftUI
 import Foundation
 import Charts
-/*
-enum WindowType: String, CaseIterable, Codable, Hashable {
-    case charts = "Charts"
-    case spatial = "Spatial Editor"
-    case column = "DataFrame Viewer"
-    //case volume = "volume"  // Add this line
-    //case pointcloud = "Point Cloud Viewer"
-    var displayName: String {
-        return self.rawValue
-    }
 
-    // Jupyter cell type mapping
-    var jupyterCellType: String {
-        switch self {
-        case .charts:
-            return "code"
-        case .spatial:
-            return "spatial"
-        case .column:
-            return "code"
-        //case .volume:
-            
-        //case .pointcloud:
-        //    return "code"
-        }
-    }
-}
- */
 enum WindowType: String, CaseIterable, Codable, Hashable {
     case charts = "Charts"
     case spatial = "Spatial Editor"
     case column = "DataFrame Viewer"
     case volume = "Model Metric Viewer"
-    // If you have pointcloud, add it here:
-    case pointcloud = "Point Cloud Viewer"  // Add this if needed
+    case pointcloud = "Point Cloud Viewer"
+    case model3d = "3D Model Viewer"  // Add this new case
 
     var displayName: String {
         return self.rawValue
@@ -58,7 +31,9 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
         case .volume:
             return "code"
         case .pointcloud:
-             return "code"
+            return "code"
+        case .model3d:  // Add this case
+            return "code"
         }
     }
 }
@@ -517,6 +492,318 @@ struct ChartData: Codable, Hashable {
     }
 }
 
+// Add this structure after ChartData
+struct Model3DData: Codable, Hashable {
+    var vertices: [Vertex3D]
+    var faces: [Face3D]
+    var normals: [Normal3D]?
+    var textures: [TextureCoord]?
+    var materials: [Material3D]
+    var title: String
+    var modelType: String
+    var scale: Double
+    var position: Position3D
+    var rotation: Rotation3D
+
+    struct Vertex3D: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+    }
+
+    struct Face3D: Codable, Hashable {
+        var vertices: [Int]  // indices into vertex array
+        var materialIndex: Int?
+    }
+
+    struct Normal3D: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+    }
+
+    struct TextureCoord: Codable, Hashable {
+        var u: Double
+        var v: Double
+    }
+
+    struct Material3D: Codable, Hashable {
+        var name: String
+        var color: String
+        var metallic: Double?
+        var roughness: Double?
+        var transparency: Double?
+    }
+
+    struct Position3D: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+
+        init(x: Double = 0, y: Double = 0, z: Double = 0) {
+            self.x = x
+            self.y = y
+            self.z = z
+        }
+    }
+
+    struct Rotation3D: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+
+        init(x: Double = 0, y: Double = 0, z: Double = 0) {
+            self.x = x
+            self.y = y
+            self.z = z
+        }
+    }
+
+    init(title: String = "3D Model",
+         modelType: String = "mesh",
+         scale: Double = 1.0,
+         position: Position3D = Position3D(),
+         rotation: Rotation3D = Rotation3D()) {
+        self.vertices = []
+        self.faces = []
+        self.normals = []
+        self.textures = []
+        self.materials = []
+        self.title = title
+        self.modelType = modelType
+        self.scale = scale
+        self.position = position
+        self.rotation = rotation
+    }
+
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !vertices.isEmpty else {
+            return "# Empty 3D model\nprint('No 3D model data available')"
+        }
+
+        let verticesString = vertices.map { "[\($0.x), \($0.y), \($0.z)]" }.joined(separator: ",\n    ")
+        let facesString = faces.map { "[\($0.vertices.map { String($0) }.joined(separator: ", "))]" }.joined(separator: ",\n    ")
+
+        return """
+        # \(title)
+        # Generated from VisionOS 3D Model Viewer
+        
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # 3D Model data (\(vertices.count) vertices, \(faces.count) faces)
+        vertices = np.array([
+            \(verticesString)
+        ])
+        
+        faces = [
+            \(facesString)
+        ]
+        
+        # Apply transformations
+        scale = \(scale)
+        position = np.array([\(position.x), \(position.y), \(position.z)])
+        
+        # Scale and translate vertices
+        scaled_vertices = vertices * scale + position
+        
+        # Matplotlib 3D visualization
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Create mesh
+        mesh_faces = []
+        for face in faces:
+            if len(face) >= 3:  # Valid face
+                face_vertices = scaled_vertices[face]
+                mesh_faces.append(face_vertices)
+        
+        if mesh_faces:
+            mesh_collection = Poly3DCollection(mesh_faces, alpha=0.7, facecolor='lightblue', edgecolor='black')
+            ax.add_collection3d(mesh_collection)
+        
+        # Plot vertices as points
+        ax.scatter(scaled_vertices[:, 0], scaled_vertices[:, 1], scaled_vertices[:, 2], 
+                  c='red', s=20, alpha=0.8)
+        
+        # Set labels and title
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('\(title)')
+        
+        # Set equal aspect ratio
+        max_range = np.array([scaled_vertices[:,0].max()-scaled_vertices[:,0].min(),
+                             scaled_vertices[:,1].max()-scaled_vertices[:,1].min(),
+                             scaled_vertices[:,2].max()-scaled_vertices[:,2].min()]).max() / 2.0
+        
+        mid_x = (scaled_vertices[:,0].max()+scaled_vertices[:,0].min()) * 0.5
+        mid_y = (scaled_vertices[:,1].max()+scaled_vertices[:,1].min()) * 0.5
+        mid_z = (scaled_vertices[:,2].max()+scaled_vertices[:,2].min()) * 0.5
+        
+        ax.set_xlim(mid_x - max_range, mid_x + max_range)
+        ax.set_ylim(mid_y - max_range, mid_y + max_range)
+        ax.set_zlim(mid_z - max_range, mid_z + max_range)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Plotly interactive 3D visualization
+        fig_plotly = go.Figure()
+        
+        # Add mesh
+        if len(faces) > 0 and len(vertices) > 0:
+            # Convert faces to plotly format
+            i_coords = []
+            j_coords = []
+            k_coords = []
+            
+            for face in faces:
+                if len(face) >= 3:
+                    # Convert to triangles if needed
+                    for i in range(1, len(face) - 1):
+                        i_coords.append(face[0])
+                        j_coords.append(face[i])
+                        k_coords.append(face[i + 1])
+            
+            fig_plotly.add_trace(go.Mesh3d(
+                x=scaled_vertices[:, 0],
+                y=scaled_vertices[:, 1],
+                z=scaled_vertices[:, 2],
+                i=i_coords,
+                j=j_coords,
+                k=k_coords,
+                opacity=0.8,
+                color='lightblue',
+                name='\(title)'
+            ))
+        
+        # Add vertices as scatter
+        fig_plotly.add_trace(go.Scatter3d(
+            x=scaled_vertices[:, 0],
+            y=scaled_vertices[:, 1],
+            z=scaled_vertices[:, 2],
+            mode='markers',
+            marker=dict(size=3, color='red'),
+            name='Vertices'
+        ))
+        
+        fig_plotly.update_layout(
+            title='\(title)',
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Z',
+                aspectmode='cube'
+            ),
+            width=800,
+            height=600
+        )
+        
+        fig_plotly.show()
+        
+        # Print model statistics
+        print(f"3D Model Statistics:")
+        print(f"- Title: '\(title)'")
+        print(f"- Model Type: '\(modelType)'")
+        print(f"- Vertices: {len(vertices)}")
+        print(f"- Faces: {len(faces)}")
+        print(f"- Scale: {scale}")
+        print(f"- Position: [{position[0]:.2f}, {position[1]:.2f}, {position[2]:.2f}]")
+        print(f"- Bounding Box:")
+        print(f"  X: [{np.min(scaled_vertices[:, 0]):.2f}, {np.max(scaled_vertices[:, 0]):.2f}]")
+        print(f"  Y: [{np.min(scaled_vertices[:, 1]):.2f}, {np.max(scaled_vertices[:, 1]):.2f}]")
+        print(f"  Z: [{np.min(scaled_vertices[:, 2]):.2f}, {np.max(scaled_vertices[:, 2]):.2f}]")
+        """
+    }
+
+    // Helper method to generate basic shapes
+    static func generateCube(size: Double = 2.0) -> Model3DData {
+        let halfSize = size / 2.0
+
+        let vertices = [
+            Vertex3D(x: -halfSize, y: -halfSize, z: -halfSize), // 0
+            Vertex3D(x:  halfSize, y: -halfSize, z: -halfSize), // 1
+            Vertex3D(x:  halfSize, y:  halfSize, z: -halfSize), // 2
+            Vertex3D(x: -halfSize, y:  halfSize, z: -halfSize), // 3
+            Vertex3D(x: -halfSize, y: -halfSize, z:  halfSize), // 4
+            Vertex3D(x:  halfSize, y: -halfSize, z:  halfSize), // 5
+            Vertex3D(x:  halfSize, y:  halfSize, z:  halfSize), // 6
+            Vertex3D(x: -halfSize, y:  halfSize, z:  halfSize)  // 7
+        ]
+
+        let faces = [
+            Face3D(vertices: [0, 1, 2, 3], materialIndex: 0), // bottom
+            Face3D(vertices: [4, 7, 6, 5], materialIndex: 0), // top
+            Face3D(vertices: [0, 4, 5, 1], materialIndex: 0), // front
+            Face3D(vertices: [2, 6, 7, 3], materialIndex: 0), // back
+            Face3D(vertices: [0, 3, 7, 4], materialIndex: 0), // left
+            Face3D(vertices: [1, 5, 6, 2], materialIndex: 0)  // right
+        ]
+
+        let materials = [
+            Material3D(name: "default", color: "blue", metallic: 0.1, roughness: 0.5, transparency: 0.0)
+        ]
+
+        var model = Model3DData(title: "Cube (\(size)x\(size)x\(size))", modelType: "cube")
+        model.vertices = vertices
+        model.faces = faces
+        model.materials = materials
+
+        return model
+    }
+
+    static func generateSphere(radius: Double = 1.0, segments: Int = 16) -> Model3DData {
+        var vertices: [Vertex3D] = []
+        var faces: [Face3D] = []
+
+        // Generate vertices
+        for i in 0...segments {
+            let phi = Double(i) * .pi / Double(segments)
+            for j in 0..<(segments * 2) {
+                let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
+
+                let x = radius * sin(phi) * cos(theta)
+                let y = radius * cos(phi)
+                let z = radius * sin(phi) * sin(theta)
+
+                vertices.append(Vertex3D(x: x, y: y, z: z))
+            }
+        }
+
+        // Generate faces
+        for i in 0..<segments {
+            for j in 0..<(segments * 2) {
+                let current = i * (segments * 2) + j
+                let next = i * (segments * 2) + (j + 1) % (segments * 2)
+                let currentNext = (i + 1) * (segments * 2) + j
+                let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
+
+                if i < segments {
+                    faces.append(Face3D(vertices: [current, next, nextNext, currentNext], materialIndex: 0))
+                }
+            }
+        }
+
+        let materials = [
+            Material3D(name: "default", color: "green", metallic: 0.2, roughness: 0.3, transparency: 0.0)
+        ]
+
+        var model = Model3DData(title: "Sphere (r=\(radius))", modelType: "sphere")
+        model.vertices = vertices
+        model.faces = faces
+        model.materials = materials
+
+        return model
+    }
+}
+
+
 struct WindowState: Codable, Hashable {
     var isMinimized: Bool = false
     var isMaximized: Bool = false
@@ -530,6 +817,7 @@ struct WindowState: Codable, Hashable {
     var pointCloudData: PointCloudData? = nil
     var volumeData: VolumeData? = nil        // Add this
     var chartData: ChartData? = nil          // Add this
+    var model3DData: Model3DData? = nil  // Add this
 
     init(isMinimized: Bool = false, isMaximized: Bool = false,
          opacity: Double = 1.0, content: String = "",
@@ -1030,6 +1318,97 @@ class WindowTypeManager: ObservableObject {
         return currentMaxID + 1
     }
 
+    // Add these functions to WindowTypeManager class
+
+    private func parseModel3DDataFromContent(_ content: String) throws -> Model3DData? {
+        let patterns = [
+            #"vertices\s*=\s*\[([^\]]+)\]"#,           // vertices = [...]
+            #"faces\s*=\s*\[([^\]]+)\]"#,              // faces = [...]
+            #"model_data\s*=\s*\{([^}]+)\}"#,          // model_data = {...}
+            #"mesh\s*=\s*\{([^}]+)\}"#                 // mesh = {...}
+        ]
+
+        for pattern in patterns {
+            if let match = content.range(of: pattern, options: .regularExpression) {
+                return try parseModel3DFromMatch(String(content[match]), fullContent: content)
+            }
+        }
+
+        // Generate a default model if none found
+        return generateDefaultModel(from: content)
+    }
+
+    private func parseModel3DFromMatch(_ match: String, fullContent: String) throws -> Model3DData? {
+        // Extract title from comments
+        let titlePattern = #"# (.+)"#
+        var title = "Imported 3D Model"
+
+        if let titleMatch = fullContent.range(of: titlePattern, options: .regularExpression) {
+            let titleLine = String(fullContent[titleMatch])
+            if let actualTitle = titleLine.components(separatedBy: "# ").last?.trimmingCharacters(in: .whitespaces) {
+                title = actualTitle
+            }
+        }
+
+        // Determine model type from content
+        let modelType = determineModelType(from: fullContent)
+
+        // For now, generate a sample model based on the detected type
+        // A full OBJ/glTF parser would be needed for true parsing
+        switch modelType {
+        case "sphere":
+            var model = Model3DData.generateSphere(radius: 2.0, segments: 12)
+            model.title = title
+            return model
+        case "cube":
+            var model = Model3DData.generateCube(size: 3.0)
+            model.title = title
+            return model
+        default:
+            var model = Model3DData.generateCube(size: 2.0)
+            model.title = title
+            return model
+        }
+    }
+
+    private func generateDefaultModel(from content: String) -> Model3DData? {
+        let modelType = determineModelType(from: content)
+
+        switch modelType {
+        case "sphere":
+            return Model3DData.generateSphere(radius: 1.5, segments: 16)
+        case "cube":
+            return Model3DData.generateCube(size: 2.0)
+        default:
+            return Model3DData.generateCube(size: 1.0)
+        }
+    }
+
+    private func determineModelType(from content: String) -> String {
+        let lowercased = content.lowercased()
+        if lowercased.contains("sphere") || lowercased.contains("ball") || lowercased.contains("round") {
+            return "sphere"
+        } else if lowercased.contains("cube") || lowercased.contains("box") || lowercased.contains("square") {
+            return "cube"
+        }
+        return "mesh"
+    }
+
+    // Add these methods to WindowTypeManager class
+    func updateWindowModel3DData(_ id: Int, model3DData: Model3DData) {
+        windows[id]?.state.model3DData = model3DData
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to custom if not already set
+        if let window = windows[id], window.windowType == .model3d && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .custom
+        }
+    }
+
+    func getWindowModel3DData(for id: Int) -> Model3DData? {
+        return windows[id]?.state.model3DData
+    }
+
     // Add this method to WindowTypeManager
     func importAndRestoreEnvironment(
         fileURL: URL,
@@ -1259,9 +1638,14 @@ class WindowTypeManager: ObservableObject {
                 state.volumeData = volumeData
             }
 
-        case .charts:  // Add this case
+        case .charts:
             if let chartData = try parseChartDataFromContent(content) {
                 state.chartData = chartData
+            }
+
+        case .model3d:  // Add this case
+            if let model3DData = try parseModel3DDataFromContent(content) {
+                state.model3DData = model3DData
             }
 
         case .spatial:
@@ -1843,11 +2227,37 @@ class WindowTypeManager: ObservableObject {
             return generateSpatialCellContent(for: window)
         case .column:
             return generateDataFrameCellContent(for: window)
-        case .volume:  // Add this case
+        case .volume:
             return generateVolumeCellContent(for: window)
-        case .pointcloud:  // Add this case
+        case .pointcloud:
             return generateSpatialCellContent(for: window)
+        case .model3d:  // Add this case
+            return generateModel3DCellContent(for: window)
         }
+    }
+    // Add this method to WindowTypeManager
+    private func generateModel3DCellContent(for window: NewWindowID) -> String {
+        if let model3DData = window.state.model3DData {
+            return model3DData.toPythonCode()
+        }
+
+        let baseContent = """
+        # 3D Model Window #\(window.id)
+        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
+        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from mpl_toolkits.mplot3d import Axes3D
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        import plotly.graph_objects as go
+        
+        # 3D Model configuration from VisionOS window
+        # Window size: \(window.position.width) × \(window.position.height)
+        
+        """
+
+        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
     }
 
     private func generateNotebookCellContent(for window: NewWindowID) -> String {
@@ -2646,7 +3056,10 @@ struct OpenWindowView: View {
                 )
                 windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
                 windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
-
+            case .model3d:  // Add this case
+                let sampleCube = Model3DData.generateCube(size: 3.0)
+                windowManager.updateWindowModel3DData(nextWindowID, model3DData: sampleCube)
+                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
             case .volume:  // Add this case
                 windowManager.updateWindowContent(nextWindowID, content: """
                 # Model Performance Metrics
@@ -2719,8 +3132,10 @@ struct OpenWindowView: View {
             return "tablecells"
         case .volume:
             return "gauge"
-        case .pointcloud:  // Make sure this case exists
+        case .pointcloud:
             return "dot.scope"
+        case .model3d:  // Add this case
+            return "cube.transparent"
         }
     }
 
@@ -2784,6 +3199,56 @@ struct NewWindow: View {
                 // Display the appropriate view based on window type with restored data
                 Group {
                     switch window.windowType {
+
+                    case .model3d:  // Add this case
+                        VStack {
+                            if let model3D = window.state.model3DData {
+                                // You could create a Model3DView here, or for now show info
+                                VStack(spacing: 20) {
+                                    Image(systemName: "cube.transparent")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.orange)
+
+                                    Text("3D Model: \(model3D.title)")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Text("\(model3D.vertices.count) vertices, \(model3D.faces.count) faces")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+
+                                    if !window.state.content.isEmpty {
+                                        ScrollView {
+                                            Text(window.state.content)
+                                                .font(.system(.caption, design: .monospaced))
+                                                .padding(8)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .background(Color(.tertiarySystemBackground))
+                                                .cornerRadius(8)
+                                        }
+                                        .frame(maxHeight: 150)
+                                    }
+                                }
+                                .padding(40)
+                            } else {
+                                VStack(spacing: 20) {
+                                    Image(systemName: "cube.transparent")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.orange)
+
+                                    Text("3D Model Viewer")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Text("3D mesh and model visualization")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(40)
+                            }
+                        }
+
                     case .charts:
                         VStack {
                             if !window.state.content.isEmpty {

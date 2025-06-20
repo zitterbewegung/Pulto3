@@ -66,7 +66,6 @@
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
 		DC661B302E049681005454FE /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
-		DC661B322E049EE0005454FE /* temp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = temp.swift; sourceTree = "<group>"; };
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
 		DC85D57F2E0399A900559301 /* NotebookFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFile.swift; sourceTree = "<group>"; };
@@ -151,7 +150,6 @@
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
-				DC661B322E049EE0005454FE /* temp.swift */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DF58AE1D2BCD826D00C8F737 /* Pulto */,
