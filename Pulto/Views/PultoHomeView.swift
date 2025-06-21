@@ -131,12 +131,12 @@ struct PultoHomeView: View {
                 await viewModel.loadInitialData()
             }
             .sheet(isPresented: $showCreateProject) {
-                NotebookChartsView().frame(width:1280, height:720)
+                NotebookChartsView().frame(width:1280, height:1280)
                 //CSVChartRecommenderView()
                 //    .frame(width: 600, height: 750)
             }
             .sheet(isPresented: $showSettings) {
-                SettingsView()
+                //SettingsView()
             }
             .sheet(isPresented: $showLogin) {
                 LoginView(
@@ -606,14 +606,14 @@ struct VisualizationWindowView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-*/
+
 struct SettingsView: View {
     var body: some View {
         Text("Settings View")
             .frame(width: 600, height: 400)
     }
 }
-
+ */
 struct LoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var userName: String
