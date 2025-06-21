@@ -285,7 +285,7 @@ struct SpatialMetadataHomeView: View {
             ModernNotebookDetailView(notebookName: item.name)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            //SettingsView()
         }
     }
 }

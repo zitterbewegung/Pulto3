@@ -2169,9 +2169,9 @@ struct NewWindow: View {
     OpenWindowView()
 }
 
-#Preview("Point Cloud Preview") {
+/*#Preview("Point Cloud Preview") {
   PointCloudPreview()
-}
+}*/
 
 #Preview("Spatial Editor") {
     SpatialEditorView()

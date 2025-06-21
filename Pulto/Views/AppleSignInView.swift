@@ -116,3 +116,4 @@ struct ContentView_Previews: PreviewProvider {
         AppleSignInView()
     }
 }
+
