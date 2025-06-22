@@ -131,7 +131,10 @@ struct PultoHomeView: View {
                 await viewModel.loadInitialData()
             }
             .sheet(isPresented: $showCreateProject) {
-                NotebookChartsView().frame(width:1280, height:1280)
+                NotebookChartsView()//.frame(width:1280, height:800)
+                //.sheet(isPresented: $showingNotebook) {
+                 //    EnhancedNotebookChartsView()
+                 //}
                 //CSVChartRecommenderView()
                 //    .frame(width: 600, height: 750)
             }
@@ -145,6 +148,7 @@ struct PultoHomeView: View {
                 )
             }
             .sheet(isPresented: $showTemplates) {
+                
                 NotebookImportDialog(
                     isPresented: $showImportDialog,
                     windowManager: windowManager
