@@ -20,6 +20,8 @@
 		DC28CF6E2E026E2300F3705E /* TemplateNotebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */; };
 		DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */; };
 		DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */; };
+		DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */; };
+		DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */; };
 		DC5CB4222E00DF7700B59F38 /* DataTableContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
@@ -59,6 +61,8 @@
 		DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateNotebook.swift; sourceTree = "<group>"; };
 		DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookImportDialog.swift; sourceTree = "<group>"; };
 		DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartDataPoint.swift; sourceTree = "<group>"; };
+		DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveNotebookDialog.swift; sourceTree = "<group>"; };
+		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
 		DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataTableContentView.swift; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -209,7 +213,9 @@
 			isa = PBXGroup;
 			children = (
 				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
+				DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */,
 				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
+				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
 				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
 				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
@@ -322,6 +328,7 @@
 				DC09C6452DE3E22000774D7D /* DataImportView.swift in Sources */,
 				DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */,
 				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
+				DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */,
 				DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */,
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
@@ -336,6 +343,7 @@
 				DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */,
 				DC28CF6E2E026E2300F3705E /* TemplateNotebook.swift in Sources */,
 				DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */,
+				DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */,
 				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DCF74EAB2E05DE5C0078C4B8 /* WindowTypeManager.swift in Sources */,

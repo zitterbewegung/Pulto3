@@ -680,7 +680,7 @@ extension Data {
         }
     }
 }
-
+/*
 // Usage example showing how to present it modally
 struct ContentView: View {
     @State private var showingNotebook = false
@@ -694,7 +694,7 @@ struct ContentView: View {
         }
     }
 }
-
+*/
 #Preview {
     NotebookChartsView()
 }
