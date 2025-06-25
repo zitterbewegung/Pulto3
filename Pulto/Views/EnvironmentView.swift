@@ -130,7 +130,7 @@ struct OpenWindowView: View {
                         }
                     }
                     .padding(DesignSystem.padding.xxl)
-                    .frame(maxWidth: 700)
+                    .frame(minWidth: 700)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -156,7 +156,7 @@ struct OpenWindowView: View {
         }
         .sheet(isPresented: $showTemplateGallery) {
             TemplateView()
-                .frame(minWidth: 1000, minHeight: 700)
+                .frame(minWidth: 1200, minHeight: 700)
         }
     }
 
