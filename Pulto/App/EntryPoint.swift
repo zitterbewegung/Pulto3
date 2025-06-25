@@ -31,7 +31,7 @@ struct EntryPoint: App {
             LauncherView()
         }
         .windowStyle(.plain)
-        .defaultSize(width: 500, height: 300)
+        //.defaultSize(width: 500, height: 300)
         /*
         // --- 3 × 3 Grid ----------------------------------------------------
         configureScene(WindowGroup(id: "grid-0-0") { GridTileView(row: 0, col: 0) }, row: 0, col: 0)
@@ -61,8 +61,8 @@ struct EntryPoint: App {
             WindowGroup(id: "open-project-window") {
                 OpenWindowView()
             }
-            .windowStyle(.volumetric)
-            .defaultSize(width: 1200, height: 400, depth: 100, in: .millimeters)
+            //.windowStyle(.volumetric)
+            .defaultSize(width: 1280, height: 800,)
 
         }
 
