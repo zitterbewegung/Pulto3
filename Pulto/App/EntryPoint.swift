@@ -59,7 +59,7 @@ struct EntryPoint: App {
             //.defaultSize(width: 1280, height: 720)
 
             WindowGroup(id: "open-project-window") {
-                OpenWindowView()
+                EnvironmentView()
             }
             //.windowStyle(.volumetric)
             .defaultSize(width: 1280, height: 800,)

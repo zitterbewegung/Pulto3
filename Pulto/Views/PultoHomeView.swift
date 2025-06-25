@@ -339,8 +339,8 @@ struct PrimaryActionsGrid: View {
                 }
 
                 ActionCard(
-                    title: "Templates",
-                    subtitle: "Quick start guides",
+                    title: "Import",
+                    subtitle: "Import juypter notebooks.",
                     icon: "square.grid.2x2",
                     color: .green
                 ) {

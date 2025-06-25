@@ -1630,7 +1630,7 @@ struct NewWindow: View {
 
 // MARK: - Preview Provider
 #Preview("Main Interface") {
-    OpenWindowView()
+    EnvironmentView()
 }
 
 /*#Preview("Point Cloud Preview") {
