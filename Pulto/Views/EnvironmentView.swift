@@ -130,7 +130,7 @@ struct EnvironmentView: View {
                         }
                     }
                     .padding(DesignSystem.padding.xxl)
-                    .frame(minWidth: 700)
+                    .frame(minWidth: 900)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -156,7 +156,7 @@ struct EnvironmentView: View {
         }
         .sheet(isPresented: $showTemplateGallery) {
             TemplateView()
-                .frame(minWidth: 1200, minHeight: 700)
+                .frame(minWidth: 1200, minHeight: 1200)
         }
     }
 
