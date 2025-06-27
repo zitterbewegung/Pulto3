@@ -452,7 +452,7 @@ struct EnhancedNotebookChartsView: View {
     private func sendNotebookData(_ data: Data, filename: String) async {
         // Send to server for processing
         guard let encodedName = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              let url = URL(string: "http://selle:8000/convert/\(encodedName)") else {
+              let url = URL(string: "http://localhost:8000/convert/\(encodedName)") else {
             await MainActor.run {
                 self.result = "Invalid URL"
                 self.isLoading = false

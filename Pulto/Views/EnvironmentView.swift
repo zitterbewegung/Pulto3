@@ -183,10 +183,10 @@ struct EnvironmentView: View {
                     count: windowManager.getAllWindows().count
                 )
                 
-                //CircularButton(
-                //    icon: showExportSidebar ? "sidebar.trailing" : "gearshape",
-                //    action: { showExportSidebar.toggle() }
-                //)
+                CircularButton(
+                    icon: showExportSidebar ? "sidebar.trailing" : "gearshape",
+                    action: { showExportSidebar.toggle() }
+                )
             }
         }
         .padding(.bottom, DesignSystem.padding.md)

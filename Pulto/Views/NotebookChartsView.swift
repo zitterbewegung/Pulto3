@@ -365,7 +365,7 @@ struct NotebookChartsView: View {
     }
 
     func convertNotebook(filePath: String, completion: @escaping (Result<NotebookConversionResponse, Error>) -> Void) {
-        guard var components = URLComponents(string: "http://selle:8000/convert") else {
+        guard var components = URLComponents(string: "http://localhost:8000/convert") else {
             completion(.failure(NSError(domain: "InvalidURL", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid base URL"])))
             return
         }
@@ -520,7 +520,7 @@ struct NotebookChartsView: View {
         }
 
         guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              let url = URL(string: "http://selle:8000/convert/\(encodedName)") else {
+              let url = URL(string: "http://localhost:8000/convert/\(encodedName)") else {
             debugLog("Invalid URL")
             await MainActor.run {
                 result = "Invalid URL"
@@ -621,7 +621,7 @@ struct NotebookChartsView: View {
     }
 
     func updateSpatial(forNotebook notebookName: String) {
-        guard let url = URL(string: "http://selle:8000/notebooks/\(notebookName)/cells/0/spatial") else {
+        guard let url = URL(string: "http://localhost:8000/notebooks/\(notebookName)/cells/0/spatial") else {
             debugLog("Invalid URL")
             return
         }

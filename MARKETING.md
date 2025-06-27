@@ -1,4 +1,5 @@
 # Spatial Data Visualization Market: Strategic B2B Roadmap
+https://sphere.tech/collaborate/
 
 The spatial data visualization market presents a compelling $119 billion opportunity across scientific research, medical imaging, engineering, and geospatial sectors, with Swift/RealityKit solutions uniquely positioned to capture underserved macOS users and emerging AR/VR applications. Current market leaders focus primarily on Windows platforms, creating significant gaps for native Apple ecosystem solutions that can deliver superior performance, simplified deployment, and innovative immersive visualization capabilities.
 

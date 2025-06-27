@@ -64,6 +64,24 @@
 		DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartDataPoint.swift; sourceTree = "<group>"; };
 		DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveNotebookDialog.swift; sourceTree = "<group>"; };
 		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
+		DC5C9A772E0F6080007AA995 /* init-db.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = "init-db.sql"; sourceTree = "<group>"; };
+		DC5C9A7A2E0F6080007AA995 /* .env */ = {isa = PBXFileReference; lastKnownFileType = text; path = .env; sourceTree = "<group>"; };
+		DC5C9A7B2E0F6080007AA995 /* .terraform.lock.hcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = .terraform.lock.hcl; sourceTree = "<group>"; };
+		DC5C9A7C2E0F6080007AA995 /* backend.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = backend.py; sourceTree = "<group>"; };
+		DC5C9A7D2E0F6080007AA995 /* Backend.code-workspace */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Backend.code-workspace"; sourceTree = "<group>"; };
+		DC5C9A7E2E0F6080007AA995 /* docker-compose.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "docker-compose.yml"; sourceTree = "<group>"; };
+		DC5C9A7F2E0F6080007AA995 /* docker-compose.dev.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "docker-compose.dev.yml"; sourceTree = "<group>"; };
+		DC5C9A802E0F6080007AA995 /* Dockerfile */ = {isa = PBXFileReference; lastKnownFileType = text; path = Dockerfile; sourceTree = "<group>"; };
+		DC5C9A812E0F6080007AA995 /* Documentation.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Documentation.md; sourceTree = "<group>"; };
+		DC5C9A822E0F6080007AA995 /* main.tf */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.tf; sourceTree = "<group>"; };
+		DC5C9A832E0F6080007AA995 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		DC5C9A842E0F6080007AA995 /* push.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = push.sh; sourceTree = "<group>"; };
+		DC5C9A852E0F6080007AA995 /* readme_dev.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme_dev.md; sourceTree = "<group>"; };
+		DC5C9A862E0F6080007AA995 /* requirements.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = requirements.txt; sourceTree = "<group>"; };
+		DC5C9A872E0F6080007AA995 /* spatial_infrastructure.tf */ = {isa = PBXFileReference; lastKnownFileType = text; path = spatial_infrastructure.tf; sourceTree = "<group>"; };
+		DC5C9A882E0F6080007AA995 /* terraform.tfstate */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfstate; sourceTree = "<group>"; };
+		DC5C9A892E0F6080007AA995 /* terraform.tfvars */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfvars; sourceTree = "<group>"; };
+		DC5C9A8A2E0F6080007AA995 /* terraform.tfstate.backup */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfstate.backup; sourceTree = "<group>"; };
 		DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataTableContentView.swift; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -77,7 +95,7 @@
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
 		DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
-		DCA833932E0E215700D32258 /* MARKET.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKET.md; sourceTree = "<group>"; };
+		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricWindow.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
@@ -101,6 +119,13 @@
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
+		DCC51DB32E0ED46D000648DF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Makefile,
+			);
+			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -111,11 +136,18 @@
 				"WindowTypeManager+Import.swift",
 			);
 		};
+		DCC51DB42E0ED46D000648DF /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
+			membershipExceptions = (
+				Makefile,
+			);
+		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
-		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
+		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCC51DB32E0ED46D000648DF /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DCC51DB42E0ED46D000648DF /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
 		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -147,6 +179,64 @@
 			path = .;
 			sourceTree = "<group>";
 		};
+		DC5C9A752E0F6080007AA995 /* data */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
+		DC5C9A762E0F6080007AA995 /* notebooks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = notebooks;
+			sourceTree = "<group>";
+		};
+		DC5C9A782E0F6080007AA995 /* scripts */ = {
+			isa = PBXGroup;
+			children = (
+				DC5C9A772E0F6080007AA995 /* init-db.sql */,
+			);
+			path = scripts;
+			sourceTree = "<group>";
+		};
+		DC5C9A792E0F6080007AA995 /* temp */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = temp;
+			sourceTree = "<group>";
+		};
+		DC5C9A8B2E0F6080007AA995 /* Backend */ = {
+			isa = PBXGroup;
+			children = (
+				DC5C9A752E0F6080007AA995 /* data */,
+				DC5C9A762E0F6080007AA995 /* notebooks */,
+				DC5C9A782E0F6080007AA995 /* scripts */,
+				DC5C9A792E0F6080007AA995 /* temp */,
+				DC5C9A7A2E0F6080007AA995 /* .env */,
+				DC5C9A7B2E0F6080007AA995 /* .terraform.lock.hcl */,
+				DC5C9A7C2E0F6080007AA995 /* backend.py */,
+				DC5C9A7D2E0F6080007AA995 /* Backend.code-workspace */,
+				DC5C9A7E2E0F6080007AA995 /* docker-compose.yml */,
+				DC5C9A7F2E0F6080007AA995 /* docker-compose.dev.yml */,
+				DC5C9A802E0F6080007AA995 /* Dockerfile */,
+				DC5C9A812E0F6080007AA995 /* Documentation.md */,
+				DC5C9A822E0F6080007AA995 /* main.tf */,
+				DC5C9A832E0F6080007AA995 /* Makefile */,
+				DC5C9A842E0F6080007AA995 /* push.sh */,
+				DC5C9A852E0F6080007AA995 /* readme_dev.md */,
+				DC5C9A862E0F6080007AA995 /* requirements.txt */,
+				DC5C9A872E0F6080007AA995 /* spatial_infrastructure.tf */,
+				DC5C9A882E0F6080007AA995 /* terraform.tfstate */,
+				DC5C9A892E0F6080007AA995 /* terraform.tfvars */,
+				DC5C9A8A2E0F6080007AA995 /* terraform.tfstate.backup */,
+			);
+			name = Backend;
+			path = Pulto/Backend;
+			sourceTree = "<group>";
+		};
 		DC60FCCD2DFF928500996C50 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -159,7 +249,7 @@
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
-				DCA833932E0E215700D32258 /* MARKET.md */,
+				DC5C9A8B2E0F6080007AA995 /* Backend */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DF58AE1D2BCD826D00C8F737 /* Pulto */,
@@ -167,6 +257,7 @@
 				0860B14583968FDFE9E0702A /* Configuration */,
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
 				DC60FCCD2DFF928500996C50 /* Frameworks */,
+				DCA833952E0E21E200D32258 /* MARKETING.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -509,6 +600,17 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/rpds",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/zmq/.dylibs",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/_core/lib",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/random/lib",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/PIL/.dylibs",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/debugpy/_vendored/pydevd/pydevd_attach_to_process",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/pydantic_core",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/watchfiles",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.Pulto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -533,12 +635,24 @@
 				DEVELOPMENT_ASSET_PATHS = Pulto;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_SOURCE_FILE_NAMES[arch=*]" = Backend;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Pulto/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SpatialCard;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/rpds",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/zmq/.dylibs",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/_core/lib",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/random/lib",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/PIL/.dylibs",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/debugpy/_vendored/pydevd/pydevd_attach_to_process",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/pydantic_core",
+					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/watchfiles",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.Pulto;
