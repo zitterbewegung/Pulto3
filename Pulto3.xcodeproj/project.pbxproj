@@ -45,6 +45,16 @@
 		DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		DC3F8DD82E103E090042AAD3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DF58AE132BCD826D00C8F737 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DF58AE1A2BCD826D00C8F737;
+			remoteInfo = Pulto;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		380E1188A5BB9827EF4A0778 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
@@ -61,27 +71,11 @@
 		DC28CF6B2E026B4300F3705E /* template.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = template.ipynb; sourceTree = "<group>"; };
 		DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateNotebook.swift; sourceTree = "<group>"; };
 		DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookImportDialog.swift; sourceTree = "<group>"; };
+		DC3F86062E0F7CD80042AAD3 /* complete_deployment_guide.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = complete_deployment_guide.sh; sourceTree = "<group>"; };
+		DC3F8DD42E103E090042AAD3 /* PultoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PultoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartDataPoint.swift; sourceTree = "<group>"; };
 		DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveNotebookDialog.swift; sourceTree = "<group>"; };
 		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
-		DC5C9A772E0F6080007AA995 /* init-db.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = "init-db.sql"; sourceTree = "<group>"; };
-		DC5C9A7A2E0F6080007AA995 /* .env */ = {isa = PBXFileReference; lastKnownFileType = text; path = .env; sourceTree = "<group>"; };
-		DC5C9A7B2E0F6080007AA995 /* .terraform.lock.hcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = .terraform.lock.hcl; sourceTree = "<group>"; };
-		DC5C9A7C2E0F6080007AA995 /* backend.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = backend.py; sourceTree = "<group>"; };
-		DC5C9A7D2E0F6080007AA995 /* Backend.code-workspace */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Backend.code-workspace"; sourceTree = "<group>"; };
-		DC5C9A7E2E0F6080007AA995 /* docker-compose.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "docker-compose.yml"; sourceTree = "<group>"; };
-		DC5C9A7F2E0F6080007AA995 /* docker-compose.dev.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "docker-compose.dev.yml"; sourceTree = "<group>"; };
-		DC5C9A802E0F6080007AA995 /* Dockerfile */ = {isa = PBXFileReference; lastKnownFileType = text; path = Dockerfile; sourceTree = "<group>"; };
-		DC5C9A812E0F6080007AA995 /* Documentation.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Documentation.md; sourceTree = "<group>"; };
-		DC5C9A822E0F6080007AA995 /* main.tf */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.tf; sourceTree = "<group>"; };
-		DC5C9A832E0F6080007AA995 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		DC5C9A842E0F6080007AA995 /* push.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = push.sh; sourceTree = "<group>"; };
-		DC5C9A852E0F6080007AA995 /* readme_dev.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme_dev.md; sourceTree = "<group>"; };
-		DC5C9A862E0F6080007AA995 /* requirements.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = requirements.txt; sourceTree = "<group>"; };
-		DC5C9A872E0F6080007AA995 /* spatial_infrastructure.tf */ = {isa = PBXFileReference; lastKnownFileType = text; path = spatial_infrastructure.tf; sourceTree = "<group>"; };
-		DC5C9A882E0F6080007AA995 /* terraform.tfstate */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfstate; sourceTree = "<group>"; };
-		DC5C9A892E0F6080007AA995 /* terraform.tfvars */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfvars; sourceTree = "<group>"; };
-		DC5C9A8A2E0F6080007AA995 /* terraform.tfstate.backup */ = {isa = PBXFileReference; lastKnownFileType = text; path = terraform.tfstate.backup; sourceTree = "<group>"; };
 		DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataTableContentView.swift; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -119,13 +113,6 @@
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
-		DCC51DB32E0ED46D000648DF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Makefile,
-			);
-			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -136,22 +123,25 @@
 				"WindowTypeManager+Import.swift",
 			);
 		};
-		DCC51DB42E0ED46D000648DF /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
-			membershipExceptions = (
-				Makefile,
-			);
-		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
-		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCC51DB32E0ED46D000648DF /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DCC51DB42E0ED46D000648DF /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
+		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
+		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
+		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
+		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
 		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		DC3F8DD12E103E090042AAD3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DF58AE182BCD826D00C8F737 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -179,64 +169,6 @@
 			path = .;
 			sourceTree = "<group>";
 		};
-		DC5C9A752E0F6080007AA995 /* data */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = data;
-			sourceTree = "<group>";
-		};
-		DC5C9A762E0F6080007AA995 /* notebooks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = notebooks;
-			sourceTree = "<group>";
-		};
-		DC5C9A782E0F6080007AA995 /* scripts */ = {
-			isa = PBXGroup;
-			children = (
-				DC5C9A772E0F6080007AA995 /* init-db.sql */,
-			);
-			path = scripts;
-			sourceTree = "<group>";
-		};
-		DC5C9A792E0F6080007AA995 /* temp */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = temp;
-			sourceTree = "<group>";
-		};
-		DC5C9A8B2E0F6080007AA995 /* Backend */ = {
-			isa = PBXGroup;
-			children = (
-				DC5C9A752E0F6080007AA995 /* data */,
-				DC5C9A762E0F6080007AA995 /* notebooks */,
-				DC5C9A782E0F6080007AA995 /* scripts */,
-				DC5C9A792E0F6080007AA995 /* temp */,
-				DC5C9A7A2E0F6080007AA995 /* .env */,
-				DC5C9A7B2E0F6080007AA995 /* .terraform.lock.hcl */,
-				DC5C9A7C2E0F6080007AA995 /* backend.py */,
-				DC5C9A7D2E0F6080007AA995 /* Backend.code-workspace */,
-				DC5C9A7E2E0F6080007AA995 /* docker-compose.yml */,
-				DC5C9A7F2E0F6080007AA995 /* docker-compose.dev.yml */,
-				DC5C9A802E0F6080007AA995 /* Dockerfile */,
-				DC5C9A812E0F6080007AA995 /* Documentation.md */,
-				DC5C9A822E0F6080007AA995 /* main.tf */,
-				DC5C9A832E0F6080007AA995 /* Makefile */,
-				DC5C9A842E0F6080007AA995 /* push.sh */,
-				DC5C9A852E0F6080007AA995 /* readme_dev.md */,
-				DC5C9A862E0F6080007AA995 /* requirements.txt */,
-				DC5C9A872E0F6080007AA995 /* spatial_infrastructure.tf */,
-				DC5C9A882E0F6080007AA995 /* terraform.tfstate */,
-				DC5C9A892E0F6080007AA995 /* terraform.tfvars */,
-				DC5C9A8A2E0F6080007AA995 /* terraform.tfstate.backup */,
-			);
-			name = Backend;
-			path = Pulto/Backend;
-			sourceTree = "<group>";
-		};
 		DC60FCCD2DFF928500996C50 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -249,10 +181,13 @@
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
-				DC5C9A8B2E0F6080007AA995 /* Backend */,
+				DC3F86072E103C3A0042AAD3 /* server */,
+				DC3F86062E0F7CD80042AAD3 /* complete_deployment_guide.sh */,
+				DC3F86032E0F79D70042AAD3 /* .github */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DF58AE1D2BCD826D00C8F737 /* Pulto */,
+				DC3F8DD52E103E090042AAD3 /* PultoTests */,
 				DF58AE1C2BCD826D00C8F737 /* Products */,
 				0860B14583968FDFE9E0702A /* Configuration */,
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
@@ -265,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				DF58AE1B2BCD826D00C8F737 /* Pulto.app */,
+				DC3F8DD42E103E090042AAD3 /* PultoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -343,6 +279,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		DC3F8DD32E103E090042AAD3 /* PultoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DC3F8DDA2E103E090042AAD3 /* Build configuration list for PBXNativeTarget "PultoTests" */;
+			buildPhases = (
+				DC3F8DD02E103E090042AAD3 /* Sources */,
+				DC3F8DD12E103E090042AAD3 /* Frameworks */,
+				DC3F8DD22E103E090042AAD3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DC3F8DD92E103E090042AAD3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DC3F8DD52E103E090042AAD3 /* PultoTests */,
+			);
+			name = PultoTests;
+			packageProductDependencies = (
+			);
+			productName = PultoTests;
+			productReference = DC3F8DD42E103E090042AAD3 /* PultoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		DF58AE1A2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DF58AE302BCD826F00C8F737 /* Build configuration list for PBXNativeTarget "Pulto" */;
@@ -372,10 +331,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1530;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				ORGANIZATIONNAME = Apple;
 				TargetAttributes = {
+					DC3F8DD32E103E090042AAD3 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = DF58AE1A2BCD826D00C8F737;
+					};
 					DF58AE1A2BCD826D00C8F737 = {
 						CreatedOnToolsVersion = 15.3;
 					};
@@ -395,11 +358,19 @@
 			projectRoot = "";
 			targets = (
 				DF58AE1A2BCD826D00C8F737 /* Pulto */,
+				DC3F8DD32E103E090042AAD3 /* PultoTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		DC3F8DD22E103E090042AAD3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DF58AE192BCD826D00C8F737 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -416,6 +387,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		DC3F8DD02E103E090042AAD3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DF58AE172BCD826D00C8F737 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -455,7 +433,61 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		DC3F8DD92E103E090042AAD3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
+			targetProxy = DC3F8DD82E103E090042AAD3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		DC3F8DDB2E103E090042AAD3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WRNM3984BA;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.ShapeShift.PultoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pulto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pulto";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		DC3F8DDC2E103E090042AAD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WRNM3984BA;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.ShapeShift.PultoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pulto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pulto";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
 		DF58AE2E2BCD826F00C8F737 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */;
@@ -669,6 +701,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		DC3F8DDA2E103E090042AAD3 /* Build configuration list for PBXNativeTarget "PultoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DC3F8DDB2E103E090042AAD3 /* Debug */,
+				DC3F8DDC2E103E090042AAD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

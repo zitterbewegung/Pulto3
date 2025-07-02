@@ -79,8 +79,8 @@ struct NotebookImportDialog: View {
                 }
             }
         }
-        .frame(minWidth: 600, minHeight: 500)  // Set minimum window size
-        .frame(idealWidth: 700, idealHeight: 600)  // Set ideal window size
+        .frame(minWidth: 700, minHeight: 700)  // Set minimum window size
+        .frame(idealWidth: 700, idealHeight: 900)  // Set ideal window size
         .fileImporter(
             isPresented: $showingFilePicker,
             allowedContentTypes: [UTType(filenameExtension: "ipynb") ?? .json],

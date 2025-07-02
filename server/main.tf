@@ -16,31 +16,37 @@ provider "aws" {
 variable "app_name" {
   description = "Name of the application"
   type        = string
+  default     = "notebook-processor"
 }
 
 variable "environment" {
   description = "Environment (e.g. dev, staging, production)"
   type        = string
+  default     = "production"
 }
 
 variable "aws_region" {
   description = "AWS region"
   type        = string
+  default     = "us-east-1"
 }
 
 variable "app_count" {
   description = "Number of docker containers to run"
   type        = number
+  default     = 2
 }
 
 variable "fargate_cpu" {
   description = "Fargate instance CPU units to provision (1 vCPU = 1024 CPU units)"
   type        = string
+  default     = "1024"
 }
 
 variable "fargate_memory" {
   description = "Fargate instance memory to provision (in MiB)"
   type        = string
+  default     = "2048"
 }
 
 # Data sources
@@ -121,6 +127,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -169,14 +182,14 @@ resource "aws_ecr_repository" "app" {
   }
 
   tags = {
-    Name        = var.app_name
+    Name        = "${var.app_name}-ecr"
     Environment = var.environment
   }
 }
 
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
-  name = "${var.app_name}-cluster"
+  name = var.app_name
 
   setting {
     name  = "containerInsights"
@@ -189,7 +202,18 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-# ECS Task Execution Role
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 30
+
+  tags = {
+    Name        = "${var.app_name}-log-group"
+    Environment = var.environment
+  }
+}
+
+# IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.app_name}-ecsTaskExecutionRole"
 
@@ -207,25 +231,14 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 
   tags = {
-    Name        = "${var.app_name}-ecs-task-execution-role"
+    Name        = "${var.app_name}-ecs-execution-role"
     Environment = var.environment
   }
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role" {
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "app" {
-  name              = "/ecs/${var.app_name}"
-  retention_in_days = 30
-
-  tags = {
-    Name        = "${var.app_name}-log-group"
-    Environment = var.environment
-  }
 }
 
 # ECS Task Definition
@@ -299,10 +312,10 @@ resource "aws_lb" "main" {
 
 # ALB Target Group
 resource "aws_lb_target_group" "app" {
-  name     = "${var.app_name}-tg"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "${var.app_name}-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
   health_check {
@@ -333,11 +346,16 @@ resource "aws_lb_listener" "app" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app.arn
   }
+
+  tags = {
+    Name        = "${var.app_name}-listener"
+    Environment = var.environment
+  }
 }
 
 # ECS Service
 resource "aws_ecs_service" "main" {
-  name            = "${var.app_name}-service"
+  name            = var.app_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = var.app_count
@@ -355,7 +373,7 @@ resource "aws_ecs_service" "main" {
     container_port   = 5000
   }
 
-  depends_on = [aws_lb_listener.app, aws_iam_role_policy_attachment.ecs_task_execution_role]
+  depends_on = [aws_lb_listener.app]
 
   tags = {
     Name        = "${var.app_name}-service"
@@ -363,45 +381,12 @@ resource "aws_ecs_service" "main" {
   }
 }
 
-# Auto Scaling Target
-resource "aws_appautoscaling_target" "target" {
-  max_capacity       = 4
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.main.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
-}
-
-# Auto Scaling Policy
-resource "aws_appautoscaling_policy" "up" {
-  name               = "${var.app_name}-scale-up"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.target.resource_id
-  scalable_dimension = aws_appautoscaling_target.target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.target.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-
-    target_value = 70.0
-  }
-}
-
 # Outputs
-output "ecr_repository_url" {
-  description = "URL of the ECR repository"
-  value       = aws_ecr_repository.app.repository_url
-}
-
 output "alb_hostname" {
-  description = "ALB hostname"
-  value       = aws_lb.main.dns_name
+  value = aws_lb.main.dns_name
 }
 
-output "alb_url" {
-  description = "ALB URL"
-  value       = "http://${aws_lb.main.dns_name}"
+output "ecr_repository_url" {
+  value = aws_ecr_repository.app.repository_url
 }
 

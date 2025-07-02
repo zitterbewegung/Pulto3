@@ -1,74 +1,66 @@
-//
-//  OpenWindowView 2.swift
-//  Pulto
-//
-//  Created by Joshua Herman on 6/24/25.
-//  Copyright © 2025 Apple. All rights reserved.
-//
-
 import SwiftUI
 
-// MARK: - Design System Constants
+// MARK: - Design System Constants (Smaller Version)
 struct DesignSystem {
     // Spacing
     static let spacing = (
-        xs: CGFloat(4),
-        sm: CGFloat(8),
-        md: CGFloat(12),
-        lg: CGFloat(16),
-        xl: CGFloat(20),
-        xxl: CGFloat(24),
-        xxxl: CGFloat(32)
+        xs: CGFloat(2),
+        sm: CGFloat(4),
+        md: CGFloat(8),
+        lg: CGFloat(12),
+        xl: CGFloat(16),
+        xxl: CGFloat(20),
+        xxxl: CGFloat(24)
     )
 
     // Padding
     static let padding = (
-        xs: CGFloat(4),
-        sm: CGFloat(8),
-        md: CGFloat(12),
-        lg: CGFloat(16),
-        xl: CGFloat(20),
-        xxl: CGFloat(24)
+        xs: CGFloat(2),
+        sm: CGFloat(4),
+        md: CGFloat(8),
+        lg: CGFloat(12),
+        xl: CGFloat(16),
+        xxl: CGFloat(20)
     )
 
     // Corner Radius
     static let cornerRadius = (
-        sm: CGFloat(6),
-        md: CGFloat(8),
-        lg: CGFloat(12),
-        xl: CGFloat(16)
+        sm: CGFloat(4),
+        md: CGFloat(6),
+        lg: CGFloat(8),
+        xl: CGFloat(12)
     )
 
     // Shadows
     static let shadow = (
-        sm: (radius: CGFloat(4), opacity: 0.05),
-        md: (radius: CGFloat(8), opacity: 0.08),
-        lg: (radius: CGFloat(12), opacity: 0.10)
+        sm: (radius: CGFloat(2), opacity: 0.05),
+        md: (radius: CGFloat(4), opacity: 0.08),
+        lg: (radius: CGFloat(6), opacity: 0.10)
     )
 
     // Icon Sizes
     static let iconSize = (
-        sm: CGFloat(16),
-        md: CGFloat(20),
-        lg: CGFloat(24),
-        xl: CGFloat(32),
-        xxl: CGFloat(40)
+        sm: CGFloat(12),
+        md: CGFloat(16),
+        lg: CGFloat(20),
+        xl: CGFloat(24),
+        xxl: CGFloat(32)
     )
 
     // Button Heights
     static let buttonHeight = (
-        sm: CGFloat(36),
-        md: CGFloat(44),
-        lg: CGFloat(60),
-        xl: CGFloat(80)
+        sm: CGFloat(28),
+        md: CGFloat(36),
+        lg: CGFloat(48),
+        xl: CGFloat(60)
     )
 
     // Card Heights
     static let cardHeight = (
-        sm: CGFloat(80),
-        md: CGFloat(120),
-        lg: CGFloat(140),
-        xl: CGFloat(160)
+        sm: CGFloat(60),
+        md: CGFloat(90),
+        lg: CGFloat(100),
+        xl: CGFloat(120)
     )
 }
 
@@ -100,8 +92,7 @@ extension View {
     }
 }
 
-// MARK: - Optimized OpenWindowView with Consistent Design
-
+// MARK: - EnvironmentView (Smaller)
 struct EnvironmentView: View {
     @State var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
@@ -113,40 +104,39 @@ struct EnvironmentView: View {
     @State private var hoveredWindowType: WindowType?
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: 0) {
-                // Main content with adaptive layout
-                ScrollView {
-                    LazyVStack(spacing: DesignSystem.spacing.xxl) {
-                        headerSection
-                            // Narrow layout: stacked
-                            VStack(spacing: DesignSystem.spacing.xxl) {
-                                quickActionsSection
-                                windowTypeSection
-                                if !windowManager.getAllWindows().isEmpty {
-                                    activeWindowsSection
-                                }
+        HStack(spacing: 0) {
+            // Main content
+            ScrollView {
+                LazyVStack(spacing: DesignSystem.spacing.xxl) {
+                    headerSection
+                    VStack(spacing: DesignSystem.spacing.xxl) {
+                        quickActionsSection
+                        windowTypeSection
 
+                        if !windowManager.getAllWindows().isEmpty {
+                            activeWindowsSection
                         }
                     }
-                    .padding(DesignSystem.padding.xxl)
-                    .frame(minWidth: 900)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(DesignSystem.padding.xxl)
+            }
+            .frame(maxWidth: .infinity)
 
-                // Enhanced export sidebar with smooth animation
-                if showExportSidebar {
-                    ExportConfigurationSidebar()
-                        .frame(width: 380)
-                        .transition(.asymmetric(
+            // Export sidebar
+            if showExportSidebar {
+                ExportConfigurationSidebar()
+                    .frame(width: 320) // Slightly narrower than before
+                    .transition(
+                        .asymmetric(
                             insertion: .move(edge: .trailing).combined(with: .opacity),
                             removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
-                }
+                        )
+                    )
             }
-            .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
         }
-        .frame(minHeight: 1200)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
+        // Smaller default window size
+        .frame(minWidth: 800, minHeight: 600)
         .background(Color(.systemBackground))
         .sheet(isPresented: $showImportDialog) {
             NotebookImportDialog(
@@ -156,23 +146,18 @@ struct EnvironmentView: View {
         }
         .sheet(isPresented: $showTemplateGallery) {
             TemplateView()
-                .frame(minWidth: 1200, minHeight: 1200)
+                .frame(minWidth: 800, minHeight: 600)
         }
     }
 
-    // MARK: - Enhanced View Components
+    // MARK: - View Components
 
     private var headerSection: some View {
         HStack(alignment: .center, spacing: DesignSystem.spacing.lg) {
             VStack(alignment: .leading, spacing: DesignSystem.spacing.sm) {
                 Text("VisionOS Workspace")
-                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .font(.system(.title, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
-
-                Text("Create, manage, and orchestrate your 3D computational environment")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .fontWeight(.medium)
             }
 
             Spacer()
@@ -182,7 +167,7 @@ struct EnvironmentView: View {
                 WindowCountIndicator(
                     count: windowManager.getAllWindows().count
                 )
-                
+
                 CircularButton(
                     icon: showExportSidebar ? "sidebar.trailing" : "gearshape",
                     action: { showExportSidebar.toggle() }
@@ -219,7 +204,7 @@ struct EnvironmentView: View {
                 )
             }
 
-            // Secondary actions grid
+            // Secondary actions
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: DesignSystem.spacing.md), count: 3),
                 spacing: DesignSystem.spacing.md
@@ -320,7 +305,7 @@ struct EnvironmentView: View {
             LazyVStack(spacing: DesignSystem.spacing.sm) {
                 ForEach(windowManager.getAllWindows(), id: \.id) { window in
                     HStack(spacing: DesignSystem.spacing.lg) {
-                        // Window type indicator
+                        // Window type icon
                         IconBadge(icon: iconForWindowType(window.windowType))
                             .scaleEffect(0.8)
 
@@ -371,7 +356,7 @@ struct EnvironmentView: View {
                 }
             }
         }
-        .frame(maxHeight: 300)
+        .frame(maxHeight: 250)
     }
 
     // MARK: - Helper Functions
@@ -384,7 +369,6 @@ struct EnvironmentView: View {
             width: 600,
             height: 450
         )
-
         _ = windowManager.createWindow(type, id: nextWindowID, position: position)
         openWindow(value: nextWindowID)
         nextWindowID += 1
@@ -412,26 +396,26 @@ struct EnvironmentView: View {
                 width: 500,
                 height: 400
             )
-
             _ = windowManager.createWindow(type, id: nextWindowID, position: position)
 
             switch type {
             case .charts:
-                windowManager.updateWindowContent(nextWindowID, content: """
-                # Sample Chart
-                plt.figure(figsize=(10, 6))
-                x = np.linspace(0, 10, 100)
-                y = np.sin(x)
-                plt.plot(x, y)
-                plt.title('Sample Sine Wave')
-                plt.show()
-                """)
+                windowManager.updateWindowContent(
+                    nextWindowID,
+                    content: """
+                    # Sample Chart
+                    plt.figure(figsize=(10, 6))
+                    x = np.linspace(0, 10, 100)
+                    y = np.sin(x)
+                    plt.plot(x, y)
+                    plt.title('Sample Sine Wave')
+                    plt.show()
+                    """
+                )
                 windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-
             case .spatial:
                 let samplePointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
                 windowManager.updateWindowPointCloud(nextWindowID, pointCloud: samplePointCloud)
-
             case .column:
                 let sampleDataFrame = DataFrameData(
                     columns: ["Name", "Value", "Category"],
@@ -444,31 +428,31 @@ struct EnvironmentView: View {
                 )
                 windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
                 windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
-
             case .model3d:
                 let sampleCube = Model3DData.generateCube(size: 3.0)
                 windowManager.updateWindowModel3DData(nextWindowID, model3DData: sampleCube)
                 windowManager.updateWindowTemplate(nextWindowID, template: .custom)
-
             case .volume:
-                windowManager.updateWindowContent(nextWindowID, content: """
-                # Model Performance Metrics
-                import numpy as np
-                import matplotlib.pyplot as plt
-                
-                metrics = {
-                    'accuracy': 0.95,
-                    'precision': 0.92,
-                    'recall': 0.89,
-                    'f1_score': 0.90
-                }
-                
-                print("Model Performance Metrics:")
-                for key, value in metrics.items():
-                    print(f"{key}: {value}")
-                """)
-                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
+                windowManager.updateWindowContent(
+                    nextWindowID,
+                    content: """
+                    # Model Performance Metrics
+                    import numpy as np
+                    import matplotlib.pyplot as plt
 
+                    metrics = {
+                        'accuracy': 0.95,
+                        'precision': 0.92,
+                        'recall': 0.89,
+                        'f1_score': 0.90
+                    }
+
+                    print("Model Performance Metrics:")
+                    for key, value in metrics.items():
+                        print(f"{key}: {value}")
+                    """
+                )
+                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
             case .pointcloud:
                 let sampleTorus = PointCloudDemo.generateTorusPointCloudData(majorRadius: 8.0, minorRadius: 3.0, points: 1000)
                 windowManager.updateWindowPointCloud(nextWindowID, pointCloud: sampleTorus)
@@ -498,22 +482,6 @@ struct EnvironmentView: View {
         case .model3d: return "cube.transparent"
         }
     }
-
-    private func descriptionForWindowType(_ type: WindowType) -> String {
-        switch type {
-        case .charts: return "Visualize data with charts and graphs"
-        case .spatial: return "3D spatial data visualization"
-        case .column: return "Tabular data exploration"
-        case .volume: return "Performance metrics and analytics"
-        case .pointcloud: return "Point cloud data visualization"
-        case .model3d: return "3D model rendering and interaction"
-        }
-    }
-
-    private func updateNextWindowID() {
-        let currentMaxID = windowManager.getAllWindows().map { $0.id }.max() ?? 0
-        nextWindowID = currentMaxID + 1
-    }
 }
 
 // MARK: - Reusable Components
@@ -525,7 +493,7 @@ struct WindowCountIndicator: View {
         Label("\(count)", systemImage: "cube.box")
             .font(.headline)
             .padding(.horizontal, DesignSystem.padding.md)
-            .padding(.vertical, DesignSystem.padding.sm)
+            .padding(.vertical, DesignSystem.padding.xs)
             .background(Color.accentColor.opacity(0.15))
             .foregroundStyle(Color.accentColor)
             .clipShape(Capsule())
@@ -556,17 +524,17 @@ struct SectionHeader: View {
     let icon: String
 
     var body: some View {
-        HStack(spacing: DesignSystem.spacing.md) {
+        HStack(spacing: DesignSystem.spacing.xl) {
             IconBadge(icon: icon)
 
             VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
                 Text(title)
-                    .font(.title2)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
 
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -585,6 +553,11 @@ struct IconBadge: View {
     }
 }
 
+enum ActionCardStyle {
+    case prominent
+    case secondary
+}
+
 struct PrimaryActionCard: View {
     let title: String
     let subtitle: String
@@ -601,19 +574,19 @@ struct PrimaryActionCard: View {
 
                 VStack(spacing: DesignSystem.spacing.xs) {
                     Text(title)
-                        .font(.headline)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(style == .prominent ? .white : .primary)
 
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(style == .prominent ? .white.opacity(0.8) : .secondary)
                         .multilineTextAlignment(.center)
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: DesignSystem.cardHeight.md)
-            .padding(DesignSystem.padding.lg)
+            .padding(DesignSystem.padding.md)
             .background(style == .prominent ? Color.accentColor : Color.secondary.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
         }
@@ -636,7 +609,7 @@ struct SecondaryActionButton: View {
                     .foregroundStyle(isDestructive ? .red : .secondary)
 
                 Text(title)
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(isDestructive ? .red : .primary)
             }
@@ -658,7 +631,7 @@ struct WindowTypeCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.lg) {
+            VStack(spacing: DesignSystem.spacing.md) {
                 ZStack {
                     Circle()
                         .fill(Color.accentColor.opacity(isSelected ? 0.2 : 0.15))
@@ -671,22 +644,22 @@ struct WindowTypeCard: View {
                 .scaleEffect(isHovered ? 1.05 : 1.0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isHovered)
 
-                VStack(spacing: DesignSystem.spacing.sm) {
+                VStack(spacing: DesignSystem.spacing.xs) {
                     Text(windowType.displayName)
-                        .font(.headline)
+                        .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
 
                     Text(descriptionForWindowType(windowType))
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.cardHeight.lg)
-            .padding(DesignSystem.padding.lg)
+            .frame(height: DesignSystem.cardHeight.md)
+            .padding(DesignSystem.padding.md)
             .background(Color.secondary.opacity(isSelected ? 0.15 : 0.1))
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
             .overlay(
@@ -741,7 +714,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: DesignSystem.spacing.md) {
             Image(systemName: "rectangle.dashed")
-                .font(.system(size: DesignSystem.iconSize.xxl))
+                .font(.system(size: DesignSystem.iconSize.xl))
                 .foregroundStyle(.secondary)
 
             Text("No Active Windows")
@@ -749,7 +722,7 @@ struct EmptyStateView: View {
                 .foregroundStyle(.secondary)
 
             Text("Create a new window to get started")
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
@@ -758,6 +731,8 @@ struct EmptyStateView: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
     }
 }
+
+// MARK: - Example ExportConfigurationSidebar (unchanged except for slight frame width)
 struct ExportConfigurationSidebar: View {
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var selectedWindowID: Int? = nil
@@ -767,7 +742,7 @@ struct ExportConfigurationSidebar: View {
     @State private var windowContent = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
             headerView
             windowSelectorSection
             configurationSection
@@ -775,7 +750,7 @@ struct ExportConfigurationSidebar: View {
             exportActionsSection
         }
         .padding()
-        .frame(width: 300)
+        .frame(width: 320)
     }
 
     private var headerView: some View {
@@ -816,11 +791,4 @@ struct ExportConfigurationSidebar: View {
         customImports = window.state.customImports.joined(separator: "\n")
         windowContent = window.state.content
     }
-}
-
-// MARK: - Supporting Types
-
-enum ActionCardStyle {
-    case prominent
-    case secondary
 }

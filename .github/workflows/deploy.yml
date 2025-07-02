@@ -1,0 +1,780 @@
+# .github/workflows/deploy.yml - CI/CD Pipeline
+name: VisionOS FastAPI Deployment
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/visionos-fastapi
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx pytest-cov
+
+    - name: Run linting
+      run: |
+        pip install flake8 black isort
+        flake8 backend.py --max-line-length=88
+        black --check backend.py
+        isort --check-only backend.py
+
+    - name: Run security scan
+      run: |
+        pip install bandit safety
+        bandit -r backend.py
+        safety check
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://postgres:test@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379/0
+      run: |
+        pytest tests/ -v --cov=backend --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix=sha-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to Staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your staging deployment commands here
+        # Example: kubectl apply -f k8s/staging/
+
+    - name: Run integration tests
+      run: |
+        echo "Running integration tests against staging..."
+        # Add integration test commands
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to Production
+      run: |
+        echo "Deploying to production environment..."
+        # Add your production deployment commands here
+        # Example: kubectl apply -f k8s/production/
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+---
+# k8s/production/deployment.yaml - Kubernetes Production Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visionos-fastapi
+  namespace: production
+  labels:
+    app: visionos-fastapi
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: visionos-fastapi
+  template:
+    metadata:
+      labels:
+        app: visionos-fastapi
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: fastapi
+        image: ghcr.io/your-org/visionos-fastapi:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: redis-url
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: database-url
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: processed
+          mountPath: /app/processed
+        - name: config
+          mountPath: /app/.env
+          subPath: .env
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: uploads-pvc
+      - name: processed
+        persistentVolumeClaim:
+          claimName: processed-pvc
+      - name: config
+        configMap:
+          name: app-config
+
+---
+# k8s/production/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: visionos-fastapi-service
+  namespace: production
+  labels:
+    app: visionos-fastapi
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: visionos-fastapi
+
+---
+# k8s/production/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: visionos-fastapi-ingress
+  namespace: production
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/websocket-services: "visionos-fastapi-service"
+spec:
+  tls:
+  - hosts:
+    - api.visionos.your-domain.com
+    secretName: visionos-tls
+  rules:
+  - host: api.visionos.your-domain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: visionos-fastapi-service
+            port:
+              number: 80
+
+---
+# k8s/production/hpa.yaml - Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: visionos-fastapi-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: visionos-fastapi
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+# grafana/dashboards/visionos-dashboard.json - Monitoring Dashboard
+{
+  "dashboard": {
+    "id": null,
+    "title": "VisionOS FastAPI Dashboard",
+    "tags": ["visionos", "fastapi"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Processing Tasks",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "processing_tasks_total",
+            "legendFormat": "Total Tasks"
+          },
+          {
+            "expr": "processing_tasks_completed",
+            "legendFormat": "Completed"
+          },
+          {
+            "expr": "processing_tasks_failed",
+            "legendFormat": "Failed"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "WebSocket Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "websocket_connections_active",
+            "legendFormat": "Active Connections"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "Memory Usage"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "CPU %"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+}
+
+---
+# tests/test_backend.py - Comprehensive Test Suite
+import pytest
+import httpx
+import asyncio
+import json
+from fastapi.testclient import TestClient
+from backend import app
+
+# Test client
+client = TestClient(app)
+
+class TestHealthEndpoint:
+    def test_health_check(self):
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "timestamp" in data
+        assert "version" in data
+        assert "features" in data
+
+class TestAPIInfo:
+    def test_api_info(self):
+        response = client.get("/api/info")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["framework"] == "FastAPI"
+        assert "processing_capabilities" in data
+        assert "endpoints" in data
+
+class TestNotebookProcessing:
+    def test_process_simple_notebook(self):
+        # Create a simple test notebook
+        test_notebook = {
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "output_type": "stream",
+                            "name": "stdout",
+                            "text": ["Hello World!"]
+                        }
+                    ],
+                    "source": ["print('Hello World!')"]
+                }
+            ],
+            "metadata": {
+                "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+                "language_info": {"name": "python", "version": "3.11.0"}
+            },
+            "nbformat": 4,
+            "nbformat_minor": 4
+        }
+
+        notebook_json = json.dumps(test_notebook)
+        notebook_bytes = notebook_json.encode('utf-8')
+
+        response = client.post(
+            "/process_notebook",
+            files={"notebook": ("test.ipynb", notebook_bytes, "application/json")}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["validation"]["success"] == True
+        assert data["total_outputs"] >= 1
+        assert "processing_time" in data
+
+    def test_invalid_file_type(self):
+        response = client.post(
+            "/process_notebook",
+            files={"notebook": ("test.txt", b"not a notebook", "text/plain")}
+        )
+
+        assert response.status_code == 400
+        assert "File must be a Jupyter notebook" in response.json()["detail"]
+
+class TestAsyncProcessing:
+    def test_start_async_processing(self):
+        test_notebook = {
+            "cells": [],
+            "metadata": {},
+            "nbformat": 4,
+            "nbformat_minor": 4
+        }
+
+        notebook_json = json.dumps(test_notebook)
+        notebook_bytes = notebook_json.encode('utf-8')
+
+        response = client.post(
+            "/process_notebook_async",
+            files={"notebook": ("test.ipynb", notebook_bytes, "application/json")}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "task_id" in data
+        assert data["status"] == "started"
+
+class TestSampleGeneration:
+    def test_generate_sample(self):
+        response = client.post("/generate_sample")
+        assert response.status_code == 200
+        data = response.json()
+        assert "notebook" in data
+        assert "message" in data
+        assert "generation_time" in data
+
+class TestAnalytics:
+    def test_analytics_endpoint(self):
+        response = client.get("/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert "system_status" in data
+        assert "processing_stats" in data
+        assert "active_websocket_connections" in data
+
+@pytest.mark.asyncio
+class TestWebSocket:
+    async def test_websocket_connection(self):
+        with client.websocket_connect("/ws") as websocket:
+            # Send ping
+            websocket.send_text(json.dumps({"type": "ping"}))
+
+            # Receive pong
+            data = websocket.receive_text()
+            message = json.loads(data)
+            assert message["type"] == "pong"
+
+# Performance tests
+class TestPerformance:
+    def test_concurrent_requests(self):
+        """Test handling of concurrent requests"""
+        import concurrent.futures
+        import time
+
+        def make_request():
+            return client.get("/health")
+
+        start_time = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(make_request) for _ in range(50)]
+            results = [future.result() for future in futures]
+
+        end_time = time.time()
+
+        # All requests should succeed
+        assert all(r.status_code == 200 for r in results)
+
+        # Should complete within reasonable time
+        assert end_time - start_time < 10
+
+# Load testing with locust
+# tests/locustfile.py
+from locust import HttpUser, task, between
+import json
+
+class VisionOSAPIUser(HttpUser):
+    wait_time = between(1, 5)
+
+    def on_start(self):
+        """Called when a user starts"""
+        self.client.get("/health")
+
+    @task(3)
+    def health_check(self):
+        self.client.get("/health")
+
+    @task(2)
+    def api_info(self):
+        self.client.get("/api/info")
+
+    @task(1)
+    def generate_sample(self):
+        self.client.post("/generate_sample")
+
+    @task(1)
+    def process_simple_notebook(self):
+        test_notebook = {
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "metadata": {},
+                    "outputs": [{"output_type": "stream", "name": "stdout", "text": ["Test"]}],
+                    "source": ["print('Test')"]
+                }
+            ],
+            "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
+            "nbformat": 4,
+            "nbformat_minor": 4
+        }
+
+        notebook_json = json.dumps(test_notebook)
+        notebook_bytes = notebook_json.encode('utf-8')
+
+        self.client.post(
+            "/process_notebook",
+            files={"notebook": ("test.ipynb", notebook_bytes, "application/json")}
+        )
+
+---
+# deploy.sh - Production Deployment Script
+#!/bin/bash
+
+set -e
+
+echo "🚀 VisionOS FastAPI Production Deployment"
+echo "=========================================="
+
+# Configuration
+ENVIRONMENT=${1:-production}
+REGISTRY="ghcr.io/your-org"
+IMAGE_NAME="visionos-fastapi"
+VERSION=${2:-latest}
+
+echo "📋 Deployment Configuration:"
+echo "   Environment: $ENVIRONMENT"
+echo "   Registry: $REGISTRY"
+echo "   Image: $IMAGE_NAME:$VERSION"
+echo ""
+
+# Pre-deployment checks
+echo "🔍 Running pre-deployment checks..."
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Docker is not running"
+    exit 1
+fi
+
+# Check if kubectl is configured
+if ! kubectl cluster-info > /dev/null 2>&1; then
+    echo "❌ kubectl is not configured"
+    exit 1
+fi
+
+# Check if namespace exists
+if ! kubectl get namespace $ENVIRONMENT > /dev/null 2>&1; then
+    echo "📁 Creating namespace: $ENVIRONMENT"
+    kubectl create namespace $ENVIRONMENT
+fi
+
+echo "✅ Pre-deployment checks passed"
+
+# Deploy secrets
+echo "🔐 Deploying secrets..."
+kubectl apply -f k8s/$ENVIRONMENT/secrets.yaml
+
+# Deploy configmaps
+echo "⚙️  Deploying configuration..."
+kubectl apply -f k8s/$ENVIRONMENT/configmap.yaml
+
+# Deploy persistent volumes
+echo "💾 Deploying storage..."
+kubectl apply -f k8s/$ENVIRONMENT/pvc.yaml
+
+# Deploy the application
+echo "🚀 Deploying application..."
+envsubst < k8s/$ENVIRONMENT/deployment.yaml | kubectl apply -f -
+
+# Deploy services
+echo "🌐 Deploying services..."
+kubectl apply -f k8s/$ENVIRONMENT/service.yaml
+
+# Deploy ingress
+echo "🔗 Deploying ingress..."
+kubectl apply -f k8s/$ENVIRONMENT/ingress.yaml
+
+# Deploy monitoring
+echo "📊 Deploying monitoring..."
+kubectl apply -f k8s/$ENVIRONMENT/monitoring.yaml
+
+# Wait for deployment to be ready
+echo "⏳ Waiting for deployment to be ready..."
+kubectl wait --for=condition=available --timeout=300s deployment/visionos-fastapi -n $ENVIRONMENT
+
+# Verify deployment
+echo "✅ Verifying deployment..."
+kubectl get pods -n $ENVIRONMENT
+kubectl get services -n $ENVIRONMENT
+
+# Run health check
+echo "🏥 Running health check..."
+HEALTH_URL=$(kubectl get ingress visionos-fastapi-ingress -n $ENVIRONMENT -o jsonpath='{.spec.rules[0].host}')/health
+
+if curl -f "https://$HEALTH_URL" > /dev/null 2>&1; then
+    echo "✅ Health check passed"
+else
+    echo "❌ Health check failed"
+    exit 1
+fi
+
+echo ""
+echo "🎉 Deployment completed successfully!"
+echo "📍 Application URL: https://$HEALTH_URL"
+echo "📊 Monitoring: https://grafana.your-domain.com"
+echo "📋 Logs: https://kibana.your-domain.com"
+
+# Optional: Run integration tests
+if [ "$ENVIRONMENT" = "staging" ]; then
+    echo "🧪 Running integration tests..."
+    python -m pytest tests/integration/ -v
+fi
+
+echo "✨ Deployment pipeline completed!"

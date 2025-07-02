@@ -1,0 +1,26 @@
+groups:
+- name: visionos_alerts
+  rules:
+  - alert: HighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      
+  - alert: HighLatency
+    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High latency detected"
+      
+  - alert: DatabaseConnectionFailed
+    expr: up{job="postgres"} == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database connection failed"
