@@ -412,6 +412,7 @@ struct EnvironmentView: View {
         )
         _ = windowManager.createWindow(type, id: nextWindowID, position: position)
         openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
         nextWindowID += 1
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -452,6 +453,7 @@ struct EnvironmentView: View {
                     clearExisting: true
                 ) { windowID in
                     openWindow(value: windowID)
+                    windowManager.markWindowAsOpened(windowID)
                 }
 
                 print(" Workspace loaded: \(workspace.name)")
@@ -537,6 +539,7 @@ struct EnvironmentView: View {
 
             windowManager.addWindowTag(nextWindowID, tag: "demo")
             openWindow(value: nextWindowID)
+            windowManager.markWindowAsOpened(nextWindowID)
             nextWindowID += 1
         }
     }

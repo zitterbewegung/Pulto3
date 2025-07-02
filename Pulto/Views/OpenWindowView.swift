@@ -453,7 +453,7 @@ struct Model3DData: Codable, Hashable {
         # Create mesh
         mesh_faces = []
         for face in faces:
-            if len(face) >= 3:  # Valid face
+            if len(face) >= 3:  // Valid face
                 face_vertices = scaled_vertices[face]
                 mesh_faces.append(face_vertices)
         
@@ -1345,11 +1345,11 @@ struct WindowConfigurationView: View {
                     Text(selectedTemplate.defaultContent)
                         .font(.system(.caption, design: .monospaced))
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(4)
                 }
                 .frame(height: 80)
                 .padding(6)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(4)
             }
         }
     }
@@ -1396,7 +1396,7 @@ struct NewWindow: View {
     @StateObject private var windowTypeManager = WindowTypeManager.shared
 
     var body: some View {
-        if let window = windowTypeManager.getWindow(for: id) {
+        if let window = windowTypeManager.getWindowSafely(for: id) {
             VStack(spacing: 0) {
                 // Window header
                 HStack {
@@ -1595,38 +1595,39 @@ struct NewWindow: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .onAppear {
+                windowTypeManager.markWindowAsOpened(id)
+            }
+            .onDisappear {
+                windowTypeManager.markWindowAsClosed(id)
+            }
         } else {
-            // Window not found
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 50))
                     .foregroundStyle(.orange)
 
-                Text("Window #\(id) not found")
+                Text("Window #\(id) Unavailable")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("This window may have been closed or not properly initialized.")
+                Text("This window may have been closed or removed from the workspace.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                Button("Check Window Manager") {
-                    print("=== Window Manager Debug ===")
-                    print("Looking for window ID: \(id)")
-                    print("All windows:")
-                    for window in windowTypeManager.getAllWindows() {
-                        print("  - Window #\(window.id): \(window.windowType.rawValue)")
-                    }
-                    print("========================")
+                Button("Cleanup Closed Windows") {
+                    windowTypeManager.cleanupClosedWindows()
                 }
                 .buttonStyle(.bordered)
             }
             .padding(40)
+            .onAppear {
+                windowTypeManager.markWindowAsClosed(id)
+            }
         }
     }
 }
-
 
 // MARK: - Preview Provider
 #Preview("Main Interface") {
