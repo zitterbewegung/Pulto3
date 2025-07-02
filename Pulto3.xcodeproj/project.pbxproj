@@ -39,6 +39,7 @@
 		DCF74EAB2E05DE5C0078C4B8 /* WindowTypeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */; };
 		DCF74EAD2E05DEB00078C4B8 /* PointCloudData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */; };
 		DCF74ED02E0619550078C4B8 /* GridConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF74ECF2E0619550078C4B8 /* GridConstants.swift */; };
+		DCFC32E02E15DCAF002A2AA4 /* WorkspaceDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */; };
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
 		DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */; };
@@ -97,6 +98,7 @@
 		DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTypeManager.swift; sourceTree = "<group>"; };
 		DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudData.swift; sourceTree = "<group>"; };
 		DCF74ECF2E0619550078C4B8 /* GridConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridConstants.swift; sourceTree = "<group>"; };
+		DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDialog.swift; sourceTree = "<group>"; };
 		DF58AE1B2BCD826D00C8F737 /* Pulto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF58AE222BCD826D00C8F737 /* EntryPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryPoint.swift; sourceTree = "<group>"; };
 		DF58AE282BCD826F00C8F737 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -270,6 +272,7 @@
 				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
+				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
 			);
@@ -420,6 +423,7 @@
 				DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */,
 				DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */,
 				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,
+				DCFC32E02E15DCAF002A2AA4 /* WorkspaceDialog.swift in Sources */,
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DCF74EAB2E05DE5C0078C4B8 /* WindowTypeManager.swift in Sources */,
 				DC0E89A12DE36AA800B27198 /* PlotlyWebView.swift in Sources */,
