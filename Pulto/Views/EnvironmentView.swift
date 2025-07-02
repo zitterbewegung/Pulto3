@@ -92,14 +92,16 @@ extension View {
     }
 }
 
-// MARK: - EnvironmentView (Smaller)
+// MARK: - EnvironmentView (Enhanced with Workspace Management)
 struct EnvironmentView: View {
     @State var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
     @StateObject private var windowManager = WindowTypeManager.shared
+    @StateObject private var workspaceManager = WorkspaceManager.shared
     @State private var showExportSidebar = false
     @State private var showImportDialog = false
     @State private var showTemplateGallery = false
+    @State private var showWorkspaceDialog = false
     @State private var selectedWindowType: WindowType?
     @State private var hoveredWindowType: WindowType?
 
@@ -110,7 +112,7 @@ struct EnvironmentView: View {
                 LazyVStack(spacing: DesignSystem.spacing.xxl) {
                     headerSection
                     VStack(spacing: DesignSystem.spacing.xxl) {
-                        quickActionsSection
+                        workspaceManagementSection
                         windowTypeSection
 
                         if !windowManager.getAllWindows().isEmpty {
@@ -125,7 +127,7 @@ struct EnvironmentView: View {
             // Export sidebar
             if showExportSidebar {
                 ExportConfigurationSidebar()
-                    .frame(width: 320) // Slightly narrower than before
+                    .frame(width: 320)
                     .transition(
                         .asymmetric(
                             insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -135,12 +137,11 @@ struct EnvironmentView: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
-        // Smaller default window size
         .frame(minWidth: 800, minHeight: 600)
         .background(Color(.systemBackground))
-        .sheet(isPresented: $showImportDialog) {
-            NotebookImportDialog(
-                isPresented: $showImportDialog,
+        .sheet(isPresented: $showWorkspaceDialog) {
+            WorkspaceDialog(
+                isPresented: $showWorkspaceDialog,
                 windowManager: windowManager
             )
         }
@@ -158,11 +159,15 @@ struct EnvironmentView: View {
                 Text("Workspace Manager")
                     .font(.system(.title, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
+                if !workspaceManager.getCustomWorkspaces().isEmpty {
+                    Text("\(workspaceManager.getCustomWorkspaces().count) saved workspace\(workspaceManager.getCustomWorkspaces().count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
 
-            // Quick status indicator
             HStack(spacing: DesignSystem.spacing.md) {
                 WindowCountIndicator(
                     count: windowManager.getAllWindows().count
@@ -177,21 +182,20 @@ struct EnvironmentView: View {
         .padding(.bottom, DesignSystem.padding.md)
     }
 
-    private var quickActionsSection: some View {
+    private var workspaceManagementSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
             SectionHeader(
                 title: "Workspace Management",
-                subtitle: "Save, load, and manage your 3D workspace configuration",
+                subtitle: "Create, save, and manage your 3D workspace configurations",
                 icon: "folder.badge.gearshape"
             )
 
-            // Primary action cards
             HStack(spacing: DesignSystem.spacing.md) {
                 PrimaryActionCard(
-                    title: "Save Workspace",
-                    subtitle: "Export current configuration",
-                    icon: "square.and.arrow.up.fill",
-                    action: exportToJupyter,
+                    title: "Workspace Manager",
+                    subtitle: "Create, load, and manage workspaces",
+                    icon: "folder.fill.badge.plus",
+                    action: { showWorkspaceDialog = true },
                     style: .prominent
                 )
 
@@ -204,15 +208,18 @@ struct EnvironmentView: View {
                 )
             }
 
-            // Secondary actions
+            if !workspaceManager.getCustomWorkspaces().isEmpty {
+                quickWorkspacesSection
+            }
+
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: DesignSystem.spacing.md), count: 3),
                 spacing: DesignSystem.spacing.md
             ) {
                 SecondaryActionButton(
-                    title: "Import",
-                    icon: "square.and.arrow.down",
-                    action: { showImportDialog = true }
+                    title: "Quick Save",
+                    icon: "square.and.arrow.up",
+                    action: quickSaveWorkspace
                 )
 
                 SecondaryActionButton(
@@ -231,6 +238,45 @@ struct EnvironmentView: View {
         }
         .padding(DesignSystem.padding.xl)
         .cardStyle()
+    }
+
+    private var quickWorkspacesSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
+            HStack {
+                Text("Recent Workspaces")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Spacer()
+
+                Button("View All") {
+                    showWorkspaceDialog = true
+                }
+                .font(.caption)
+                .foregroundStyle(.blue)
+            }
+
+            let recentWorkspaces = Array(workspaceManager.getCustomWorkspaces().prefix(3))
+
+            if recentWorkspaces.isEmpty {
+                Text("No saved workspaces yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+            } else {
+                VStack(spacing: DesignSystem.spacing.sm) {
+                    ForEach(recentWorkspaces) { workspace in
+                        QuickWorkspaceRowView(
+                            workspace: workspace,
+                            onLoad: { loadWorkspace(workspace) }
+                        )
+                    }
+                }
+            }
+        }
+        .padding(DesignSystem.padding.md)
+        .background(Color.secondary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
     }
 
     private var windowTypeSection: some View {
@@ -305,11 +351,9 @@ struct EnvironmentView: View {
             LazyVStack(spacing: DesignSystem.spacing.sm) {
                 ForEach(windowManager.getAllWindows(), id: \.id) { window in
                     HStack(spacing: DesignSystem.spacing.lg) {
-                        // Window type icon
                         IconBadge(icon: iconForWindowType(window.windowType))
                             .scaleEffect(0.8)
 
-                        // Window info
                         VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
                             Text(window.windowType.displayName)
                                 .font(.headline)
@@ -327,10 +371,8 @@ struct EnvironmentView: View {
 
                         Spacer()
 
-                        // Position badge
                         PositionBadge(position: window.position)
 
-                        // Action buttons
                         HStack(spacing: DesignSystem.spacing.sm) {
                             CircularButton(
                                 icon: "arrow.up.left.and.arrow.down.right",
@@ -359,8 +401,6 @@ struct EnvironmentView: View {
         .frame(maxHeight: 250)
     }
 
-    // MARK: - Helper Functions
-
     private func createWindow(type: WindowType) {
         let position = WindowPosition(
             x: Double.random(in: -200...200),
@@ -373,15 +413,50 @@ struct EnvironmentView: View {
         openWindow(value: nextWindowID)
         nextWindowID += 1
 
-        // Reset selection after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             selectedWindowType = nil
         }
     }
 
-    private func exportToJupyter() {
-        if let fileURL = windowManager.saveNotebookToFile() {
-            print("✅ Workspace saved to: \(fileURL.path)")
+    private func quickSaveWorkspace() {
+        let windows = windowManager.getAllWindows()
+        guard !windows.isEmpty else { return }
+
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+        let workspaceName = "Workspace \(timestamp)"
+
+        Task {
+            do {
+                _ = try await workspaceManager.createNewWorkspace(
+                    name: workspaceName,
+                    description: "Quick save with \(windows.count) windows",
+                    category: .custom,
+                    tags: ["quick-save"],
+                    windowManager: windowManager
+                )
+
+                print(" Quick workspace saved: \(workspaceName)")
+            } catch {
+                print(" Failed to quick save workspace: \(error)")
+            }
+        }
+    }
+
+    private func loadWorkspace(_ workspace: WorkspaceMetadata) {
+        Task {
+            do {
+                _ = try await workspaceManager.loadWorkspace(
+                    workspace,
+                    into: windowManager,
+                    clearExisting: true
+                ) { windowID in
+                    openWindow(value: windowID)
+                }
+
+                print(" Workspace loaded: \(workspace.name)")
+            } catch {
+                print(" Failed to load workspace: \(error)")
+            }
         }
     }
 
@@ -481,6 +556,42 @@ struct EnvironmentView: View {
         case .pointcloud: return "dot.scope"
         case .model3d: return "cube.transparent"
         }
+    }
+}
+
+struct QuickWorkspaceRowView: View {
+    let workspace: WorkspaceMetadata
+    let onLoad: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(workspace.name)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+
+                Text("\(workspace.totalWindows) windows • \(workspace.formattedModifiedDate)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Load") {
+                onLoad()
+            }
+            .font(.caption2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.blue.opacity(0.1))
+            .foregroundStyle(.blue)
+            .clipShape(Capsule())
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.secondary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -732,7 +843,6 @@ struct EmptyStateView: View {
     }
 }
 
-// MARK: - Example ExportConfigurationSidebar (unchanged except for slight frame width)
 struct ExportConfigurationSidebar: View {
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var selectedWindowID: Int? = nil
