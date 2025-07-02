@@ -722,3 +722,43 @@ struct NotebookMetadata {
     let windowCount: Int
     let createdDate: Date
 }
+// Simple preview for empty state
+#Preview("Empty State") {
+    NavigationSplitView {
+        VStack {
+            Text("Sidebar")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.regularMaterial)
+        }
+        .frame(width: 300)
+    } detail: {
+        VStack(spacing: 24) {
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 64))
+                .foregroundStyle(.tertiary)
+
+            VStack(spacing: 8) {
+                Text("Import Your Notebook")
+                    .font(.title)
+                    .fontWeight(.semibold)
+
+                Text("Browse for a local notebook file or connect to your server")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 40)
+
+            HStack(spacing: 16) {
+                Button("Browse Files") { }
+                    .buttonStyle(.borderedProminent)
+
+                Button("Restore Environment") { }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.ultraThinMaterial)
+        .navigationTitle("Spatial Notebook")
+    }
+    .previewDisplayName("Empty State")
+}

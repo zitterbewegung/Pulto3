@@ -1,0 +1,37 @@
+{
+  "dashboard": {
+    "title": "VisionOS FastAPI Dashboard",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{status}}"
+          }
+        ]
+      },
+      {
+        "title": "Processing Tasks",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "processing_tasks_active",
+            "legendFormat": "Active Tasks"
+          }
+        ]
+      },
+      {
+        "title": "WebSocket Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "websocket_connections_total",
+            "legendFormat": "Connections"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Main Flask Backend
+  backend:
+    build: .
+    ports:
+      - "8000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./temp/notebooks:/tmp/notebooks
+      - ./backend.py:/app/backend.py
+      - ./requirements.txt:/app/requirements.txt
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - spatial-net
+
+  # Jupyter Lab for testing notebooks
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=spatial-dev-token
+    volumes:
+      - ./temp/notebooks:/home/jovyan/notebooks
+      - ./sample-data:/home/jovyan/sample-data
+    command: start-notebook.sh --NotebookApp.token='spatial-dev-token' --NotebookApp.password=''
+    networks:
+      - spatial-net
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - spatial-net
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - spatial-net
+
+volumes:
+  redis-data:
+
+networks:
+  spatial-net:
+    driver: bridge
