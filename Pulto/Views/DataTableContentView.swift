@@ -6,6 +6,49 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 import SwiftUI
+import RealityKit
+import UniformTypeIdentifiers
+
+// MARK: - Supporting Types for Spatial Data Visualization
+
+enum SpatialDataType: String, CaseIterable {
+    case pointCloud = "pointCloud"
+    case volumetric = "volumetric"
+    case mesh = "mesh"
+    case voxel = "voxel"
+    case notebook = "notebook"
+}
+
+struct SpatialDataItem {
+    let dataType: SpatialDataType
+    let rawData: Data
+    let dimensions: SIMD3<Float>
+    let pointCount: Int
+    let metadata: [String: Any]
+    
+    init(dataType: SpatialDataType, rawData: Data = Data(), dimensions: SIMD3<Float> = SIMD3<Float>(1, 1, 1), pointCount: Int = 100, metadata: [String: Any] = [:]) {
+        self.dataType = dataType
+        self.rawData = rawData
+        self.dimensions = dimensions
+        self.pointCount = pointCount
+        self.metadata = metadata
+    }
+}
+
+struct PointCloudVisualizationData {
+    let points: [SIMD3<Float>]
+    let colors: [SIMD3<Float>]?
+    let center: SIMD3<Float>
+    
+    init(points: [SIMD3<Float>], colors: [SIMD3<Float>]? = nil) {
+        self.points = points
+        self.colors = colors
+        
+        // Calculate center
+        let sum = points.reduce(SIMD3<Float>(0, 0, 0)) { $0 + $1 }
+        self.center = sum / Float(points.count)
+    }
+}
 
 // Enhanced DataFrame viewer with spreadsheet-like appearance - Cross-platform version
 struct DataTableContentView: View {
@@ -37,6 +80,9 @@ struct DataTableContentView: View {
     @State private var hoveredCell: (row: Int, col: Int)? = nil
     @State private var sortColumn: String? = nil
     @State private var sortAscending = true
+    @State private var showingDataImport = false
+    @State private var showingFileImporter = false
+    @State private var importError: String?
 
     // Column widths
     @State private var columnWidths: [String: CGFloat] = [:]
@@ -94,9 +140,375 @@ struct DataTableContentView: View {
             loadDataFromWindow()
             initializeColumnWidths()
         }
+        .sheet(isPresented: $showingDataImport) {
+            DataImportSheet(
+                onDataImported: { importedData in
+                    sampleData = importedData
+                    initializeColumnWidths()
+                    if let windowID = windowID {
+                        saveDataToWindow()
+                    }
+                }
+            )
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [
+                UTType.commaSeparatedText,
+                UTType.tabSeparatedText,
+                UTType.json,
+                UTType.plainText
+            ],
+            allowsMultipleSelection: false
+        ) { result in
+            handleFileImport(result)
+        }
+        .alert("Import Error", isPresented: .constant(importError != nil)) {
+            Button("OK") { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
     }
 
-    // ... rest of your methods remain the same
+    // MARK: - Data Import Sheet
+    struct DataImportSheet: View {
+        let onDataImported: (DataFrameData) -> Void
+        @Environment(\.dismiss) private var dismiss
+        @State private var importMethod: ImportMethod = .file
+        @State private var showingFileImporter = false
+        @State private var showingCSVRecommender = false
+        @State private var sampleText = ""
+        @State private var customDelimiter = ","
+        @State private var hasHeaders = true
+        @State private var importError: String?
+        
+        enum ImportMethod: String, CaseIterable {
+            case file = "File"
+            case paste = "Paste"
+            case sample = "Sample"
+            case csv = "CSV with Chart Recommendations"
+            
+            var icon: String {
+                switch self {
+                case .file: return "doc.text"
+                case .paste: return "doc.on.clipboard"
+                case .sample: return "sparkles"
+                case .csv: return "chart.bar.doc.horizontal"
+                }
+            }
+        }
+        
+        var body: some View {
+            NavigationView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.down.on.square")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                        
+                        Text("Import Data")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        Text("Choose how you'd like to import your data")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Import methods
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
+                        ForEach(ImportMethod.allCases, id: \.self) { method in
+                            ImportMethodCard(
+                                method: method,
+                                isSelected: importMethod == method
+                            ) {
+                                importMethod = method
+                                handleMethodSelection(method)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Options for paste method
+                    if importMethod == .paste {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Paste your data below:")
+                                .font(.headline)
+                            
+                            HStack {
+                                Text("Delimiter:")
+                                TextField("Delimiter", text: $customDelimiter)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 60)
+                                
+                                Toggle("Has Headers", isOn: $hasHeaders)
+                            }
+                            
+                            TextEditor(text: $sampleText)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(height: 200)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                )
+                            
+                            Button("Import Data") {
+                                handlePasteImport()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(sampleText.isEmpty)
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                }
+                .navigationTitle("Data Import")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                    }
+                }
+                .fileImporter(
+                    isPresented: $showingFileImporter,
+                    allowedContentTypes: [
+                        UTType.commaSeparatedText,
+                        UTType.tabSeparatedText,
+                        UTType.json,
+                        UTType.plainText
+                    ],
+                    allowsMultipleSelection: false
+                ) { result in
+                    handleFileImport(result)
+                }
+                .sheet(isPresented: $showingCSVRecommender) {
+                    CSVChartRecommenderView()
+                }
+                .alert("Import Error", isPresented: .constant(importError != nil)) {
+                    Button("OK") { importError = nil }
+                } message: {
+                    Text(importError ?? "")
+                }
+            }
+        }
+        
+        private func handleMethodSelection(_ method: ImportMethod) {
+            switch method {
+            case .file:
+                showingFileImporter = true
+            case .csv:
+                showingCSVRecommender = true
+            case .sample:
+                loadSampleDataset()
+            case .paste:
+                break // UI will show text editor
+            }
+        }
+        
+        private func loadSampleDataset() {
+            let sampleData = DataFrameData(
+                columns: ["Product", "Sales", "Region", "Quarter", "Profit"],
+                rows: [
+                    ["iPhone 15", "1500000", "North America", "Q1", "450000"],
+                    ["MacBook Pro", "800000", "Europe", "Q1", "320000"],
+                    ["iPad Air", "600000", "Asia", "Q1", "180000"],
+                    ["Apple Watch", "400000", "North America", "Q2", "160000"],
+                    ["AirPods Pro", "1200000", "Global", "Q2", "360000"],
+                    ["Mac Studio", "200000", "North America", "Q2", "100000"],
+                    ["iPhone 15 Pro", "2000000", "Global", "Q3", "700000"],
+                    ["iPad Pro", "500000", "Europe", "Q3", "200000"]
+                ],
+                dtypes: ["Product": "string", "Sales": "int", "Region": "string", "Quarter": "string", "Profit": "int"]
+            )
+            
+            onDataImported(sampleData)
+            dismiss()
+        }
+        
+        private func handlePasteImport() {
+            do {
+                let importedData = try parseDelimitedText(sampleText, delimiter: customDelimiter, hasHeaders: hasHeaders)
+                onDataImported(importedData)
+                dismiss()
+            } catch {
+                importError = "Failed to parse pasted data: \(error.localizedDescription)"
+            }
+        }
+        
+        private func handleFileImport(_ result: Result<[URL], Error>) {
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                
+                do {
+                    let content = try String(contentsOf: url)
+                    let fileExtension = url.pathExtension.lowercased()
+                    
+                    let importedData: DataFrameData
+                    
+                    switch fileExtension {
+                    case "csv":
+                        importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+                    case "tsv", "txt":
+                        importedData = try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+                    case "json":
+                        importedData = try parseJSONData(content)
+                    default:
+                        // Try to auto-detect delimiter
+                        importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+                    }
+                    
+                    onDataImported(importedData)
+                    dismiss()
+                } catch {
+                    importError = "Error reading file: \(error.localizedDescription)"
+                }
+                
+            case .failure(let error):
+                importError = "Import failed: \(error.localizedDescription)"
+            }
+        }
+        
+        private func parseDelimitedText(_ content: String, delimiter: String, hasHeaders: Bool) throws -> DataFrameData {
+            let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            guard !lines.isEmpty else {
+                throw ImportError.noData
+            }
+            
+            let rows = lines.map { line in
+                line.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
+            }
+            
+            let columns: [String]
+            let dataRows: [[String]]
+            
+            if hasHeaders && !rows.isEmpty {
+                columns = rows[0]
+                dataRows = Array(rows.dropFirst())
+            } else {
+                let columnCount = rows.first?.count ?? 0
+                columns = (1...columnCount).map { "Column \($0)" }
+                dataRows = rows
+            }
+            
+            // Auto-detect data types
+            let dtypes = autoDetectTypes(columns: columns, rows: dataRows)
+            
+            return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
+        }
+        
+        private func parseJSONData(_ content: String) throws -> DataFrameData {
+            guard let data = content.data(using: .utf8) else {
+                throw ImportError.invalidFormat
+            }
+            
+            let json = try JSONSerialization.jsonObject(with: data)
+            
+            if let array = json as? [[String: Any]] {
+                // Array of objects
+                let columns = Array(Set(array.flatMap { $0.keys })).sorted()
+                let rows = array.map { object in
+                    columns.map { column in
+                        if let value = object[column] {
+                            return String(describing: value)
+                        } else {
+                            return ""
+                        }
+                    }
+                }
+                
+                let dtypes = autoDetectTypes(columns: columns, rows: rows)
+                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+            } else {
+                throw ImportError.invalidFormat
+            }
+        }
+        
+        private func autoDetectTypes(columns: [String], rows: [[String]]) -> [String: String] {
+            var dtypes: [String: String] = [:]
+            
+            for (index, column) in columns.enumerated() {
+                let columnValues = rows.compactMap { row in
+                    index < row.count ? row[index] : nil
+                }.filter { !$0.isEmpty }
+                
+                if columnValues.isEmpty {
+                    dtypes[column] = "string"
+                    continue
+                }
+                
+                let numericCount = columnValues.compactMap { Double($0) }.count
+                let booleanCount = columnValues.filter { $0.lowercased() == "true" || $0.lowercased() == "false" }.count
+                
+                if Double(numericCount) / Double(columnValues.count) > 0.8 {
+                    if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
+                        dtypes[column] = "float"
+                    } else {
+                        dtypes[column] = "int"
+                    }
+                } else if Double(booleanCount) / Double(columnValues.count) > 0.8 {
+                    dtypes[column] = "bool"
+                } else {
+                    dtypes[column] = "string"
+                }
+            }
+            
+            return dtypes
+        }
+        
+        enum ImportError: LocalizedError {
+            case noData
+            case invalidFormat
+            case parsingFailed
+            
+            var errorDescription: String? {
+                switch self {
+                case .noData:
+                    return "No data found in the input"
+                case .invalidFormat:
+                    return "Invalid data format"
+                case .parsingFailed:
+                    return "Failed to parse the data"
+                }
+            }
+        }
+    }
+
+    struct ImportMethodCard: View {
+        let method: DataImportSheet.ImportMethod
+        let isSelected: Bool
+        let action: () -> Void
+        
+        var body: some View {
+            Button(action: action) {
+                VStack(spacing: 12) {
+                    Image(systemName: method.icon)
+                        .font(.system(size: 40))
+                        .foregroundColor(isSelected ? .white : .blue)
+                    
+                    Text(method.rawValue)
+                        .font(.headline)
+                        .foregroundColor(isSelected ? .white : .primary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(height: 120)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
     private var toolbarView: some View {
         HStack(spacing: 16) {
@@ -113,6 +525,15 @@ struct DataTableContentView: View {
 
             // Action buttons
             HStack(spacing: 8) {
+                Button(action: { showingDataImport = true }) {
+                    Label("Import Data", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.purple.opacity(0.1))
+                .cornerRadius(6)
+
                 Button(action: { loadSampleData() }) {
                     Label("Sample Data", systemImage: "doc.text")
                 }
@@ -405,7 +826,36 @@ struct DataTableContentView: View {
             sortColumn = column
             sortAscending = true
         }
-        // Implement sorting logic here
+        
+        // Implement actual sorting
+        let sortedIndices = sampleData.rows.indices.sorted { i, j in
+            let colIndex = sampleData.columns.firstIndex(of: column) ?? 0
+            let val1 = sampleData.rows[i][colIndex]
+            let val2 = sampleData.rows[j][colIndex]
+            
+            if let dtype = sampleData.dtypes[column] {
+                switch dtype {
+                case "int":
+                    let num1 = Int(val1) ?? 0
+                    let num2 = Int(val2) ?? 0
+                    return sortAscending ? num1 < num2 : num1 > num2
+                case "float":
+                    let num1 = Double(val1) ?? 0.0
+                    let num2 = Double(val2) ?? 0.0
+                    return sortAscending ? num1 < num2 : num1 > num2
+                default:
+                    return sortAscending ? val1 < val2 : val1 > val2
+                }
+            }
+            
+            return sortAscending ? val1 < val2 : val1 > val2
+        }
+        
+        sampleData = DataFrameData(
+            columns: sampleData.columns,
+            rows: sortedIndices.map { sampleData.rows[$0] },
+            dtypes: sampleData.dtypes
+        )
     }
 
     private func loadDataFromWindow() {
@@ -440,12 +890,183 @@ struct DataTableContentView: View {
         }
     }
 
-    // Helper method to convert to CSV string (if not already defined elsewhere)
+    // Helper method to convert to CSV string
     private func toCSVString() -> String {
         var csv = sampleData.columns.joined(separator: ",") + "\n"
         for row in sampleData.rows {
             csv += row.joined(separator: ",") + "\n"
         }
         return csv
+    }
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            do {
+                let content = try String(contentsOf: url)
+                let fileExtension = url.pathExtension.lowercased()
+                
+                let importedData: DataFrameData
+                
+                switch fileExtension {
+                case "csv":
+                    importedData = try parseCSVContent(content)
+                case "tsv", "txt":
+                    importedData = try parseTSVContent(content)
+                case "json":
+                    importedData = try parseJSONContent(content)
+                default:
+                    // Try CSV as default
+                    importedData = try parseCSVContent(content)
+                }
+                
+                sampleData = importedData
+                initializeColumnWidths()
+                
+                if let windowID = windowID {
+                    saveDataToWindow()
+                }
+            } catch {
+                importError = "Error importing file: \(error.localizedDescription)"
+            }
+            
+        case .failure(let error):
+            importError = "Import failed: \(error.localizedDescription)"
+        }
+    }
+    
+    private func parseCSVContent(_ content: String) throws -> DataFrameData {
+        if let csvData = CSVParser.parse(content) {
+            let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
+                let (index, type) = item
+                if index < csvData.headers.count {
+                    switch type {
+                    case .numeric:
+                        result[csvData.headers[index]] = "float"
+                    case .categorical:
+                        result[csvData.headers[index]] = "string"
+                    case .date:
+                        result[csvData.headers[index]] = "string"
+                    case .unknown:
+                        result[csvData.headers[index]] = "string"
+                    }
+                }
+            }
+            
+            return DataFrameData(
+                columns: csvData.headers,
+                rows: csvData.rows,
+                dtypes: dtypes
+            )
+        } else {
+            // Fallback to simple CSV parsing
+            return try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+        }
+    }
+    
+    private func parseTSVContent(_ content: String) throws -> DataFrameData {
+        return try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+    }
+    
+    private func parseJSONContent(_ content: String) throws -> DataFrameData {
+        guard let data = content.data(using: .utf8) else {
+            throw DataImportError.invalidFormat
+        }
+        
+        let json = try JSONSerialization.jsonObject(with: data)
+        
+        if let array = json as? [[String: Any]] {
+            let columns = Array(Set(array.flatMap { $0.keys })).sorted()
+            let rows = array.map { object in
+                columns.map { column in
+                    if let value = object[column] {
+                        return String(describing: value)
+                    } else {
+                        return ""
+                    }
+                }
+            }
+            
+            let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
+            return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+        } else {
+            throw DataImportError.invalidFormat
+        }
+    }
+    
+    private func parseDelimitedText(_ content: String, delimiter: String, hasHeaders: Bool) throws -> DataFrameData {
+        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !lines.isEmpty else {
+            throw DataImportError.noData
+        }
+        
+        let rows = lines.map { line in
+            line.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+        
+        let columns: [String]
+        let dataRows: [[String]]
+        
+        if hasHeaders && !rows.isEmpty {
+            columns = rows[0]
+            dataRows = Array(rows.dropFirst())
+        } else {
+            let columnCount = rows.first?.count ?? 0
+            columns = (1...columnCount).map { "Column \($0)" }
+            dataRows = rows
+        }
+        
+        // Auto-detect data types
+        let dtypes = autoDetectDataTypes(columns: columns, rows: dataRows)
+        
+        return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
+    }
+    
+    private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
+        var dtypes: [String: String] = [:]
+        
+        for (index, column) in columns.enumerated() {
+            let columnValues = rows.compactMap { row in
+                index < row.count ? row[index] : nil
+            }.filter { !$0.isEmpty }
+            
+            if columnValues.isEmpty {
+                dtypes[column] = "string"
+                continue
+            }
+            
+            let numericCount = columnValues.compactMap { Double($0) }.count
+            
+            if Double(numericCount) / Double(columnValues.count) > 0.8 {
+                if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
+                    dtypes[column] = "float"
+                } else {
+                    dtypes[column] = "int"
+                }
+            } else {
+                dtypes[column] = "string"
+            }
+        }
+        
+        return dtypes
+    }
+    
+    enum DataImportError: LocalizedError {
+        case noData
+        case invalidFormat
+        case parsingFailed
+        
+        var errorDescription: String? {
+            switch self {
+            case .noData:
+                return "No data found in the file"
+            case .invalidFormat:
+                return "Invalid file format"
+            case .parsingFailed:
+                return "Failed to parse the data"
+            }
+        }
     }
 }

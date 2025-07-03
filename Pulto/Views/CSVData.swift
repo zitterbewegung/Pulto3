@@ -3,9 +3,8 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/1/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 import SwiftUI
 import Charts
@@ -387,6 +386,7 @@ struct HistogramView: View {
 }
 
 // MARK: - Main View
+// CSVChartRecommenderView is defined in its own file
 struct CSVChartRecommenderView: View {
     @State private var csvData: CSVData?
     @State private var recommendations: [ChartScore] = []
@@ -625,12 +625,3 @@ struct RecommendationCard: View {
         .buttonStyle(.plain)
     }
 }
-
-/*
-// MARK: - App Entry Point
-struct ContentView: View {
-    var body: some View {
-        CSVChartRecommenderView()
-    }
-}
-*/

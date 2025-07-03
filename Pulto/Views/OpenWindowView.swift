@@ -143,7 +143,145 @@ enum ExportTemplate: String, CaseIterable, Codable {
     }
 }
 
+// MARK: - Point Cloud Data Structure
 
+struct PointCloudData: Codable, Hashable {
+    var title: String
+    var xAxisLabel: String
+    var yAxisLabel: String
+    var zAxisLabel: String
+    var demoType: String
+    var parameters: [String: Double]
+    var totalPoints: Int
+    var points: [PointData]
+    
+    struct PointData: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+        var intensity: Double?
+        var color: String?
+        
+        init(x: Double, y: Double, z: Double, intensity: Double? = nil, color: String? = nil) {
+            self.x = x
+            self.y = y
+            self.z = z
+            self.intensity = intensity
+            self.color = color
+        }
+    }
+    
+    init(title: String = "Point Cloud Data",
+         xAxisLabel: String = "X",
+         yAxisLabel: String = "Y", 
+         zAxisLabel: String = "Z",
+         demoType: String = "custom",
+         parameters: [String: Double] = [:]) {
+        self.title = title
+        self.xAxisLabel = xAxisLabel
+        self.yAxisLabel = yAxisLabel
+        self.zAxisLabel = zAxisLabel
+        self.demoType = demoType
+        self.parameters = parameters
+        self.totalPoints = 0
+        self.points = []
+    }
+    
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !points.isEmpty else {
+            return "# Empty point cloud\nprint('No point cloud data available')"
+        }
+
+        let xPoints = points.map { String($0.x) }.joined(separator: ", ")
+        let yPoints = points.map { String($0.y) }.joined(separator: ", ")
+        let zPoints = points.map { String($0.z) }.joined(separator: ", ")
+        
+        var intensityString = ""
+        let hasIntensity = points.contains { $0.intensity != nil }
+        if hasIntensity {
+            let intensities = points.map { String($0.intensity ?? 0.0) }.joined(separator: ", ")
+            intensityString = """
+            
+            # Point intensities
+            intensities = np.array([\(intensities)])
+            """
+        }
+
+        return """
+        # \(title)
+        # Generated from VisionOS Point Cloud Viewer
+        # Demo Type: \(demoType)
+        
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # Point cloud data (\(totalPoints) points)
+        x_points = np.array([\(xPoints)])
+        y_points = np.array([\(yPoints)])
+        z_points = np.array([\(zPoints)])\(intensityString)
+        
+        # Parameters: \(parameters.map { key, value in "\(key): \(value)" }.joined(separator: ", "))
+        
+        # Matplotlib 3D scatter plot
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        \(hasIntensity ? "scatter = ax.scatter(x_points, y_points, z_points, c=intensities, cmap='viridis', alpha=0.7)" : "scatter = ax.scatter(x_points, y_points, z_points, alpha=0.7)")
+        
+        ax.set_xlabel('\(xAxisLabel)')
+        ax.set_ylabel('\(yAxisLabel)')
+        ax.set_zlabel('\(zAxisLabel)')
+        ax.set_title('\(title)')
+        
+        \(hasIntensity ? "plt.colorbar(scatter)" : "")
+        plt.tight_layout()
+        plt.show()
+        
+        # Plotly interactive 3D plot
+        fig_plotly = go.Figure()
+        
+        fig_plotly.add_trace(go.Scatter3d(
+            x=x_points,
+            y=y_points,
+            z=z_points,
+            mode='markers',
+            marker=dict(
+                size=3,
+                \(hasIntensity ? "color=intensities,\n                colorscale='Viridis'," : "color='blue',")
+                opacity=0.8
+            ),
+            name='\(title)'
+        ))
+        
+        fig_plotly.update_layout(
+            title='\(title)',
+            scene=dict(
+                xaxis_title='\(xAxisLabel)',
+                yaxis_title='\(yAxisLabel)',
+                zaxis_title='\(zAxisLabel)'
+            ),
+            width=800,
+            height=600
+        )
+        
+        fig_plotly.show()
+        
+        # Print statistics
+        print(f"Point Cloud Statistics:")
+        print(f"- Title: '\(title)'")
+        print(f"- Demo Type: '\(demoType)'")
+        print(f"- Total Points: {len(x_points)}")
+        print(f"- X Range: [{np.min(x_points):.2f}, {np.max(x_points):.2f}]")
+        print(f"- Y Range: [{np.min(y_points):.2f}, {np.max(y_points):.2f}]")
+        print(f"- Z Range: [{np.min(z_points):.2f}, {np.max(z_points):.2f}]")
+        \(hasIntensity ? "print(f\"- Intensity Range: [{np.min(intensities):.2f}, {np.max(intensities):.2f}]\")" : "")
+        """
+    }
+}
 
 // Add this structure after PointCloudData
 struct VolumeData: Codable, Hashable {
@@ -270,8 +408,8 @@ struct ChartData: Codable, Hashable {
         # \(title)
         # Generated from VisionOS Chart Window
         
-        import matplotlib.pyplot as plt
         import numpy as np
+        import matplotlib.pyplot as plt
         import pandas as pd
         
         # Chart data
@@ -426,8 +564,8 @@ struct Model3DData: Codable, Hashable {
         import numpy as np
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         import plotly.graph_objects as go
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
         import plotly.express as px
         
         # 3D Model data (\(vertices.count) vertices, \(faces.count) faces)
@@ -456,10 +594,8 @@ struct Model3DData: Codable, Hashable {
             if len(face) >= 3:  // Valid face
                 face_vertices = scaled_vertices[face]
                 mesh_faces.append(face_vertices)
-        
-        if mesh_faces:
-            mesh_collection = Poly3DCollection(mesh_faces, alpha=0.7, facecolor='lightblue', edgecolor='black')
-            ax.add_collection3d(mesh_collection)
+        mesh_collection = Poly3DCollection(mesh_faces, alpha=0.7, facecolor='lightblue', edgecolor='black')
+        ax.add_collection3d(mesh_collection)
         
         # Plot vertices as points
         ax.scatter(scaled_vertices[:, 0], scaled_vertices[:, 1], scaled_vertices[:, 2], 
@@ -637,7 +773,6 @@ struct Model3DData: Codable, Hashable {
     }
 }
 
-
 struct WindowState: Codable, Hashable {
     var isMinimized: Bool = false
     var isMaximized: Bool = false
@@ -664,6 +799,7 @@ struct WindowState: Codable, Hashable {
         self.lastModified = Date()
     }
 }
+
 struct DataFrameData: Codable, Hashable {
     var columns: [String]
     var rows: [[String]]
@@ -1077,13 +1213,13 @@ class PointCloudDemo {
         # Point Cloud Visualization Demo
         # Generated by Swift ChartDataExtractor
         
-        import json
-        import matplotlib.pyplot as plt
-        import pandas as pd
         import numpy as np
+        import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        import plotly.express as px
         
         # Create a figure with multiple subplots
         fig = plt.figure(figsize=(20, 16))
@@ -1115,8 +1251,18 @@ class PointCloudDemo {
         print("-" * 60)
         for name, points, description in datasets:
             print(f"{name:15} | {points:6} points | {description}")
+        
+        # Create DataFrame for further analysis
+        df = pd.DataFrame({
+            'Dataset': [name for name, _, _ in datasets],
+            'Points': [points for _, points, _ in datasets],
+            'Description': [description for _, _, description in datasets]
+        })
+        
+        print("\\nDataFrame Preview:")
+        print(df.head())
         """
-
+        
         saveJupyterCode(notebookCode, to: "pointcloud_demo_notebook.py")
     }
 
@@ -1136,8 +1282,6 @@ class PointCloudDemo {
         }
     }
 }
-
-
 
 // Break down the sidebar into smaller components
 struct WindowSelectorView: View {
@@ -1366,14 +1510,14 @@ struct ExportActionsView: View {
                 .font(.headline)
 
             Button("Export to Jupyter Notebook") {
-                if let fileURL = windowManager.saveNotebookToFile() {
-                    print("Notebook saved to: \(fileURL.path)")
+                    if let fileURL = windowManager.saveNotebookToFile() {
+                        print("Notebook saved to: \(fileURL.path)")
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(8)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(8)
 
             Button("Copy Notebook JSON") {
                 let notebookJSON = windowManager.exportToJupyterNotebook()
@@ -1382,15 +1526,15 @@ struct ExportActionsView: View {
                 NSPasteboard.general.setString(notebookJSON, forType: .string)
                 #endif
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.orange.opacity(0.1))
-            .cornerRadius(8)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
         }
     }
 }
 
-
+// MARK: - NewWindow
 struct NewWindow: View {
     let id: Int
     @StateObject private var windowTypeManager = WindowTypeManager.shared
@@ -1630,13 +1774,15 @@ struct NewWindow: View {
 }
 
 // MARK: - Preview Provider
-#Preview("Main Interface") {
-    EnvironmentView()
+struct Preview: View {
+    var body: some View {
+        Text("Preview placeholder")
+    }
 }
 
-/*#Preview("Point Cloud Preview") {
-  PointCloudPreview()
-}*/
+#Preview("Main Interface") {
+    Preview()
+}
 
 #Preview("Spatial Editor") {
     SpatialEditorView()
