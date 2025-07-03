@@ -24,21 +24,21 @@ class WindowTypeManager: ObservableObject {
         let currentMaxID = getAllWindows().map { $0.id }.max() ?? 0
         return currentMaxID + 1
     }
-    
+
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
         objectWillChange.send()
     }
-    
+
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
         objectWillChange.send()
     }
-    
+
     func isWindowActuallyOpen(_ id: Int) -> Bool {
         return openWindowIDs.contains(id)
     }
-    
+
     func cleanupClosedWindows() {
         let windowsToRemove = windows.keys.filter { !openWindowIDs.contains($0) }
         for windowID in windowsToRemove {
@@ -46,7 +46,7 @@ class WindowTypeManager: ObservableObject {
         }
         objectWillChange.send()
     }
-    
+
     func getAllWindows(onlyOpen: Bool = false) -> [NewWindowID] {
         let allWindows = Array(windows.values).sorted { $0.id < $1.id }
         if onlyOpen {
@@ -54,18 +54,18 @@ class WindowTypeManager: ObservableObject {
         }
         return allWindows
     }
-    
+
     func getWindowSafely(for id: Int) -> NewWindowID? {
         guard let window = windows[id] else {
             print("⚠️ Warning: Window #\(id) not found in WindowTypeManager")
             return nil
         }
-        
+
         // If window exists in manager but not marked as open, it might have been closed
         if !openWindowIDs.contains(id) {
             print("ℹ️ Info: Window #\(id) exists in manager but is not marked as open")
         }
-        
+
         return window
     }
 
@@ -157,6 +157,38 @@ class WindowTypeManager: ObservableObject {
 
     func getWindowModel3DData(for id: Int) -> Model3DData? {
         return windows[id]?.state.model3DData
+    }
+
+    // Chart data methods
+    func updateWindowChartData(_ id: Int, chartData: ChartData) {
+        windows[id]?.state.chartData = chartData
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to matplotlib if not already set
+        if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .matplotlib
+        }
+    }
+
+
+    // New point cloud methods
+    func updateWindowPointCloud(_ id: Int, pointCloud: PointCloudData) {
+        windows[id]?.state.pointCloudData = pointCloud
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to custom if not already set
+        if let window = windows[id], window.windowType == .spatial && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .custom
+        }
+    }
+
+    func getWindowPointCloud(for id: Int) -> PointCloudData? {
+        return windows[id]?.state.pointCloudData
+    }
+
+
+    func getWindowChartData(for id: Int) -> ChartData? {
+        return windows[id]?.state.chartData
     }
 
     // Add this method to WindowTypeManager
@@ -365,7 +397,7 @@ class WindowTypeManager: ObservableObject {
                 state.chartData = chartData
             }
 
-        case .model3d:  // Add this case
+        case .model3d:
             if let model3DData = try parseModel3DDataFromContent(content) {
                 state.model3DData = model3DData
             }
@@ -831,20 +863,6 @@ class WindowTypeManager: ObservableObject {
         return windows[id]?.state.dataFrameData
     }
 
-    // New point cloud methods
-    func updateWindowPointCloud(_ id: Int, pointCloud: PointCloudData) {
-        windows[id]?.state.pointCloudData = pointCloud
-        windows[id]?.state.lastModified = Date()
-
-        // Auto-set template to custom if not already set
-        if let window = windows[id], window.windowType == .spatial && window.state.exportTemplate == .plain {
-            windows[id]?.state.exportTemplate = .custom
-        }
-    }
-
-    func getWindowPointCloud(for id: Int) -> PointCloudData? {
-        return windows[id]?.state.pointCloudData
-    }
 
     func removeWindow(_ id: Int) {
         windows.removeValue(forKey: id)
@@ -950,7 +968,7 @@ class WindowTypeManager: ObservableObject {
             return generateVolumeCellContent(for: window)
         case .pointcloud:
             return generateSpatialCellContent(for: window)
-        case .model3d:  // Add this case
+        case .model3d:
             return generateModel3DCellContent(for: window)
         }
     }

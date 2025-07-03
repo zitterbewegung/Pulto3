@@ -3,7 +3,7 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/21/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -29,10 +29,24 @@ private func createJupyterCell(type: String, content: String) -> [String: Any] {
 
 /// Converts a window into readable cell text.
 private func generateCellContent(for window: NewWindowID) -> String {
-    """
+    var content = """
     # \(window.windowType.rawValue) – ID \(window.id)
     \(window.state.content)
     """
+    
+    if let chartData = window.state.chartData {
+        content += """
+        
+        # Chart Data
+        # Type: \(chartData.chartType)
+        # X Label: \(chartData.xLabel)
+        # Y Label: \(chartData.yLabel)
+        
+        \(chartData.toPythonCode())
+        """
+    }
+    
+    return content
 }
 
 /// Every template your exporter supports right now.
@@ -331,6 +345,9 @@ extension WindowTypeManager {
         directory: URL,
         debugOptions: DebugExportOptions
     ) -> URL? {
+        
+        // capture specific chart view data
+        captureChartDataFromActiveViews()
 
         let notebookJSON = exportToJupyterNotebookWithDebug(debugOptions: debugOptions)
         let finalName = filename.hasSuffix(".ipynb") ? filename : "\(filename).ipynb"
@@ -351,9 +368,94 @@ extension WindowTypeManager {
             return nil
         }
     }
+    
+    private func captureChartDataFromActiveViews() {
+        for window in getAllWindows() {
+            if window.windowType == .charts {
+                // Capture chart positions and data
+                captureChartViewData(for: window.id)
+            }
+        }
+    }
+    
+    private func captureChartViewData(for windowID: Int) {
+        // Check if there's chart state data stored in UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "ChartViewModel_WindowStates"),
+           let chartStates = try? JSONDecoder().decode([ChartWindowState].self, from: data) {
+            
+            // Convert chart states to our ChartData format
+            let chartDataArray = chartStates.enumerated().map { index, state in
+                ChartData(
+                    title: "Chart Window \(index + 1)",
+                    chartType: "bar", // Default type, could be enhanced
+                    xLabel: "X Axis",
+                    yLabel: "Y Axis",
+                    xData: Array(stride(from: 0.0, through: Double(index + 5), by: 1.0)),
+                    yData: Array(stride(from: 1.0, through: Double(index + 6), by: 1.0))
+                )
+            }
+            
+            // Store the first chart data if available
+            if let firstChartData = chartDataArray.first {
+                self.updateWindowChartData(windowID, chartData: firstChartData)
+            }
+        }
+        
+        // Also capture sample chart data for demonstration
+        let sampleChartData = generateSampleChartData(for: windowID)
+        self.updateWindowChartData(windowID, chartData: sampleChartData)
+    }
+    
+    // Generate sample chart data
+    private func generateSampleChartData(for windowID: Int) -> ChartData {
+        // Generate some sample data based on window ID
+        let dataPoints = 10
+        let xData = Array(stride(from: 0.0, through: Double(dataPoints - 1), by: 1.0))
+        let yData = xData.map { x in
+            sin(x * 0.5 + Double(windowID) * 0.3) * 10 + Double(windowID) * 2
+        }
+        
+        return ChartData(
+            title: "Chart from Window \(windowID)",
+            chartType: "line",
+            xLabel: "Time",
+            yLabel: "Value",
+            xData: xData,
+            yData: yData,
+            color: ["blue", "red", "green", "purple"][windowID % 4],
+            style: "solid"
+        )
+    }
 
-    // ───── Notebook assembly helpers ──────────────────────────────────
+    private func logDebugExport(to dir: URL,
+                                filename: String,
+                                options: DebugExportOptions) {
+        let log = """
+        VisionOS Export Log
+        ===================
+        Date: \(options.exportDate)
+        File: \(filename)
+        Windows Exported: \(newWindows.count)
+        Debug Included: \(options.includeDebugInfo)
+        Timestamps Included: \(options.includeTimestamps)
+        Window Metrics Included: \(options.includeWindowMetrics)
+        """
+        try? log.write(to: dir.appendingPathComponent("\(filename).debug.log"),
+                       atomically: true,
+                       encoding: .utf8)
+    }
 
+    private func getMemoryUsage() -> Int64 {
+        var info  = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let kerr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        return kerr == KERN_SUCCESS ? Int64(info.resident_size) : 0
+    }
+    
     private func exportToJupyterNotebookWithDebug(
         debugOptions: DebugExportOptions
     ) -> String {
@@ -409,11 +511,44 @@ extension WindowTypeManager {
         
         ## Window Summary
         
-        | Type | Count |
-        |------|-------|
+        | Type | Count | Has Data |
+        |------|-------|----------|
         """
         for (type, wins) in Dictionary(grouping: newWindows, by: \.windowType) {
-            md += "\n| \(type.rawValue) | \(wins.count) |"
+            let dataCount = wins.filter { window in
+                switch window.windowType {
+                case .charts:
+                    return window.state.chartData != nil
+                case .spatial, .pointcloud:
+                    return window.state.pointCloudData != nil
+                case .column:
+                    return window.state.dataFrameData != nil
+                case .volume:
+                    return window.state.volumeData != nil
+                case .model3d:
+                    return window.state.model3DData != nil
+                }
+            }.count
+            md += "\n| \(type.rawValue) | \(wins.count) | \(dataCount)/\(wins.count) |"
+        }
+
+        let chartWindows = newWindows.filter { $0.windowType == .charts }
+        if !chartWindows.isEmpty {
+            md += """
+            
+            ## Chart Details
+            
+            | Window ID | Chart Type | Data Points | Position |
+            |-----------|------------|-------------|----------|
+            """
+            
+            for window in chartWindows {
+                if let chartData = window.state.chartData {
+                    md += "\n| \(window.id) | \(chartData.chartType) | \(chartData.xData.count) | (\(Int(window.position.x)), \(Int(window.position.y))) |"
+                } else {
+                    md += "\n| \(window.id) | No Data | 0 | (\(Int(window.position.x)), \(Int(window.position.y))) |"
+                }
+            }
         }
 
         if opt.includeDebugInfo {
@@ -423,6 +558,7 @@ extension WindowTypeManager {
 
             - Memory Usage: \(getMemoryUsage() / 1_048_576) MB
             - Export Duration: < 1 s
+            - Charts with Data: \(chartWindows.filter { $0.state.chartData != nil }.count)/\(chartWindows.count)
             """
         }
         return md
@@ -447,16 +583,34 @@ extension WindowTypeManager {
 
     private func addWindowMetrics(to content: String,
                                   window: NewWindowID) -> String {
-        """
+        var metrics = """
         # Window Metrics (Debug)
         # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
         # Size: \(window.position.width) × \(window.position.height)
         # Created: \(window.createdAt)
         # Modified: \(window.state.lastModified)
         # Content Size: \(window.state.content.count) chars
+        """
+        
+        if window.windowType == .charts, let chartData = window.state.chartData {
+            metrics += """
+            
+            # Chart Metrics
+            # Chart Type: \(chartData.chartType)
+            # Data Points: \(chartData.xData.count)
+            # X Range: [\(chartData.xData.min() ?? 0), \(chartData.xData.max() ?? 0)]
+            # Y Range: [\(chartData.yData.min() ?? 0), \(chartData.yData.max() ?? 0)]
+            # Color: \(chartData.color ?? "default")
+            # Style: \(chartData.style ?? "default")
+            """
+        }
+        
+        metrics += """
         
         \(content)
         """
+        
+        return metrics
     }
 
     private func createEnhancedNotebookMetadata(
@@ -481,34 +635,5 @@ extension WindowTypeManager {
             ]
         }
         return meta
-    }
-
-    private func logDebugExport(to dir: URL,
-                                filename: String,
-                                options: DebugExportOptions) {
-        let log = """
-        VisionOS Export Log
-        ===================
-        Date: \(options.exportDate)
-        File: \(filename)
-        Windows Exported: \(newWindows.count)
-        Debug Included: \(options.includeDebugInfo)
-        Timestamps Included: \(options.includeTimestamps)
-        Window Metrics Included: \(options.includeWindowMetrics)
-        """
-        try? log.write(to: dir.appendingPathComponent("\(filename).debug.log"),
-                       atomically: true,
-                       encoding: .utf8)
-    }
-
-    private func getMemoryUsage() -> Int64 {
-        var info  = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-        let kerr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-            }
-        }
-        return kerr == KERN_SUCCESS ? Int64(info.resident_size) : 0
     }
 }

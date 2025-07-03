@@ -116,6 +116,7 @@ struct PultoHomeView: View {
 
                 VStack(spacing: 40) {
                     HeaderView(viewModel: viewModel) {
+                        closeAllSheets()
                         showAppleSignIn = true
                     }
 
@@ -201,6 +202,14 @@ struct PultoHomeView: View {
         }
     }
 
+    private func closeAllSheets() {
+        showCreateProject = false
+        showSettings = false
+        showLogin = false
+        showTemplates = false
+        showAppleSignIn = false
+    }
+
     // MARK: - Subviews
     private var backgroundGradient: some View {
         LinearGradient(
@@ -224,9 +233,11 @@ struct PultoHomeView: View {
                     showCreateProject: $showCreateProject,
                     showTemplates: $showTemplates,
                     onOpenProject: {
+                        closeAllSheets()
                         openWindow(id: "open-project-window")
                     },
-                    isDarkMode: viewModel.isDarkMode
+                    isDarkMode: viewModel.isDarkMode,
+                    closeAllSheets: closeAllSheets
                 )
 
                 if viewModel.isUserLoggedIn {
@@ -268,6 +279,7 @@ struct PultoHomeView: View {
             .buttonStyle(.borderless)
 
             Button {
+                closeAllSheets()
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
@@ -355,6 +367,7 @@ struct PrimaryActionsGrid: View {
     @Binding var showTemplates: Bool
     let onOpenProject: () -> Void
     let isDarkMode: Bool
+    let closeAllSheets: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -376,18 +389,19 @@ struct PrimaryActionsGrid: View {
                     title: "Open Project",
                     subtitle: "Continue working",
                     icon: "folder",
-                    color: .purple,
-
-                ){
+                    color: .purple
+                ) {
+                    closeAllSheets()
                     showCreateProject = true
                 }
 
                 ActionCard(
                     title: "Import",
-                    subtitle: "Import juypter notebooks.",
+                    subtitle: "Import jupyter notebooks.",
                     icon: "square.grid.2x2",
                     color: .green
                 ) {
+                    closeAllSheets()
                     showTemplates = true
                 }
             }
