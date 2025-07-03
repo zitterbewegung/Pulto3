@@ -2,118 +2,711 @@
 //  AppleSignInView.swift
 //  Pulto
 //
-//  Created by Joshua Herman on 5/27/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Enhanced Apple Sign In with user management and persistence
 //
-
-
 
 import SwiftUI
 import AuthenticationServices
+import CryptoKit
 
-struct AppleSignInView: View {
-    @State private var isSignedIn = false
-    @State private var userID = ""
-    @State private var userName = ""
-    @State private var userEmail = ""
+// MARK: - User Model
+struct AppUser: Codable, Identifiable {
+    let id: String  // Apple User ID
+    var name: String
+    var email: String
+    var firstName: String
+    var lastName: String
+    var signInDate: Date
+    var lastActiveDate: Date
+    var preferences: UserPreferences
     
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 40) {
-                // Header
-                VStack(spacing: 16) {
-                    Image(systemName: "applelogo")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.blue.gradient)
-                    
-                    Text("Sign In")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                }
-                
-                if !isSignedIn {
-                    // Built-in Sign in with Apple Button
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        handleSignInResult(result)
-                    }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(width: 280, height: 50)
-                    .cornerRadius(8)
-                } else {
-                    // User signed in successfully
-                    VStack(spacing: 20) {
-                        Text("Welcome!")
-                            .font(.title)
-                            .fontWeight(.semibold)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            if !userName.isEmpty {
-                                Text("Name: \(userName)")
-                            }
-                            if !userEmail.isEmpty {
-                                Text("Email: \(userEmail)")
-                            }
-                            Text("User ID: \(String(userID.prefix(20)))...")
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        
-                        Button("Sign Out") {
-                            signOut()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .padding(40)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.regularMaterial)
-        }
+    init(appleIDCredential: ASAuthorizationAppleIDCredential) {
+        self.id = appleIDCredential.user
+        self.firstName = appleIDCredential.fullName?.givenName ?? ""
+        self.lastName = appleIDCredential.fullName?.familyName ?? ""
+        self.name = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
+        self.email = appleIDCredential.email ?? ""
+        self.signInDate = Date()
+        self.lastActiveDate = Date()
+        self.preferences = UserPreferences()
     }
     
-    private func handleSignInResult(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                userID = appleIDCredential.user
-                
-                if let fullName = appleIDCredential.fullName {
-                    let firstName = fullName.givenName ?? ""
-                    let lastName = fullName.familyName ?? ""
-                    userName = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
-                }
-                
-                if let email = appleIDCredential.email {
-                    userEmail = email
-                }
-                
-                isSignedIn = true
-                
-                print("Successfully signed in with Apple ID")
-                print("User ID: \(userID)")
-                print("Name: \(userName)")
-                print("Email: \(userEmail)")
-            }
-            
-        case .failure(let error):
-            print("Sign in with Apple failed: \(error.localizedDescription)")
+    var displayName: String {
+        if !name.isEmpty {
+            return name
+        } else if !email.isEmpty {
+            return email.components(separatedBy: "@").first ?? "User"
+        } else {
+            return "User"
         }
-    }
-    
-    private func signOut() {
-        userID = ""
-        userName = ""
-        userEmail = ""
-        isSignedIn = false
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
+struct UserPreferences: Codable {
+    var enableNotifications: Bool = true
+    var autoSaveWorkspaces: Bool = true
+    var defaultWorkspaceCategory: String = "Custom"
+    var preferredExportFormat: String = "Jupyter"
+    var theme: String = "System"
+}
+
+// MARK: - Authentication Manager
+class AuthenticationManager: NSObject, ObservableObject {
+    static let shared = AuthenticationManager()
+    
+    @Published var currentUser: AppUser?
+    @Published var isSignedIn: Bool = false
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    
+    private let keychain = KeychainService()
+    private let userDefaultsKey = "CurrentAppUser"
+    
+    override init() {
+        super.init()
+        checkExistingAuthentication()
+    }
+    
+    func signInWithApple() {
+        isLoading = true
+        errorMessage = nil
+        
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        
+        // Generate nonce for security
+        let nonce = randomNonceString()
+        request.nonce = sha256(nonce)
+        
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+        authorizationController.delegate = self
+        authorizationController.presentationContextProvider = self
+        authorizationController.performRequests()
+    }
+    
+    func signOut() {
+        currentUser = nil
+        isSignedIn = false
+        
+        // Clear stored user data
+        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        keychain.deleteUserCredentials()
+        
+        print("✅ Successfully signed out")
+    }
+    
+    private func checkExistingAuthentication() {
+        // Check if user data exists in UserDefaults
+        if let userData = UserDefaults.standard.data(forKey: userDefaultsKey),
+           let user = try? JSONDecoder().decode(AppUser.self, from: userData) {
+            
+            // Verify the user still has valid Apple ID credentials
+            let provider = ASAuthorizationAppleIDProvider()
+            provider.getCredentialState(forUserID: user.id) { [weak self] credentialState, error in
+                DispatchQueue.main.async {
+                    switch credentialState {
+                    case .authorized:
+                        self?.currentUser = user
+                        self?.isSignedIn = true
+                        self?.updateLastActiveDate()
+                        print("✅ User is still authorized")
+                    case .revoked, .notFound:
+                        self?.signOut()
+                        print("⚠️ User authorization revoked or not found")
+                    case .transferred:
+                        self?.signOut()
+                        print("⚠️ User authorization transferred")
+                    @unknown default:
+                        self?.signOut()
+                        print("⚠️ Unknown authorization state")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func saveUser(_ user: AppUser) {
+        currentUser = user
+        isSignedIn = true
+        
+        // Save to UserDefaults
+        if let userData = try? JSONEncoder().encode(user) {
+            UserDefaults.standard.set(userData, forKey: userDefaultsKey)
+        }
+        
+        // Save credentials to Keychain
+        keychain.saveUserCredentials(userID: user.id, email: user.email)
+        
+        print("✅ User saved successfully")
+    }
+    
+    private func updateLastActiveDate() {
+        guard var user = currentUser else { return }
+        user.lastActiveDate = Date()
+        saveUser(user)
+    }
+    
+    // MARK: - Security Helpers
+    
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset: Array<Character> =
+            Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+        
+        while remainingLength > 0 {
+            let randoms: [UInt8] = (0 ..< 16).map { _ in
+                var random: UInt8 = 0
+                let errorCode = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+                if errorCode != errSecSuccess {
+                    fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+                }
+                return random
+            }
+            
+            randoms.forEach { random in
+                if remainingLength == 0 {
+                    return
+                }
+                
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remainingLength -= 1
+                }
+            }
+        }
+        
+        return result
+    }
+    
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        let hashString = hashedData.compactMap {
+            return String(format: "%02x", $0)
+        }.joined()
+        
+        return hashString
+    }
+}
+
+// MARK: - ASAuthorizationControllerDelegate
+extension AuthenticationManager: ASAuthorizationControllerDelegate {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        DispatchQueue.main.async {
+            self.isLoading = false
+            
+            if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                let user = AppUser(appleIDCredential: appleIDCredential)
+                self.saveUser(user)
+                
+                print("✅ Successfully signed in with Apple ID")
+                print("   User ID: \(user.id)")
+                print("   Name: \(user.displayName)")
+                print("   Email: \(user.email)")
+            }
+        }
+    }
+    
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        DispatchQueue.main.async {
+            self.isLoading = false
+            
+            if let authError = error as? ASAuthorizationError {
+                switch authError.code {
+                case .canceled:
+                    self.errorMessage = "Sign in was canceled"
+                case .failed:
+                    self.errorMessage = "Sign in failed. Please try again."
+                case .invalidResponse:
+                    self.errorMessage = "Invalid response from Apple"
+                case .notHandled:
+                    self.errorMessage = "Sign in could not be handled"
+                case .unknown:
+                    self.errorMessage = "An unknown error occurred"
+                @unknown default:
+                    self.errorMessage = "An unexpected error occurred"
+                }
+            } else {
+                self.errorMessage = error.localizedDescription
+            }
+            
+            print("❌ Apple Sign In failed: \(self.errorMessage ?? "Unknown error")")
+        }
+    }
+}
+
+// MARK: - ASAuthorizationControllerPresentationContextProviding
+extension AuthenticationManager: ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        // For visionOS, we need to return the current window
+        #if os(visionOS)
+        return ASPresentationAnchor()
+        #else
+        return UIApplication.shared.windows.first { $0.isKeyWindow } ?? UIWindow()
+        #endif
+    }
+}
+
+// MARK: - Keychain Service
+class KeychainService {
+    private let service = "com.pulto.app"
+    
+    func saveUserCredentials(userID: String, email: String) {
+        let credentials = [
+            "userID": userID,
+            "email": email
+        ]
+        
+        if let data = try? JSONSerialization.data(withJSONObject: credentials) {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: "user_credentials",
+                kSecValueData as String: data
+            ]
+            
+            // Delete existing item
+            SecItemDelete(query as CFDictionary)
+            
+            // Add new item
+            SecItemAdd(query as CFDictionary, nil)
+        }
+    }
+    
+    func deleteUserCredentials() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "user_credentials"
+        ]
+        
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+// MARK: - Enhanced Apple Sign In View
+struct AppleSignInView: View {
+    @StateObject private var authManager = AuthenticationManager.shared
+    @State private var showingUserProfile = false
+    @State private var showingErrorAlert = false
+    @State private var animateWelcome = false
+    @State private var animateFeatures = false
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if authManager.isSignedIn, let user = authManager.currentUser {
+                    authenticatedView(user: user)
+                } else {
+                    signInView
+                }
+            }
+            .background(.regularMaterial)
+            .alert("Sign In Error", isPresented: $showingErrorAlert) {
+                Button("OK") {
+                    authManager.errorMessage = nil
+                }
+            } message: {
+                Text(authManager.errorMessage ?? "Unknown error occurred")
+            }
+            .onChange(of: authManager.errorMessage) { _, errorMessage in
+                showingErrorAlert = errorMessage != nil
+            }
+        }
+    }
+    
+    // MARK: - Sign In View
+    private var signInView: some View {
+        VStack(spacing: 40) {
+            // Header Section
+            VStack(spacing: 20) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.blue.gradient)
+                
+                VStack(spacing: 8) {
+                    Text("Welcome to Pulto")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Sign in to sync your workspaces and access advanced features")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            
+            // Features Section
+            VStack(spacing: 16) {
+                FeatureRow(icon: "icloud.fill", title: "Cloud Sync", description: "Sync workspaces across devices")
+                FeatureRow(icon: "shield.fill", title: "Secure Storage", description: "Your data is encrypted and private")
+                FeatureRow(icon: "person.2.fill", title: "Collaboration", description: "Share workspaces with team members")
+            }
+            .padding(.horizontal)
+            
+            // Sign In Button
+            VStack(spacing: 16) {
+                if authManager.isLoading {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Signing in...")
+                            .font(.headline)
+                    }
+                    .frame(width: 280, height: 50)
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    SignInWithAppleButton(.signIn) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { _ in
+                        // Handled by AuthenticationManager
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(width: 280, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .onTapGesture {
+                        authManager.signInWithApple()
+                    }
+                }
+                
+                Text("Secure sign in with your Apple ID")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(40)
+    }
+    
+    // MARK: - Authenticated View
+    private func authenticatedView(user: AppUser) -> some View {
+        VStack(spacing: 30) {
+            // User Header
+            VStack(spacing: 16) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.green.gradient)
+                
+                VStack(spacing: 4) {
+                    Text("Welcome back!")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text(user.displayName)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                }
+            }
+            
+            // User Stats
+            VStack(spacing: 16) {
+                HStack(spacing: 20) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                        
+                        Text("Active")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("Account")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    
+                    VStack(spacing: 8) {
+                        Image(systemName: "clock.fill")
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+                        
+                        Text(formatDate(user.signInDate))
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text("Member Since")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+
+                if !user.email.isEmpty {
+                    UserInfoCard(title: "Email", value: user.email, icon: "envelope.fill")
+                }
+                
+                UserInfoCard(title: "User ID", value: String(user.id.prefix(20)) + "...", icon: "person.text.rectangle")
+            }
+            
+            // Action Buttons
+            VStack(spacing: 12) {
+                Button("View Profile") {
+                    showingUserProfile = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                
+                Button("Sign Out") {
+                    authManager.signOut()
+                }
+                .buttonStyle(.bordered)
+                .foregroundStyle(.red)
+            }
+            
+            Spacer()
+        }
+        .padding(40)
+        .sheet(isPresented: $showingUserProfile) {
+            UserProfileView(user: user)
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+}
+
+struct FeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    
+    init(icon: String, title: String, description: String) {
+        self.icon = icon
+        self.title = title
+        self.description = description
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.blue)
+                .frame(width: 30)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+extension FeatureRow {
+    init(icon: String, title: String, value: String) {
+        self.icon = icon
+        self.title = title
+        self.description = value
+    }
+}
+
+struct UserInfoCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Text(value)
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - User Profile View
+struct UserProfileView: View {
+    let user: AppUser
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var authManager = AuthenticationManager.shared
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Profile Header
+                    VStack(spacing: 16) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundStyle(.blue.gradient)
+                        
+                        VStack(spacing: 4) {
+                            Text(user.displayName)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            if !user.email.isEmpty {
+                                Text(user.email)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    // User Details
+                    VStack(spacing: 12) {
+                        ProfileDetailRow(title: "User ID", value: user.id)
+                        ProfileDetailRow(title: "First Name", value: user.firstName.isEmpty ? "Not provided" : user.firstName)
+                        ProfileDetailRow(title: "Last Name", value: user.lastName.isEmpty ? "Not provided" : user.lastName)
+                        ProfileDetailRow(title: "Sign In Date", value: formatFullDate(user.signInDate))
+                        ProfileDetailRow(title: "Last Active", value: formatFullDate(user.lastActiveDate))
+                    }
+                    
+                    // Preferences Section
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Preferences")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        VStack(spacing: 8) {
+                            PreferenceRow(isEnabled: user.preferences.enableNotifications, value: nil, label: "Notifications", icon: "bell.fill")
+                            PreferenceRow(isEnabled: user.preferences.autoSaveWorkspaces, value: nil, label: "Auto-save Workspaces", icon: "square.and.arrow.down")
+                            PreferenceRow(isEnabled: nil, value: user.preferences.defaultWorkspaceCategory, label: "Default Category", icon: "folder")
+                            PreferenceRow(isEnabled: nil, value: user.preferences.preferredExportFormat, label: "Export Format", icon: "square.and.arrow.up")
+                            PreferenceRow(isEnabled: nil, value: user.preferences.theme, label: "Theme", icon: "paintbrush")
+                        }
+                    }
+                    
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button("Sign Out") {
+                            authManager.signOut()
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .foregroundStyle(.white)
+                        .background(.red)
+                    }
+                    .padding(.top)
+                }
+                .padding()
+            }
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func formatFullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+struct ProfileDetailRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct PreferenceRow: View {
+    var isEnabled: Bool?
+    var value: String?
+    let label: String
+    let icon: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.subheadline)
+                .foregroundStyle(.blue)
+                .frame(width: 20)
+            
+            Text(label)
+                .font(.subheadline)
+            
+            Spacer()
+            
+            if let isEnabled = isEnabled {
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundStyle(isEnabled ? .green : .red)
+            } else if let value = value {
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// 
+//  AppleSignInView.swift
+//  Pulto
+//
+//  Created by Joshua Herman on 5/27/25.
+//  Copyright (c) 2025 Apple. All rights reserved.
+
+// Preview
+struct AppleSignInView_Previews: PreviewProvider {
     static var previews: some View {
         AppleSignInView()
     }
 }
-

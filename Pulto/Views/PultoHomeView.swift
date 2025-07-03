@@ -105,6 +105,7 @@ struct PultoHomeView: View {
     @State private var showLogin = false
     @State private var showTemplates = false
     @State private var showImportDialog = false
+    @State private var showAppleSignIn = false
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
 
@@ -115,7 +116,7 @@ struct PultoHomeView: View {
 
                 VStack(spacing: 40) {
                     HeaderView(viewModel: viewModel) {
-                        showLogin = true
+                        showAppleSignIn = true
                     }
 
                     mainContent
@@ -147,8 +148,12 @@ struct PultoHomeView: View {
                     userName: $viewModel.userName
                 )
             }
+            .sheet(isPresented: $showAppleSignIn) {
+                AppleSignInView()
+                    .frame(width: 800, height: 900)
+            }
             .sheet(isPresented: $showTemplates) {
-                
+
                 NotebookImportDialog(
                     isPresented: $showImportDialog,
                     windowManager: windowManager
@@ -623,6 +628,7 @@ struct LoginView: View {
     @Binding var userName: String
     @Environment(\.dismiss) private var dismiss
     @State private var password = ""
+    @State private var showingAppleSignIn = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -650,12 +656,7 @@ struct LoginView: View {
                     .frame(width: 300)
 
                 Button("Sign In") {
-                    Task {
-                        AppleSignInView()
-                        // Simulate login
-                        isLoggedIn = true
-                        //dismiss()
-                    }
+                    showingAppleSignIn = true
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -664,6 +665,10 @@ struct LoginView: View {
         }
         .frame(width: 400, height: 300)
         .padding()
+        .sheet(isPresented: $showingAppleSignIn) {
+            AppleSignInView()
+                .frame(width: 600, height: 700)
+        }
     }
 }
 
