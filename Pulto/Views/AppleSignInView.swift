@@ -295,6 +295,16 @@ struct AppleSignInView: View {
     @State private var animateFeatures = false
     @Environment(\.dismiss) private var dismiss
     
+    let isPresented: Binding<Bool>?
+    
+    init() {
+        self.isPresented = nil
+    }
+    
+    init(isPresented: Binding<Bool>) {
+        self.isPresented = isPresented
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -305,6 +315,19 @@ struct AppleSignInView: View {
                 }
             }
             .background(.regularMaterial)
+            .navigationTitle("Apple Sign In")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close") {
+                        if let isPresented = isPresented {
+                            isPresented.wrappedValue = false
+                        } else {
+                            dismiss()
+                        }
+                    }
+                }
+            }
             .alert("Sign In Error", isPresented: $showingErrorAlert) {
                 Button("OK") {
                     authManager.errorMessage = nil
@@ -315,21 +338,35 @@ struct AppleSignInView: View {
             .onChange(of: authManager.errorMessage) { _, errorMessage in
                 showingErrorAlert = errorMessage != nil
             }
+            .onChange(of: authManager.isSignedIn) { _, isSignedIn in
+                if isSignedIn {
+                    // Auto-dismiss after a short delay to show success
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if let isPresented = isPresented {
+                            isPresented.wrappedValue = false
+                        } else {
+                            dismiss()
+                        }
+                    }
+                }
+            }
         }
     }
     
     // MARK: - Sign In View
     private var signInView: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: 30) {
             // Header Section
             VStack(spacing: 20) {
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 60))
                     .foregroundStyle(.blue.gradient)
+                    .scaleEffect(animateWelcome ? 1.0 : 0.8)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animateWelcome)
                 
                 VStack(spacing: 8) {
                     Text("Welcome to Pulto")
-                        .font(.largeTitle)
+                        .font(.title)
                         .fontWeight(.bold)
                     
                     Text("Sign in to sync your workspaces and access advanced features")
@@ -338,15 +375,19 @@ struct AppleSignInView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
+                .opacity(animateWelcome ? 1.0 : 0.0)
+                .animation(.easeInOut(duration: 0.8).delay(0.2), value: animateWelcome)
             }
             
             // Features Section
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 FeatureRow(icon: "icloud.fill", title: "Cloud Sync", description: "Sync workspaces across devices")
                 FeatureRow(icon: "shield.fill", title: "Secure Storage", description: "Your data is encrypted and private")
                 FeatureRow(icon: "person.2.fill", title: "Collaboration", description: "Share workspaces with team members")
             }
             .padding(.horizontal)
+            .opacity(animateFeatures ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.8).delay(0.4), value: animateFeatures)
             
             // Sign In Button
             VStack(spacing: 16) {
@@ -357,7 +398,7 @@ struct AppleSignInView: View {
                         Text("Signing in...")
                             .font(.headline)
                     }
-                    .frame(width: 280, height: 50)
+                    .frame(width: 250, height: 44)
                     .background(.regularMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
@@ -367,7 +408,7 @@ struct AppleSignInView: View {
                         // Handled by AuthenticationManager
                     }
                     .signInWithAppleButtonStyle(.black)
-                    .frame(width: 280, height: 50)
+                    .frame(width: 250, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .onTapGesture {
                         authManager.signInWithApple()
@@ -378,19 +419,25 @@ struct AppleSignInView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .opacity(animateFeatures ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.8).delay(0.6), value: animateFeatures)
             
             Spacer()
         }
-        .padding(40)
+        .padding(30)
+        .onAppear {
+            animateWelcome = true
+            animateFeatures = true
+        }
     }
     
     // MARK: - Authenticated View
     private func authenticatedView(user: AppUser) -> some View {
-        VStack(spacing: 30) {
-            // User Header
+        VStack(spacing: 20) {
+            // Success Header
             VStack(spacing: 16) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 60))
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 50))
                     .foregroundStyle(.green.gradient)
                 
                 VStack(spacing: 4) {
@@ -401,74 +448,78 @@ struct AppleSignInView: View {
                     Text(user.displayName)
                         .font(.headline)
                         .foregroundStyle(.primary)
+                    
+                    Text("Successfully signed in")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
             
             // User Stats
-            VStack(spacing: 16) {
-                HStack(spacing: 20) {
-                    VStack(spacing: 8) {
+            VStack(spacing: 12) {
+                HStack(spacing: 15) {
+                    VStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
+                            .font(.title3)
                             .foregroundStyle(.green)
                         
                         Text("Active")
-                            .font(.headline)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                         
                         Text("Account")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                     
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         Image(systemName: "clock.fill")
-                            .font(.title2)
+                            .font(.title3)
                             .foregroundStyle(.blue)
                         
                         Text(formatDate(user.signInDate))
-                            .font(.headline)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                         
                         Text("Member Since")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
                 }
 
                 if !user.email.isEmpty {
                     UserInfoCard(title: "Email", value: user.email, icon: "envelope.fill")
                 }
-                
-                UserInfoCard(title: "User ID", value: String(user.id.prefix(20)) + "...", icon: "person.text.rectangle")
             }
             
             // Action Buttons
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 Button("View Profile") {
                     showingUserProfile = true
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .controlSize(.regular)
                 
                 Button("Sign Out") {
                     authManager.signOut()
                 }
                 .buttonStyle(.bordered)
                 .foregroundStyle(.red)
+                .controlSize(.regular)
             }
             
             Spacer()
         }
-        .padding(40)
+        .padding(30)
         .sheet(isPresented: $showingUserProfile) {
             UserProfileView(user: user)
+                .frame(width: 600, height: 700)
         }
     }
     
@@ -701,8 +752,8 @@ struct PreferenceRow: View {
 //  AppleSignInView.swift
 //  Pulto
 //
-//  Created by Joshua Herman on 5/27/25.
-//  Copyright (c) 2025 Apple. All rights reserved.
+//  Created by Joshua Herman on 5/28/23.
+//  Copyright (c) 2023 Apple. All rights reserved.
 
 // Preview
 struct AppleSignInView_Previews: PreviewProvider {

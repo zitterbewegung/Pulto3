@@ -132,32 +132,71 @@ struct PultoHomeView: View {
                 await viewModel.loadInitialData()
             }
             .sheet(isPresented: $showCreateProject) {
-                NotebookChartsView()//.frame(width:1280, height:800)
-                //.sheet(isPresented: $showingNotebook) {
-                 //    EnhancedNotebookChartsView()
-                 //}
-                //CSVChartRecommenderView()
-                //    .frame(width: 600, height: 750)
+                NavigationView {
+                    NotebookChartsView()
+                        .navigationTitle("Create New Project")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    showCreateProject = false
+                                }
+                            }
+                        }
+                }
+                .frame(width: 1200, height: 800)
             }
             .sheet(isPresented: $showSettings) {
-                //SettingsView()
+                NavigationView {
+                    VStack {
+                        Text("Settings")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        Text("Settings panel coming soon...")
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showSettings = false
+                            }
+                        }
+                    }
+                }
+                .frame(width: 600, height: 500)
             }
             .sheet(isPresented: $showLogin) {
-                LoginView(
-                    isLoggedIn: $viewModel.isUserLoggedIn,
-                    userName: $viewModel.userName
-                )
+                NavigationView {
+                    LoginView(
+                        isLoggedIn: $viewModel.isUserLoggedIn,
+                        userName: $viewModel.userName
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Close") {
+                                showLogin = false
+                            }
+                        }
+                    }
+                }
+                .frame(width: 500, height: 400)
             }
             .sheet(isPresented: $showAppleSignIn) {
-                AppleSignInView()
-                    .frame(width: 800, height: 900)
+                AppleSignInView(isPresented: $showAppleSignIn)
+                    .frame(width: 700, height: 800)
             }
             .sheet(isPresented: $showTemplates) {
-
                 NotebookImportDialog(
                     isPresented: $showImportDialog,
                     windowManager: windowManager
-                ).frame(width:1280, height:720)
+                )
+                .frame(width: 1200, height: 700)
             }
         }
     }
@@ -601,28 +640,7 @@ struct Project: Identifiable {
     ]
 }
 
-// MARK: - Placeholder Views
-/*struct CSVChartRecommenderView: View {
-    var body: some View {
-        Text("CSV Chart Recommender View")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-struct VisualizationWindowView: View {
-    var body: some View {
-        Text("Visualization Window View")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-struct SettingsView: View {
-    var body: some View {
-        Text("Settings View")
-            .frame(width: 600, height: 400)
-    }
-}
- */
+// MARK: - Login View
 struct LoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var userName: String
@@ -632,19 +650,10 @@ struct LoginView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            HStack {
-                Text("Sign In to Pulto")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding()
-
-                Button(action: { dismiss() }) {
-                    Label("Close", systemImage: "xmark.circle.fill")
-                        .font(.title2)
-                        .labelStyle(.titleAndIcon)
-                }
-                .buttonStyle(.borderedProminent)
-            }
+            Text("Sign In to Pulto")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding(.top)
 
             VStack(spacing: 16) {
                 TextField("Username", text: $userName)
@@ -662,9 +671,10 @@ struct LoginView: View {
                 .controlSize(.large)
             }
             .padding()
+            
+            Spacer()
         }
-        .frame(width: 400, height: 300)
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $showingAppleSignIn) {
             AppleSignInView()
                 .frame(width: 600, height: 700)
