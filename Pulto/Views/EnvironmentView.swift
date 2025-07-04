@@ -103,7 +103,7 @@ struct EnvironmentView: View {
     @State private var showImportDialog = false
     @State private var showTemplateGallery = false
     @State private var showWorkspaceDialog = false
-    @State private var showDataTableImport = false
+    @State private var showFileImport = false
     @State private var selectedWindowType: StandardWindowType?
     @State private var hoveredWindowType: StandardWindowType?
 
@@ -153,16 +153,20 @@ struct EnvironmentView: View {
                 .frame(minWidth: 800, minHeight: 600)
         }
         .fileImporter(
-            isPresented: $showDataTableImport,
+            isPresented: $showFileImport,
             allowedContentTypes: [
-                UTType.commaSeparatedText,
-                UTType.tabSeparatedText, 
-                UTType.json,
-                UTType.plainText
+                UTType.commaSeparatedText,    // CSV files
+                UTType.tabSeparatedText,      // TSV files  
+                UTType.json,                  // JSON files
+                UTType.plainText,             // TXT files
+                UTType.image,                 // Images
+                UTType.usdz,                  // 3D models
+                UTType.threeDContent,         // 3D content
+                UTType.data                   // Other data files
             ],
             allowsMultipleSelection: false
         ) { result in
-            handleDataTableImport(result)
+            handleFileImport(result)
         }
     }
 
@@ -253,80 +257,6 @@ struct EnvironmentView: View {
         }
         .padding(DesignSystem.padding.xl)
         .cardStyle()
-    }
-
-    private var dataImportSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            SectionHeader(
-                title: "Data Import",
-                subtitle: "Import CSV, JSON, and other data files into table views",
-                icon: "square.and.arrow.down"
-            )
-
-            HStack(spacing: DesignSystem.spacing.md) {
-                DataImportActionCard(
-                    title: "Import Data Table",
-                    subtitle: "CSV, TSV, JSON files",
-                    icon: "tablecells",
-                    action: { createDataTableWithImport() },
-                    style: .prominent
-                )
-
-                DataImportActionCard(
-                    title: "Create Blank Table",
-                    subtitle: "Start with sample data",
-                    icon: "plus.rectangle.on.rectangle",
-                    action: { createBlankDataTable() },
-                    style: .secondary
-                )
-            }
-
-            Text("Import data files to create interactive data table views for analysis and visualization")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, DesignSystem.padding.sm)
-        }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
-    }
-
-    private var quickWorkspacesSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
-            HStack {
-                Text("Recent Projects")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                Spacer()
-
-                Button("View All") {
-                    showWorkspaceDialog = true
-                }
-                .font(.caption)
-                .foregroundStyle(.blue)
-            }
-
-            let recentWorkspaces = Array(workspaceManager.getCustomWorkspaces().prefix(3))
-
-            if recentWorkspaces.isEmpty {
-                Text("No saved projects yet")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .italic()
-            } else {
-                VStack(spacing: DesignSystem.spacing.sm) {
-                    ForEach(recentWorkspaces) { workspace in
-                        QuickWorkspaceRowView(
-                            workspace: workspace,
-                            onLoad: { loadWorkspace(workspace) }
-                        )
-                    }
-                }
-            }
-        }
-        .padding(DesignSystem.padding.md)
-        .background(Color.secondary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
     }
 
     private var windowTypeSection: some View {
@@ -451,6 +381,80 @@ struct EnvironmentView: View {
         .frame(maxHeight: 250)
     }
 
+    private var quickWorkspacesSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
+            HStack {
+                Text("Recent Projects")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Spacer()
+
+                Button("View All") {
+                    showWorkspaceDialog = true
+                }
+                .font(.caption)
+                .foregroundStyle(.blue)
+            }
+
+            let recentWorkspaces = Array(workspaceManager.getCustomWorkspaces().prefix(3))
+
+            if recentWorkspaces.isEmpty {
+                Text("No saved projects yet")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+            } else {
+                VStack(spacing: DesignSystem.spacing.sm) {
+                    ForEach(recentWorkspaces) { workspace in
+                        QuickWorkspaceRowView(
+                            workspace: workspace,
+                            onLoad: { loadWorkspace(workspace) }
+                        )
+                    }
+                }
+            }
+        }
+        .padding(DesignSystem.padding.md)
+        .background(Color.secondary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
+    }
+
+    private var dataImportSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
+            SectionHeader(
+                title: "File Import",
+                subtitle: "Import files and automatically create appropriate views",
+                icon: "square.and.arrow.down"
+            )
+
+            HStack(spacing: DesignSystem.spacing.md) {
+                DataImportActionCard(
+                    title: "Import Any File",
+                    subtitle: "CSV, JSON, Images, 3D Models",
+                    icon: "doc.badge.plus",
+                    action: { showFileImport = true },
+                    style: .prominent
+                )
+
+                DataImportActionCard(
+                    title: "Create Blank Table",
+                    subtitle: "Start with sample data",
+                    icon: "plus.rectangle.on.rectangle",
+                    action: { createBlankDataTable() },
+                    style: .secondary
+                )
+            }
+
+            Text("Import any file type to automatically create the most appropriate view for analysis and visualization")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, DesignSystem.padding.sm)
+        }
+        .padding(DesignSystem.padding.xl)
+        .cardStyle()
+    }
+
     private func createStandardWindow(type: StandardWindowType) {
         let standardPosition = WindowPosition(
             x: 100,
@@ -488,9 +492,9 @@ struct EnvironmentView: View {
                     windowManager: windowManager
                 )
 
-                print("✅ Quick project saved: \(workspaceName)")
+                print("Quick project saved: \(workspaceName)")
             } catch {
-                print("❌ Failed to quick save project: \(error)")
+                print("Failed to quick save project: \(error)")
             }
         }
     }
@@ -507,9 +511,9 @@ struct EnvironmentView: View {
                     windowManager.markWindowAsOpened(windowID)
                 }
 
-                print("✅ Workspace loaded: \(workspace.name)")
+                print("Workspace loaded: \(workspace.name)")
             } catch {
-                print("❌ Failed to load project: \(error)")
+                print("Failed to load project: \(error)")
             }
         }
     }
@@ -598,7 +602,7 @@ struct EnvironmentView: View {
     }
 
     private func createDataTableWithImport() {
-        showDataTableImport = true
+        showFileImport = true
     }
     
     private func createBlankDataTable() {
@@ -628,7 +632,7 @@ struct EnvironmentView: View {
         nextWindowID += 1
     }
     
-    private func handleDataTableImport(_ result: Result<[URL], Error>) {
+    private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
@@ -640,35 +644,109 @@ struct EnvironmentView: View {
                 }
                 defer { url.stopAccessingSecurityScopedResource() }
                 
-                let content = try String(contentsOf: url)
                 let fileExtension = url.pathExtension.lowercased()
+                let fileName = url.lastPathComponent
                 
-                let importedData: DataFrameData
-                
-                switch fileExtension {
-                case "csv":
-                    importedData = try parseCSVForDataTable(content)
-                case "tsv", "txt":
-                    importedData = try parseTSVForDataTable(content)
-                case "json":
-                    importedData = try parseJSONForDataTable(content)
-                default:
-                    importedData = try parseCSVForDataTable(content)
-                }
+                // Determine the appropriate view type based on file extension
+                let viewType = determineViewType(for: fileExtension)
                 
                 let position = WindowPosition(
                     x: 100,
                     y: 100,
                     z: 0,
-                    width: 1000,
-                    height: 700
+                    width: viewType == .model3d ? 800 : 1000,
+                    height: viewType == .model3d ? 600 : 700
                 )
                 
-                _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
-                windowManager.updateWindowDataFrame(nextWindowID, dataFrame: importedData)
+                _ = windowManager.createWindow(viewType, id: nextWindowID, position: position)
+                
+                // Handle different file types
+                switch viewType {
+                case .column:
+                    // Data files (CSV, JSON, TSV)
+                    let content = try String(contentsOf: url)
+                    let importedData: DataFrameData
+                    
+                    switch fileExtension {
+                    case "csv":
+                        importedData = try parseCSVForDataTable(content)
+                    case "tsv", "txt":
+                        importedData = try parseTSVForDataTable(content)
+                    case "json":
+                        importedData = try parseJSONForDataTable(content)
+                    default:
+                        importedData = try parseCSVForDataTable(content)
+                    }
+                    
+                    windowManager.updateWindowDataFrame(nextWindowID, dataFrame: importedData)
+                    windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
+                    
+                case .model3d:
+                    // 3D model files (USDZ, USD, etc.)
+                    windowManager.updateWindowContent(
+                        nextWindowID,
+                        content: """
+                        # 3D Model: \(fileName)
+                        # File: \(url.path)
+                        
+                        # 3D model loaded from: \(fileName)
+                        # Use the model viewer to interact with the 3D content
+                        """
+                    )
+                    windowManager.updateWindowTemplate(nextWindowID, template: .custom)
+                    
+                case .charts:
+                    // Image files or other files that might be suitable for chart analysis
+                    let content = try? String(contentsOf: url)
+                    windowManager.updateWindowContent(
+                        nextWindowID,
+                        content: """
+                        # File Analysis: \(fileName)
+                        # File path: \(url.path)
+                        # File type: \(fileExtension.uppercased())
+                        
+                        import matplotlib.pyplot as plt
+                        import numpy as np
+                        
+                        # File imported: \(fileName)
+                        # Add your analysis code here
+                        
+                        plt.figure(figsize=(10, 6))
+                        plt.title('Analysis of \(fileName)')
+                        plt.text(0.5, 0.5, 'File: \(fileName)\\nType: \(fileExtension.uppercased())', 
+                                ha='center', va='center', fontsize=12)
+                        plt.axis('off')
+                        plt.show()
+                        """
+                    )
+                    windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
+                    
+                default:
+                    // Generic content view for other file types
+                    let content = try? String(contentsOf: url)
+                    windowManager.updateWindowContent(
+                        nextWindowID,
+                        content: """
+                        # File: \(fileName)
+                        # Type: \(fileExtension.uppercased())
+                        # Path: \(url.path)
+                        
+                        \(content?.prefix(1000) ?? "Binary file content not displayable")
+                        """
+                    )
+                    windowManager.updateWindowTemplate(nextWindowID, template: .plain)
+                }
+                
+                // Add tags to identify the imported file
+                windowManager.addWindowTag(nextWindowID, tag: "imported")
+                windowManager.addWindowTag(nextWindowID, tag: fileExtension)
+                windowManager.addWindowTag(nextWindowID, tag: "file:\(fileName)")
+                
                 openWindow(value: nextWindowID)
                 windowManager.markWindowAsOpened(nextWindowID)
                 nextWindowID += 1
+                
+                print("File imported: \(fileName) -> \(viewType.displayName) view")
                 
             } catch {
                 print("Error importing file: \(error.localizedDescription)")
@@ -679,10 +757,27 @@ struct EnvironmentView: View {
         }
     }
     
+    private func determineViewType(for fileExtension: String) -> WindowType {
+        switch fileExtension.lowercased() {
+        case "csv", "tsv", "json", "txt":
+            return .column  // Data table view
+        case "usdz", "usd", "usda", "usdc", "obj", "dae", "3ds":
+            return .model3d  // 3D model view
+        case "jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp":
+            return .charts  // Image analysis view
+        case "py", "ipynb", "r", "m", "scala":
+            return .volume  // Code/notebook view
+        case "md", "txt", "rtf":
+            return .spatial  // Text/document view
+        default:
+            return .charts  // Default to charts for analysis
+        }
+    }
+    
     private func parseCSVForDataTable(_ content: String) throws -> DataFrameData {
         let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !lines.isEmpty else {
-            throw ImportError.noData
+            throw FileImportError.noData
         }
         
         let rows = lines.map { line in
@@ -700,7 +795,7 @@ struct EnvironmentView: View {
     private func parseTSVForDataTable(_ content: String) throws -> DataFrameData {
         let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !lines.isEmpty else {
-            throw ImportError.noData
+            throw FileImportError.noData
         }
         
         let rows = lines.map { line in
@@ -717,7 +812,7 @@ struct EnvironmentView: View {
     
     private func parseJSONForDataTable(_ content: String) throws -> DataFrameData {
         guard let data = content.data(using: .utf8) else {
-            throw ImportError.invalidFormat
+            throw FileImportError.invalidFormat
         }
         
         let json = try JSONSerialization.jsonObject(with: data)
@@ -745,7 +840,7 @@ struct EnvironmentView: View {
             let dtypes = autoDetectDataTypesForTable(columns: columns, rows: rows)
             return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
         } else {
-            throw ImportError.invalidFormat
+            throw FileImportError.invalidFormat
         }
     }
     
@@ -776,23 +871,6 @@ struct EnvironmentView: View {
         }
         
         return dtypes
-    }
-
-    enum ImportError: LocalizedError {
-        case noData
-        case invalidFormat
-        case parsingFailed
-        
-        var errorDescription: String? {
-            switch self {
-            case .noData:
-                return "No data found in the file"
-            case .invalidFormat:
-                return "Invalid file format"
-            case .parsingFailed:
-                return "Failed to parse the data"
-            }
-        }
     }
 
     private func iconForWindowType(_ type: WindowType) -> String {
@@ -1208,5 +1286,22 @@ struct ExportConfigurationSidebar: View {
         selectedTemplate = window.state.exportTemplate
         customImports = window.state.customImports.joined(separator: "\n")
         windowContent = window.state.content
+    }
+}
+
+enum FileImportError: LocalizedError {
+    case noData
+    case invalidFormat
+    case parsingFailed
+    
+    var errorDescription: String? {
+        switch self {
+        case .noData:
+            return "No data found in the file"
+        case .invalidFormat:
+            return "Invalid file format"
+        case .parsingFailed:
+            return "Failed to parse the data"
+        }
     }
 }

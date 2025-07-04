@@ -208,6 +208,9 @@ struct PultoHomeView: View {
                 }
                 .frame(width: 1200, height: 700)
             }
+            .sheet(isPresented: .constant(false)) {
+                EmptyView()
+            }
         }
     }
 
@@ -542,6 +545,9 @@ struct RecentProjectCard: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .scaleEffect(isHovered ? 1.05 : 1.0)
+            .padding(16)
+            .background(isHovered ? Color.gray.opacity(0.2) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         .onHover { hovering in

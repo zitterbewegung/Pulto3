@@ -462,6 +462,50 @@ struct ChartData: Codable, Hashable {
             return "ax.plot(x_data, y_data\(colorCode)\(styleCode))"
         }
     }
+    
+    func toEnhancedPythonCode() -> String {
+        let xDataStr = xData.map { String($0) }.joined(separator: ", ")
+        let yDataStr = yData.map { String($0) }.joined(separator: ", ")
+        
+        let colorStr = color ?? "blue"
+        let styleStr = style ?? "solid"
+        
+        return """
+        # Chart Window - \(title)
+        # Chart Type: \(chartType)
+        # X Range: [\(xDataStr)]
+        # Y Range: [\(yDataStr)]
+        # Color: \(colorStr)
+        # Style: \(styleStr)
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        # Chart data from VisionOS
+        x_data = [\(xDataStr)]
+        y_data = [\(yDataStr)]
+        
+        # Create the plot
+        plt.figure(figsize=(10, 6))
+        
+        \(generatePlotCode())
+        
+        plt.title('\(title)')
+        plt.xlabel('\(xLabel)')
+        plt.ylabel('\(yLabel)')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+        
+        # Display data summary
+        print(f"Chart: \(title)")
+        print(f"Type: \(chartType)")
+        print(f"Data points: {len(x_data)}")
+        print(f"X range: [{min(x_data):.2f}, {max(x_data):.2f}]")
+        print(f"Y range: [{min(y_data):.2f}, {max(y_data):.2f}]")
+        """
+    }
+    
 }
 
 // Add this structure after ChartData
@@ -871,6 +915,101 @@ struct DataFrameData: Codable, Hashable {
             csv += paddedRow.prefix(columns.count).joined(separator: ",") + "\n"
         }
         return csv
+    }
+    
+    func toEnhancedPandasCode() -> String {
+        let columnsStr = columns.map { "'\($0)'" }.joined(separator: ", ")
+        
+        // Create the data dictionary
+        var dataDict: [String] = []
+        for (index, column) in columns.enumerated() {
+            let columnValues = rows.map { row in
+                index < row.count ? row[index] : ""
+            }
+            
+            // Format values based on data type
+            let dtype = dtypes[column] ?? "string"
+            let formattedValues: [String]
+            
+            switch dtype {
+            case "int":
+                formattedValues = columnValues.map { Int($0) != nil ? $0 : "0" }
+            case "float":
+                formattedValues = columnValues.map { Double($0) != nil ? $0 : "0.0" }
+            default: // string
+                formattedValues = columnValues.map { "'\($0)'" }
+            }
+            
+            let valuesStr = formattedValues.joined(separator: ", ")
+            dataDict.append("    '\(column)': [\(valuesStr)]")
+        }
+        
+        let dataDictStr = "{\n\(dataDict.joined(separator: ",\n"))\n}"
+        
+        // Generate dtypes dictionary
+        let dtypesStr = dtypes.map { "'\($0.key)': '\($0.value)'" }.joined(separator: ", ")
+        
+        return """
+        # DataFrame Window - \(columns.count) columns, \(rows.count) rows
+        # DataFrame Columns: [\(columnsStr)]
+        # DataFrame Types: {\(dtypesStr)}
+        # DataFrame Rows: \(formatRowsForComment())
+        
+        import pandas as pd
+        import numpy as np
+        
+        # DataFrame data from VisionOS
+        data = \(dataDictStr)
+        
+        # Create DataFrame
+        df = pd.DataFrame(data)
+        
+        # Set data types
+        \(generateDtypeConversions())
+        
+        # Display DataFrame info
+        print("DataFrame Summary:")
+        print(f"Shape: {df.shape}")
+        print(f"Columns: {list(df.columns)}")
+        print("\\nData types:")
+        print(df.dtypes)
+        print("\\nFirst 10 rows:")
+        print(df.head(10))
+        print("\\nStatistical summary:")
+        print(df.describe(include='all'))
+        
+        # Display the full DataFrame
+        df
+        """
+    }
+    
+    private func formatRowsForComment() -> String {
+        let formattedRows = rows.prefix(5).map { row in
+            let quotedRow = row.map { "'\($0)'" }.joined(separator: ", ")
+            return "[\(quotedRow)]"
+        }
+        let rowsStr = formattedRows.joined(separator: ", ")
+        let suffix = rows.count > 5 ? ", ..." : ""
+        return "[\(rowsStr)\(suffix)]"
+    }
+    
+    private func generateDtypeConversions() -> String {
+        var conversions: [String] = []
+        
+        for (column, dtype) in dtypes {
+            switch dtype {
+            case "int":
+                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce').astype('Int64')")
+            case "float":
+                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce')")
+            case "bool":
+                conversions.append("df['\(column)'] = df['\(column)'].astype('bool')")
+            default: // string
+                conversions.append("df['\(column)'] = df['\(column)'].astype('string')")
+            }
+        }
+        
+        return conversions.joined(separator: "\n")
     }
 }
 

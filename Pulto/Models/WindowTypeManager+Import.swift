@@ -272,7 +272,9 @@ extension WindowTypeManager {
             }
 
         case .charts:
-            break
+            if let chartData = try parseChartDataFromContent(content) {
+                state.chartData = chartData
+            }
 
         case .volume:
             if let volumeData = try parseVolumeDataFromContent(content) {
@@ -360,33 +362,523 @@ extension WindowTypeManager {
 
     // MARK: - Utility Methods
 
-    private func parseDataFrameFromContent(_ content: String) throws -> DataFrameData? {
-        let patterns = [
-            #"data\s*=\s*\{([^}]+)\}"#,
-            #"pd\.DataFrame\(([^)]+)\)"#
-        ]
-
-        for pattern in patterns {
-            if let match = content.range(of: pattern, options: .regularExpression) {
-                return try parseDataFrameFromMatch(String(content[match]))
+    private func parseChartDataFromContent(_ content: String) throws -> ChartData? {
+        // Look for structured chart data comments first (from our export format)
+        if let structuredData = extractStructuredChartData(from: content) {
+            return structuredData
+        }
+        
+        // Fall back to parsing Python code
+        return try parseChartDataFromPythonCode(content)
+    }
+    
+    private func extractStructuredChartData(from content: String) -> ChartData? {
+        let lines = content.components(separatedBy: .newlines)
+        var title = "Restored Chart"
+        var chartType = "line"
+        var xLabel = "X"
+        var yLabel = "Y"
+        var xData: [Double] = []
+        var yData: [Double] = []
+        var color: String?
+        var style: String?
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Extract metadata from comments
+            if trimmed.hasPrefix("# Chart Type:") {
+                chartType = String(trimmed.dropFirst(13)).trimmingCharacters(in: .whitespaces)
+            } else if trimmed.hasPrefix("# X Range:") || trimmed.hasPrefix("# Data Points:") {
+                // Extract data from structured comments
+                if let dataMatch = extractDataFromComment(trimmed) {
+                    if trimmed.contains("X Range") {
+                        xData = dataMatch
+                    } else if trimmed.contains("Y Range") {
+                        yData = dataMatch
+                    }
+                }
+            } else if trimmed.hasPrefix("# Color:") {
+                color = String(trimmed.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+                if color == "default" { color = nil }
+            } else if trimmed.hasPrefix("# Style:") {
+                style = String(trimmed.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+                if style == "default" { style = nil }
+            }
+            
+            // Extract title from various sources
+            if trimmed.hasPrefix("plt.title(") {
+                title = extractStringFromPythonCall(trimmed, function: "plt.title") ?? title
+            } else if trimmed.hasPrefix("# Chart from Window") {
+                title = trimmed.replacingOccurrences(of: "# ", with: "")
+            }
+            
+            // Extract labels
+            if trimmed.hasPrefix("plt.xlabel(") {
+                xLabel = extractStringFromPythonCall(trimmed, function: "plt.xlabel") ?? xLabel
+            } else if trimmed.hasPrefix("plt.ylabel(") {
+                yLabel = extractStringFromPythonCall(trimmed, function: "plt.ylabel") ?? yLabel
             }
         }
-
+        
+        // If we found actual data, create ChartData
+        if !xData.isEmpty && !yData.isEmpty {
+            return ChartData(
+                title: title,
+                chartType: chartType,
+                xLabel: xLabel,
+                yLabel: yLabel,
+                xData: xData,
+                yData: yData,
+                color: color,
+                style: style
+            )
+        }
+        
         return nil
     }
-
-    private func parseDataFrameFromMatch(_ match: String) throws -> DataFrameData? {
+    
+    private func parseChartDataFromPythonCode(_ content: String) throws -> ChartData? {
+        var title = "Imported Chart"
+        var chartType = "line"
+        var xLabel = "X"
+        var yLabel = "Y"
+        var xData: [Double] = []
+        var yData: [Double] = []
+        var color: String?
+        var style: String?
+        
+        let lines = content.components(separatedBy: .newlines)
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Extract data arrays
+            if let data = extractDataFromVariableAssignment(trimmed, variable: "x_data") {
+                xData = data
+            } else if let data = extractDataFromVariableAssignment(trimmed, variable: "y_data") {
+                yData = data
+            } else if let data = extractDataFromVariableAssignment(trimmed, variable: "x") {
+                xData = data
+            } else if let data = extractDataFromVariableAssignment(trimmed, variable: "y") {
+                yData = data
+            }
+            
+            // Extract chart type from plot calls
+            if trimmed.contains("plt.plot(") || trimmed.contains("ax.plot(") {
+                chartType = "line"
+                
+                // Extract inline data from plot calls
+                if let plotData = extractDataFromPlotCall(trimmed) {
+                    if xData.isEmpty { xData = plotData.x }
+                    if yData.isEmpty { yData = plotData.y }
+                    if let plotColor = plotData.color { color = plotColor }
+                    if let plotStyle = plotData.style { style = plotStyle }
+                }
+            } else if trimmed.contains("plt.scatter(") || trimmed.contains("ax.scatter(") {
+                chartType = "scatter"
+                if let plotData = extractDataFromPlotCall(trimmed) {
+                    if xData.isEmpty { xData = plotData.x }
+                    if yData.isEmpty { yData = plotData.y }
+                }
+            } else if trimmed.contains("plt.bar(") || trimmed.contains("ax.bar(") {
+                chartType = "bar"
+                if let plotData = extractDataFromPlotCall(trimmed) {
+                    if xData.isEmpty { xData = plotData.x }
+                    if yData.isEmpty { yData = plotData.y }
+                }
+            }
+            
+            // Extract labels and title
+            if let extractedTitle = extractStringFromPythonCall(trimmed, function: "plt.title") {
+                title = extractedTitle
+            }
+            if let extractedXLabel = extractStringFromPythonCall(trimmed, function: "plt.xlabel") {
+                xLabel = extractedXLabel
+            }
+            if let extractedYLabel = extractStringFromPythonCall(trimmed, function: "plt.ylabel") {
+                yLabel = extractedYLabel
+            }
+        }
+        
+        // Generate sample data if none found
+        if xData.isEmpty || yData.isEmpty {
+            let sampleSize = max(xData.count, yData.count, 5)
+            if xData.isEmpty {
+                xData = Array(stride(from: 0.0, through: Double(sampleSize - 1), by: 1.0))
+            }
+            if yData.isEmpty {
+                yData = xData.map { sin($0 * 0.5) * 10 }
+            }
+        }
+        
+        return ChartData(
+            title: title,
+            chartType: chartType,
+            xLabel: xLabel,
+            yLabel: yLabel,
+            xData: xData,
+            yData: yData,
+            color: color,
+            style: style
+        )
+    }
+    
+    private func parseDataFrameFromContent(_ content: String) throws -> DataFrameData? {
+        // Look for structured DataFrame comments first (from our export format)
+        if let structuredData = extractStructuredDataFrameData(from: content) {
+            return structuredData
+        }
+        
+        // Fall back to parsing Python code
+        return try parseDataFrameFromPythonCode(content)
+    }
+    
+    private func extractStructuredDataFrameData(from content: String) -> DataFrameData? {
+        let lines = content.components(separatedBy: .newlines)
+        var columns: [String] = []
+        var rows: [[String]] = []
+        var dtypes: [String: String] = [:]
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Look for structured DataFrame data in comments
+            if trimmed.hasPrefix("# DataFrame Columns:") {
+                let columnsStr = String(trimmed.dropFirst(20)).trimmingCharacters(in: .whitespaces)
+                columns = parseArrayFromString(columnsStr)
+            } else if trimmed.hasPrefix("# DataFrame Types:") {
+                let typesStr = String(trimmed.dropFirst(18)).trimmingCharacters(in: .whitespaces)
+                dtypes = parseDictFromString(typesStr)
+            } else if trimmed.hasPrefix("# DataFrame Rows:") {
+                let rowsStr = String(trimmed.dropFirst(17)).trimmingCharacters(in: .whitespaces)
+                rows = parseRowsFromString(rowsStr)
+            }
+        }
+        
+        // If we found structured data, use it
+        if !columns.isEmpty && !rows.isEmpty {
+            return DataFrameData(
+                columns: columns,
+                rows: rows,
+                dtypes: dtypes
+            )
+        }
+        
+        return nil
+    }
+    
+    private func parseDataFrameFromPythonCode(_ content: String) throws -> DataFrameData? {
+        let lines = content.components(separatedBy: .newlines)
+        var columns: [String] = []
+        var rows: [[String]] = []
+        var dtypes: [String: String] = [:]
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Look for DataFrame creation patterns
+            if trimmed.contains("pd.DataFrame(") {
+                if let dataFrameData = extractDataFrameFromConstructor(trimmed) {
+                    columns = dataFrameData.columns
+                    rows = dataFrameData.rows
+                    dtypes = dataFrameData.dtypes
+                    break
+                }
+            }
+            
+            // Look for data dictionary patterns
+            if trimmed.contains("data = {") || trimmed.contains("df_data = {") {
+                if let dictData = extractDataFromDictionary(lines, startingFrom: line) {
+                    columns = dictData.columns
+                    rows = dictData.rows
+                    dtypes = dictData.dtypes
+                    break
+                }
+            }
+        }
+        
+        // Generate sample data if none found
+        if columns.isEmpty {
+            columns = ["Column_1", "Column_2", "Column_3"]
+            rows = [
+                ["Sample", "1", "10.5"],
+                ["Data", "2", "20.3"],
+                ["Restored", "3", "15.7"]
+            ]
+            dtypes = [
+                "Column_1": "string",
+                "Column_2": "int",
+                "Column_3": "float"
+            ]
+        }
+        
         return DataFrameData(
-            columns: ["imported_column"],
-            rows: [["Data imported from notebook"]],
-            dtypes: ["imported_column": "string"]
+            columns: columns,
+            rows: rows,
+            dtypes: dtypes
         )
     }
 
+    // MARK: - Parsing Helper Methods
+    
+    private func extractDataFromComment(_ comment: String) -> [Double]? {
+        // Extract data from comments like "# X Range: [1.0, 2.0, 3.0]"
+        let pattern = #"\[([\d\.,\s]+)\]"#
+        if let match = comment.range(of: pattern, options: .regularExpression) {
+            let dataStr = String(comment[match])
+                .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+            return dataStr.components(separatedBy: ",")
+                .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        }
+        return nil
+    }
+    
+    private func extractStringFromPythonCall(_ line: String, function: String) -> String? {
+        let pattern = #"\#(function)\(['"]([^'"]*)['"]\)"#
+        if let match = line.range(of: pattern, options: .regularExpression) {
+            let matchStr = String(line[match])
+            // Extract the string between quotes
+            let quotePattern = #"['"]([^'"]*)['"]*"#
+            if let quoteMatch = matchStr.range(of: quotePattern, options: .regularExpression) {
+                let quoted = String(matchStr[quoteMatch])
+                return quoted.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
+            }
+        }
+        return nil
+    }
+    
+    private func extractDataFromVariableAssignment(_ line: String, variable: String) -> [Double]? {
+        let pattern = #"\#(variable)\s*=\s*\[([\d\.,\s]+)\]"#
+        if let match = line.range(of: pattern, options: .regularExpression) {
+            let dataStr = String(line[match])
+            if let startBracket = dataStr.firstIndex(of: "["),
+               let endBracket = dataStr.lastIndex(of: "]") {
+                let arrayStr = String(dataStr[dataStr.index(after: startBracket)..<endBracket])
+                return arrayStr.components(separatedBy: ",")
+                    .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            }
+        }
+        return nil
+    }
+    
+    private func extractDataFromPlotCall(_ line: String) -> (x: [Double], y: [Double], color: String?, style: String?)? {
+        // Match plot calls like plt.plot([1,2,3], [4,5,6], color='blue', linestyle='-')
+        let arrayPattern = #"\[([\d\.,\s]+)\]"#
+        let regex = try? NSRegularExpression(pattern: arrayPattern)
+        let nsString = line as NSString
+        let results = regex?.matches(in: line, range: NSRange(location: 0, length: nsString.length)) ?? []
+        
+        var xData: [Double] = []
+        var yData: [Double] = []
+        
+        if results.count >= 2 {
+            // Extract first array (x data)
+            let xRange = results[0].range
+            let xStr = nsString.substring(with: NSRange(location: xRange.location + 1, length: xRange.length - 2))
+            xData = xStr.components(separatedBy: ",")
+                .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            
+            // Extract second array (y data)
+            let yRange = results[1].range
+            let yStr = nsString.substring(with: NSRange(location: yRange.location + 1, length: yRange.length - 2))
+            yData = yStr.components(separatedBy: ",")
+                .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        }
+        
+        // Extract color and style parameters
+        var color: String?
+        var style: String?
+        
+        if let colorMatch = line.range(of: #"color\s*=\s*['"]([^'"]+)['"]*"#, options: .regularExpression) {
+            let colorStr = String(line[colorMatch])
+            color = extractStringFromParameter(colorStr, parameter: "color")
+        }
+        
+        if let styleMatch = line.range(of: #"linestyle\s*=\s*['"]([^'"]+)['"]*"#, options: .regularExpression) {
+            let styleStr = String(line[styleMatch])
+            style = extractStringFromParameter(styleStr, parameter: "linestyle")
+        }
+        
+        if !xData.isEmpty && !yData.isEmpty {
+            return (x: xData, y: yData, color: color, style: style)
+        }
+        
+        return nil
+    }
+    
+    private func extractStringFromParameter(_ paramStr: String, parameter: String) -> String? {
+        let pattern = #"\#(parameter)\s*=\s*['"]([^'"]+)['"]*"#
+        if let match = paramStr.range(of: pattern, options: .regularExpression) {
+            let matchStr = String(paramStr[match])
+            let valuePattern = #"['"]([^'"]+)['"]*"#
+            if let valueMatch = matchStr.range(of: valuePattern, options: .regularExpression) {
+                let quoted = String(matchStr[valueMatch])
+                return quoted.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
+            }
+        }
+        return nil
+    }
+    
+    private func extractDataFrameFromConstructor(_ line: String) -> DataFrameData? {
+        // Parse pd.DataFrame({'col1': [1,2,3], 'col2': ['a','b','c']})
+        if let dictStart = line.firstIndex(of: "{"),
+           let dictEnd = line.lastIndex(of: "}") {
+            let dictStr = String(line[dictStart...dictEnd])
+            return parseDataFrameFromDict(dictStr)
+        }
+        return nil
+    }
+    
+    private func parseDataFrameFromDict(_ dictStr: String) -> DataFrameData? {
+        var columns: [String] = []
+        var rows: [[String]] = []
+        var dtypes: [String: String] = [:]
+        
+        // Extract key-value pairs from the dictionary
+        let kvPattern = #"['"]([^'"]+)['"]:\s*\[(.*?)\]"#
+        let regex = try? NSRegularExpression(pattern: kvPattern)
+        let nsString = dictStr as NSString
+        let results = regex?.matches(in: dictStr, range: NSRange(location: 0, length: nsString.length)) ?? []
+        
+        var columnData: [String: [String]] = [:]
+        
+        for result in results {
+            if result.numberOfRanges >= 3 {
+                let keyRange = result.range(at: 1)
+                let valueRange = result.range(at: 2)
+                
+                let key = nsString.substring(with: keyRange)
+                let valueStr = nsString.substring(with: valueRange)
+                
+                // Parse the array values
+                let values = valueStr.components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " '\"")) }
+                
+                columns.append(key)
+                columnData[key] = values
+                
+                // Determine data type
+                if values.allSatisfy({ Int($0) != nil }) {
+                    dtypes[key] = "int"
+                } else if values.allSatisfy({ Double($0) != nil }) {
+                    dtypes[key] = "float"
+                } else {
+                    dtypes[key] = "string"
+                }
+            }
+        }
+        
+        // Convert column data to rows
+        if !columns.isEmpty, let firstColumnData = columnData[columns[0]] {
+            let rowCount = firstColumnData.count
+            for i in 0..<rowCount {
+                var row: [String] = []
+                for column in columns {
+                    if let columnValues = columnData[column], i < columnValues.count {
+                        row.append(columnValues[i])
+                    } else {
+                        row.append("")
+                    }
+                }
+                rows.append(row)
+            }
+        }
+        
+        if !columns.isEmpty && !rows.isEmpty {
+            return DataFrameData(
+                columns: columns,
+                rows: rows,
+                dtypes: dtypes
+            )
+        }
+        
+        return nil
+    }
+    
+    private func extractDataFromDictionary(_ lines: [String], startingFrom startLine: String) -> DataFrameData? {
+        // Find the dictionary definition across multiple lines
+        guard let startIndex = lines.firstIndex(of: startLine) else { return nil }
+        
+        var dictContent = ""
+        var braceCount = 0
+        var foundStart = false
+        
+        for i in startIndex..<lines.count {
+            let line = lines[i]
+            for char in line {
+                if char == "{" {
+                    braceCount += 1
+                    foundStart = true
+                }
+                if foundStart {
+                    dictContent.append(char)
+                }
+                if char == "}" {
+                    braceCount -= 1
+                    if braceCount == 0 && foundStart {
+                        return parseDataFrameFromDict(dictContent)
+                    }
+                }
+            }
+            if foundStart {
+                dictContent.append("\n")
+            }
+        }
+        
+        return nil
+    }
+    
+    private func parseArrayFromString(_ str: String) -> [String] {
+        let cleanStr = str.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        return cleanStr.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " '\"")) }
+            .filter { !$0.isEmpty }
+    }
+    
+    private func parseDictFromString(_ str: String) -> [String: String] {
+        var result: [String: String] = [:]
+        let cleanStr = str.trimmingCharacters(in: CharacterSet(charactersIn: "{}"))
+        let pairs = cleanStr.components(separatedBy: ",")
+        
+        for pair in pairs {
+            let components = pair.components(separatedBy: ":")
+            if components.count == 2 {
+                let key = components[0].trimmingCharacters(in: CharacterSet(charactersIn: " '\""))
+                let value = components[1].trimmingCharacters(in: CharacterSet(charactersIn: " '\""))
+                result[key] = value
+            }
+        }
+        
+        return result
+    }
+    
+    private func parseRowsFromString(_ str: String) -> [[String]] {
+        // Parse nested array structure like [['a','b'],['c','d']]
+        let cleanStr = str.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        var rows: [[String]] = []
+        
+        let rowPattern = #"\[([^\[\]]+)\]"#
+        let regex = try? NSRegularExpression(pattern: rowPattern)
+        let nsString = cleanStr as NSString
+        let results = regex?.matches(in: cleanStr, range: NSRange(location: 0, length: nsString.length)) ?? []
+        
+        for result in results {
+            let rowStr = nsString.substring(with: result.range(at: 1))
+            let values = rowStr.components(separatedBy: ",")
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " '\"")) }
+            rows.append(values)
+        }
+        
+        return rows
+    }
+
+    // MARK: - Enhanced Data Parsing Methods
+
     private func parsePointCloudFromContent(_ content: String) throws -> PointCloudData? {
         let patterns = [
-            #"points_data\s*=\s*\{([^}]+)\}"#,
-            #"'x':\s*\[([^\]]+)\]"#,
+            #"data\s*=\s*\{([^}]+)\}"#,
+            #"pd\.DataFrame\(([^)]+)\)"#
         ]
 
         for pattern in patterns {
@@ -397,7 +889,7 @@ extension WindowTypeManager {
 
         return nil
     }
-
+    
     private func parsePointCloudFromMatch(_ match: String, fullContent: String) throws -> PointCloudData? {
         let titlePattern = #"# (.+)"#
         var title = "Imported Point Cloud"

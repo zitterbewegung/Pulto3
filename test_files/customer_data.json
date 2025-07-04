@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "John Smith",
+    "email": "john@example.com",
+    "age": 28,
+    "city": "New York",
+    "subscription": "Premium",
+    "purchase_amount": 299.99
+  },
+  {
+    "id": 2,
+    "name": "Sarah Johnson",
+    "email": "sarah@example.com",
+    "age": 34,
+    "city": "Los Angeles",
+    "subscription": "Basic",
+    "purchase_amount": 99.99
+  },
+  {
+    "id": 3,
+    "name": "Mike Chen",
+    "email": "mike@example.com",
+    "age": 25,
+    "city": "San Francisco",
+    "subscription": "Premium",
+    "purchase_amount": 399.99
+  },
+  {
+    "id": 4,
+    "name": "Emily Davis",
+    "email": "emily@example.com",
+    "age": 31,
+    "city": "Chicago",
+    "subscription": "Standard",
+    "purchase_amount": 199.99
+  }
+]

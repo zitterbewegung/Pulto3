@@ -959,7 +959,7 @@ class WindowTypeManager: ObservableObject {
     private func generateCellContent(for window: NewWindowID) -> String {
         switch window.windowType {
         case .charts:
-            return generateNotebookCellContent(for: window)
+            return generateChartCellContent(for: window)
         case .spatial:
             return generateSpatialCellContent(for: window)
         case .column:
@@ -972,7 +972,43 @@ class WindowTypeManager: ObservableObject {
             return generateModel3DCellContent(for: window)
         }
     }
-    // Add this method to WindowTypeManager
+    private func generateChartCellContent(for window: NewWindowID) -> String {
+        if let chartData = window.state.chartData {
+            return chartData.toEnhancedPythonCode()
+        }
+
+        let content = """
+        # Chart Window #\(window.id) - \(window.windowType.displayName)
+        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        """
+        return window.state.content.isEmpty ? content : content + "\n" + window.state.content
+    }
+
+    private func generateDataFrameCellContent(for window: NewWindowID) -> String {
+        if let dataFrame = window.state.dataFrameData {
+            return dataFrame.toEnhancedPandasCode()
+        }
+
+        let baseContent = """
+        # DataFrame Viewer Window #\(window.id)
+        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
+        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
+        
+        import pandas as pd
+        import numpy as np
+        
+        # DataFrame configuration from VisionOS window
+        # Window size: \(window.position.width) × \(window.position.height)
+        
+        """
+
+        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
+    }
+
     private func generateModel3DCellContent(for window: NewWindowID) -> String {
         if let model3DData = window.state.model3DData {
             return model3DData.toPythonCode()
@@ -1014,7 +1050,6 @@ class WindowTypeManager: ObservableObject {
         return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
     }
 
-    // Add this method inside the WindowTypeManager class, alongside the other generate methods
     private func generateVolumeCellContent(for window: NewWindowID) -> String {
         if let volumeData = window.state.volumeData {
             return volumeData.toPythonCode()
@@ -1055,23 +1090,6 @@ class WindowTypeManager: ObservableObject {
         """
 
         return window.state.content.isEmpty ? content + "*No content available*" : content + window.state.content
-    }
-
-    private func generateDataFrameCellContent(for window: NewWindowID) -> String {
-        let baseContent = """
-        # DataFrame Viewer Window #\(window.id)
-        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
-        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
-        
-        import pandas as pd
-        import numpy as np
-        
-        # DataFrame configuration from VisionOS window
-        # Window size: \(window.position.width) × \(window.position.height)
-        
-        """
-
-        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
     }
 
     // MARK: - File Export

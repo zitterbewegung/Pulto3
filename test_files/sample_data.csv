@@ -1,0 +1,13 @@
+Product,Sales,Revenue,Region,Quarter
+iPhone,1500,75000,North America,Q1
+iPad,1200,48000,Europe,Q1
+MacBook,800,96000,Asia,Q1
+iPhone,1650,82500,North America,Q2
+iPad,1100,44000,Europe,Q2
+MacBook,950,114000,Asia,Q2
+iPhone,1800,90000,North America,Q3
+iPad,1300,52000,Europe,Q3
+MacBook,1100,132000,Asia,Q3
+Apple Watch,2000,40000,North America,Q1
+Apple Watch,1800,36000,Europe,Q1
+Apple Watch,1600,32000,Asia,Q1

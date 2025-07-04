@@ -56,10 +56,11 @@ struct EntryPoint: App {
             }
 
             WindowGroup(id: "open-project-window") {
-                EnvironmentView()
+                ProjectBrowserView(windowManager: windowManager)
+                    .environmentObject(windowManager)
             }
             .windowStyle(.plain)
-            .defaultSize(width: 1280, height: 800)
+            .defaultSize(width: 1000, height: 700)
         }
     }
     
