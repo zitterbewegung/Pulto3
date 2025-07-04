@@ -83,6 +83,8 @@ struct DataTableContentView: View {
     @State private var showingDataImport = false
     @State private var showingFileImporter = false
     @State private var importError: String?
+    @State private var filterText = ""
+    @FocusState private var isFilterFieldFocused: Bool
 
     // Column widths
     @State private var columnWidths: [String: CGFloat] = [:]
@@ -117,6 +119,24 @@ struct DataTableContentView: View {
                 ["Diana", "31", "Seattle", "82000"]
             ],
             dtypes: ["Name": "string", "Age": "int", "City": "string", "Salary": "float"]
+        )
+    }
+
+    private var filteredData: DataFrameData {
+        if filterText.isEmpty {
+            return sampleData
+        }
+        
+        let filteredRows = sampleData.rows.filter { row in
+            row.contains { cell in
+                cell.localizedCaseInsensitiveContains(filterText)
+            }
+        }
+        
+        return DataFrameData(
+            columns: sampleData.columns,
+            rows: filteredRows,
+            dtypes: sampleData.dtypes
         )
     }
 
@@ -174,7 +194,7 @@ struct DataTableContentView: View {
     struct DataImportSheet: View {
         let onDataImported: (DataFrameData) -> Void
         @Environment(\.dismiss) private var dismiss
-        @State private var importMethod: ImportMethod = .file
+        @State private var importMethod: DataImportSheet.ImportMethod = .file
         @State private var showingFileImporter = false
         @State private var showingCSVRecommender = false
         @State private var sampleText = ""
@@ -900,26 +920,55 @@ struct DataTableContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("DataFrame")
                     .font(.headline)
-                Text("\(sampleData.shapeRows) rows × \(sampleData.shapeColumns) columns")
+                Text("\(filteredData.shapeRows) rows × \(filteredData.shapeColumns) columns")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             Spacer()
 
-            // Action buttons
+            // Filter field
             HStack(spacing: 8) {
-                /*
-                Button(action: { showingDataImport = true }) {
-                    Label("Import Data", systemImage: "square.and.arrow.down")
+                Button(action: { 
+                    isFilterFieldFocused = true 
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        if filterText.isEmpty {
+                            Text("Filter data...")
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.purple.opacity(0.1))
-                .cornerRadius(6)
-                */
+                
+                TextField("Filter data...", text: $filterText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 150)
+                    .focused($isFilterFieldFocused)
+                    .onSubmit {
+                        isFilterFieldFocused = false
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(isFilterFieldFocused ? Color.blue : Color.clear, lineWidth: 2)
+                    )
+                
+                if !filterText.isEmpty {
+                    Button(action: { 
+                        filterText = ""
+                        isFilterFieldFocused = false
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
+            // Action buttons
+            HStack(spacing: 8) {
                 Button(action: { loadSampleData() }) {
                     Label("Sample Data", systemImage: "doc.text")
                 }
@@ -972,13 +1021,13 @@ struct DataTableContentView: View {
                         )
 
                     // Column headers
-                    ForEach(sampleData.columns, id: \.self) { column in
+                    ForEach(filteredData.columns, id: \.self) { column in
                         columnHeaderView(column: column)
                     }
                 }
 
                 // Data rows
-                ForEach(0..<sampleData.rows.count, id: \.self) { rowIndex in
+                ForEach(0..<filteredData.rows.count, id: \.self) { rowIndex in
                     HStack(spacing: 0) {
                         // Row number
                         Text("\(rowIndex + 1)")
@@ -993,7 +1042,7 @@ struct DataTableContentView: View {
                             )
 
                         // Data cells
-                        ForEach(0..<sampleData.columns.count, id: \.self) { colIndex in
+                        ForEach(0..<filteredData.columns.count, id: \.self) { colIndex in
                             cellView(rowIndex: rowIndex, colIndex: colIndex)
                         }
                     }
@@ -1046,19 +1095,19 @@ struct DataTableContentView: View {
     }
 
     private func cellView(rowIndex: Int, colIndex: Int) -> some View {
-        let value = rowIndex < sampleData.rows.count && colIndex < sampleData.rows[rowIndex].count
-            ? sampleData.rows[rowIndex][colIndex]
+        let value = rowIndex < filteredData.rows.count && colIndex < filteredData.rows[rowIndex].count
+            ? filteredData.rows[rowIndex][colIndex]
             : ""
-        let column = sampleData.columns[colIndex]
+        let column = filteredData.columns[colIndex]
         let isSelected = selectedCell?.row == rowIndex && selectedCell?.col == colIndex
         let isHovered = hoveredCell?.row == rowIndex && hoveredCell?.col == colIndex
 
-        return Text(formatCellValue(value, dtype: sampleData.dtypes[column]))
+        return Text(formatCellValue(value, dtype: filteredData.dtypes[column]))
             .font(.system(.body, design: .monospaced))
             .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .frame(width: columnWidths[column] ?? 120, alignment: cellAlignment(for: sampleData.dtypes[column]))
+            .frame(width: columnWidths[column] ?? 120, alignment: cellAlignment(for: filteredData.dtypes[column]))
             .background(
                 Group {
                     if isSelected {
@@ -1118,7 +1167,7 @@ struct DataTableContentView: View {
         HStack {
             if let selected = selectedCell {
                 Label(
-                    "Cell: \(sampleData.columns[selected.col]):\(selected.row + 1)",
+                    "Cell: \(filteredData.columns[selected.col]):\(selected.row + 1)",
                     systemImage: "square.dashed"
                 )
                 .font(.caption)
@@ -1131,8 +1180,15 @@ struct DataTableContentView: View {
 
             Spacer()
 
+            // Show filter status
+            if !filterText.isEmpty {
+                Text("Filtered: \(filteredData.rows.count) of \(sampleData.rows.count) rows")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
+
             if let selected = selectedCell {
-                let value = sampleData.rows[selected.row][selected.col]
+                let value = filteredData.rows[selected.row][selected.col]
                 Text("Value: \(value)")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -1212,6 +1268,9 @@ struct DataTableContentView: View {
             sortColumn = column
             sortAscending = true
         }
+        
+        // Clear filter when sorting to avoid confusion
+        filterText = ""
         
         // Implement actual sorting
         let sortedIndices = sampleData.rows.indices.sorted { i, j in
