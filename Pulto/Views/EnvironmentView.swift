@@ -102,6 +102,7 @@ struct EnvironmentView: View {
     @State private var showExportSidebar = false
     @State private var showImportDialog = false
     @State private var showTemplateGallery = false
+    @State private var showNotebookImport = false
     @State private var showWorkspaceDialog = false
     @State private var showFileImport = false
     @State private var selectedWindowType: StandardWindowType?
@@ -151,6 +152,12 @@ struct EnvironmentView: View {
         .sheet(isPresented: $showTemplateGallery) {
             TemplateView()
                 .frame(minWidth: 800, minHeight: 600)
+        }
+        .fullScreenCover(isPresented: $showNotebookImport) {
+            NotebookImportDialog(
+                isPresented: $showNotebookImport,
+                windowManager: windowManager
+            )
         }
         .fileImporter(
             isPresented: $showFileImport,
@@ -223,6 +230,14 @@ struct EnvironmentView: View {
                     subtitle: "Browse pre-built projects",
                     icon: "doc.badge.gearshape",
                     action: { showTemplateGallery = true },
+                    style: .secondary
+                )
+
+                PrimaryActionCard(
+                    title: "Import Notebook",
+                    subtitle: "Import Jupyter notebooks",
+                    icon: "square.and.arrow.down.on.square",
+                    action: { showNotebookImport = true },
                     style: .secondary
                 )
             }
