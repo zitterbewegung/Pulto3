@@ -14,6 +14,8 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
 from werkzeug.utils import secure_filename
+# Use a pipeline as a high-level helper
+from transformers import pipeline
 
 app = Flask(__name__)
 CORS(app)
@@ -21,6 +23,9 @@ CORS(app)
 # Configuration
 UPLOAD_FOLDER = '/tmp/notebooks'
 ALLOWED_EXTENSIONS = {'ipynb'}
+
+
+pipe = pipeline("video-classification", model="facebook/vjepa2-vitl-fpc64-256")
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)

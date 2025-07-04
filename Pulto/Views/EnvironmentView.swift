@@ -488,9 +488,9 @@ struct EnvironmentView: View {
                     windowManager: windowManager
                 )
 
-                print(" Quick project saved: \(workspaceName)")
+                print("✅ Quick project saved: \(workspaceName)")
             } catch {
-                print(" Failed to quick save project: \(error)")
+                print("❌ Failed to quick save project: \(error)")
             }
         }
     }
@@ -507,9 +507,9 @@ struct EnvironmentView: View {
                     windowManager.markWindowAsOpened(windowID)
                 }
 
-                print(" Workspace loaded: \(workspace.name)")
+                print("✅ Workspace loaded: \(workspace.name)")
             } catch {
-                print(" Failed to load project: \(error)")
+                print("❌ Failed to load project: \(error)")
             }
         }
     }

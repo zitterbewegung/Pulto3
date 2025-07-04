@@ -3,9 +3,8 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/17/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 import SwiftUI
 import RealityKit
@@ -17,94 +16,89 @@ struct ModelViewerView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingFilePicker = false
-    @State private var inputMode: InputMode = .url
+    @State private var isDefaultModelLoaded = false
     
     enum InputMode {
         case url, localFile
     }
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                // Input mode selection
-                Picker("Input Mode", selection: $inputMode) {
-                    Text("URL").tag(InputMode.url)
-                    Text("Local File").tag(InputMode.localFile)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding(.horizontal)
-                
-                // Input section
-                VStack(spacing: 15) {
-                    if inputMode == .url {
-                        urlInputSection
-                    } else {
-                        localFileSection
+        VStack(spacing: 20) {
+            // Default model info
+            if isDefaultModelLoaded {
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "cube.transparent.fill")
+                            .foregroundColor(.blue)
+                        Text("Default Model: Pluto_1_2374.usdz")
+                            .font(.headline)
+                            .foregroundColor(.blue)
                     }
-                    
-                    loadButton
+                    Text("Drag to rotate • Enter URL below to load different models")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
                 .padding(.horizontal)
-                
-                // Error display
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .padding()
-                }
-                
-                // 3D Model Display
-                if isLoading {
-                    ProgressView("Loading model...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    modelRenderView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
             }
-            .navigationTitle("3D Model Viewer")
-            .fileImporter(
-                isPresented: $showingFilePicker,
-                allowedContentTypes: [.usd, .usda, .usdc, .realityFile],
-                allowsMultipleSelection: false
-            ) { result in
-                handleFileSelection(result)
-            }
-        }
-    }
-    
-    private var urlInputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Model URL:")
-                .font(.headline)
             
-            TextField("Enter model URL (USDZ, Reality file)", text: $modelURL)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
-        }
-    }
-    
-    private var localFileSection: some View {
-        VStack(spacing: 10) {
-            Text("Select Local Model File")
-                .font(.headline)
+            // URL Input section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Model URL:")
+                    .font(.headline)
+                
+                TextField("Enter model URL (USDZ, Reality file)", text: $modelURL)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+            }
+            .padding(.horizontal)
             
-            Button("Choose File") {
-                showingFilePicker = true
+            // Load buttons
+            HStack(spacing: 12) {
+                Button("Load Model") {
+                    Task {
+                        await loadModel()
+                    }
+                }
+                .buttonStyle(BorderedProminentButtonStyle())
+                .disabled(modelURL.isEmpty)
+                
+                Button("Reset to Default") {
+                    Task {
+                        await loadDefaultModel()
+                    }
+                }
+                .buttonStyle(BorderedButtonStyle())
             }
-            .buttonStyle(BorderedProminentButtonStyle())
-        }
-    }
-    
-    private var loadButton: some View {
-        Button("Load Model") {
-            Task {
-                await loadModel()
+            .padding(.horizontal)
+            
+            // Error display
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .padding()
+            }
+            
+            // 3D Model Display
+            if isLoading {
+                ProgressView("Loading model...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                modelRenderView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .buttonStyle(BorderedProminentButtonStyle())
-        .disabled(inputMode == .url && modelURL.isEmpty)
+        .onAppear {
+            // Load default model when view appears
+            if loadedEntity == nil {
+                Task {
+                    await loadDefaultModel()
+                }
+            }
+        }
     }
     
     private var modelRenderView: some View {
@@ -163,20 +157,40 @@ struct ModelViewerView: View {
         }
     }
     
+    private func loadDefaultModel() async {
+        isLoading = true
+        errorMessage = nil
+        isDefaultModelLoaded = false
+        
+        do {
+            guard let url = Bundle.main.url(forResource: "Pluto_1_2374", withExtension: "usdz") else {
+                throw NSError(domain: "ModelViewerError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Default Pluto_1_2374.usdz model not found in bundle"])
+            }
+            
+            let entity = try await ModelEntity(contentsOf: url)
+            
+            await MainActor.run {
+                self.loadedEntity = entity
+                self.isLoading = false
+                self.isDefaultModelLoaded = true
+            }
+            
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to load default model: \(error.localizedDescription)"
+                self.isLoading = false
+                self.isDefaultModelLoaded = false
+            }
+        }
+    }
+    
     private func loadModel() async {
         isLoading = true
         errorMessage = nil
+        isDefaultModelLoaded = false
         
         do {
-            let entity: ModelEntity
-            
-            if inputMode == .url {
-                entity = try await loadModelFromURL()
-            } else {
-                // For local files, we would use the selected file URL
-                // This is handled in the file picker callback
-                return
-            }
+            let entity = try await loadModelFromURL()
             
             await MainActor.run {
                 self.loadedEntity = entity
@@ -193,43 +207,36 @@ struct ModelViewerView: View {
     
     private func loadModelFromURL() async throws -> ModelEntity {
         guard let url = URL(string: modelURL) else {
-            throw ModelLoadError.invalidURL
+            throw NSError(domain: "ModelViewerError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid URL format"])
         }
         
         return try await ModelEntity(contentsOf: url)
     }
+}
+
+enum ModelLoadError: LocalizedError {
+    case invalidURL
+    case unsupportedFormat
+    case defaultModelNotFound
     
-    private func loadModelFromFile(url: URL) async throws -> ModelEntity {
-        return try await ModelEntity(contentsOf: url)
-    }
-    
-    private func handleFileSelection(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            
-            Task {
-                isLoading = true
-                errorMessage = nil
-                
-                do {
-                    let entity = try await loadModelFromFile(url: url)
-                    await MainActor.run {
-                        self.loadedEntity = entity
-                        self.isLoading = false
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.errorMessage = "Failed to load model: \(error.localizedDescription)"
-                        self.isLoading = false
-                    }
-                }
-            }
-            
-        case .failure(let error):
-            errorMessage = "File selection failed: \(error.localizedDescription)"
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL format"
+        case .unsupportedFormat:
+            return "Unsupported model format"
+        case .defaultModelNotFound:
+            return "Default Pluto_1_2374.usdz model not found in bundle"
         }
     }
+}
+
+// Extension to support additional file types
+extension UTType {
+    static let usd = UTType(filenameExtension: "usd")!
+    static let usda = UTType(filenameExtension: "usda")!
+    static let usdc = UTType(filenameExtension: "usdc")!
+    static let realityFile = UTType(filenameExtension: "reality")!
 }
 
 #Preview {

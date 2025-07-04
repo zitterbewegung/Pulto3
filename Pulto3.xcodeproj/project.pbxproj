@@ -64,7 +64,7 @@
 		DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookChartsView.swift; sourceTree = "<group>"; };
 		DC09C6442DE3E22000774D7D /* DataImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataImportView.swift; sourceTree = "<group>"; };
 		DC0E89982DE366E900B27198 /* OpenWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWindowView.swift; sourceTree = "<group>"; };
-		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
+		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
 		DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudView.swift; sourceTree = "<group>"; };
 		DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlotlyWebView.swift; sourceTree = "<group>"; };
 		DC28CF642E02390500F3705E /* ModelViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelViewerView.swift; sourceTree = "<group>"; };
@@ -226,8 +226,8 @@
 			isa = PBXGroup;
 			children = (
 				DC28CF6B2E026B4300F3705E /* template.ipynb */,
-				DC70C5812DE7672800DADEAE /* Lorenz.ipynb */,
 				DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */,
+				DC70C5812DE7672800DADEAE /* Lorenz.ipynb */,
 				DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */,
 			);
 			path = Resources;

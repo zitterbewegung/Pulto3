@@ -39,7 +39,7 @@ struct EntryPoint: App {
             EnvironmentView()
                 .environmentObject(windowManager)
         }
-        .windowStyle(.volumetric)
+        .windowStyle(.plain)
         .defaultSize(width: 1280, height: 850)
         
         // Grid launcher (original functionality)
@@ -58,7 +58,7 @@ struct EntryPoint: App {
             WindowGroup(id: "open-project-window") {
                 EnvironmentView()
             }
-            .windowStyle(.volumetric)
+            .windowStyle(.plain)
             .defaultSize(width: 1280, height: 800)
         }
     }

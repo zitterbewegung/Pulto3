@@ -23,6 +23,9 @@ services:
     restart: unless-stopped
     networks:
       - spatial-net
+  large_world_model:
+    image:LargeWorldModel/LWM-Text-Chat-1:latest
+    ports:8000:8000
 
   # Jupyter Lab for testing notebooks
   jupyter:
