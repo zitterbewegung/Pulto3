@@ -105,6 +105,7 @@ struct PultoHomeView: View {
     @State private var showLogin = false
     @State private var showTemplates = false
     @State private var showImportDialog = false
+    @State private var showProjectBrowser = false
     @State private var showAppleSignIn = false
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
@@ -192,21 +193,14 @@ struct PultoHomeView: View {
                 AppleSignInView(isPresented: $showAppleSignIn)
                     .frame(width: 700, height: 800)
             }
-            .sheet(isPresented: $showTemplates) {
-                NavigationView {
-                    NotebookImportDialog(
-                        isPresented: $showTemplates,
-                        windowManager: windowManager
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Close") {
-                                showTemplates = false
-                            }
-                        }
-                    }
-                }
-                .frame(width: 1200, height: 700)
+            .fullScreenCover(isPresented: $showTemplates) {
+                NotebookImportDialog(
+                    isPresented: $showTemplates,
+                    windowManager: windowManager
+                )
+            }
+            .sheet(isPresented: $showProjectBrowser) {
+                ProjectBrowserView(windowManager: windowManager)
             }
             .sheet(isPresented: .constant(false)) {
                 EmptyView()
@@ -220,7 +214,7 @@ struct PultoHomeView: View {
         showLogin = false
         showTemplates = false
         showAppleSignIn = false
-        showImportDialog = false
+        showProjectBrowser = false
     }
 
     private var mainContent: some View {
@@ -229,13 +223,10 @@ struct PultoHomeView: View {
                 PrimaryActionsGrid(
                     showCreateProject: $showCreateProject,
                     showTemplates: $showTemplates,
+                    showProjectBrowser: $showProjectBrowser,
                     onOpenProject: {
                         closeAllSheets()
                         openWindow(id: "main")  // Open the spatial workspace
-                    },
-                    onOpenExisting: {
-                        closeAllSheets()
-                        openWindow(id: "open-project-window")  // Open existing project browser
                     },
                     isDarkMode: viewModel.isDarkMode,
                     closeAllSheets: closeAllSheets
@@ -381,8 +372,8 @@ struct UserProfileButton: View {
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
     @Binding var showTemplates: Bool
+    @Binding var showProjectBrowser: Bool
     let onOpenProject: () -> Void
-    let onOpenExisting: () -> Void
     let isDarkMode: Bool
     let closeAllSheets: () -> Void
 
@@ -403,21 +394,24 @@ struct PrimaryActionsGrid: View {
                 )
 
                 ActionCard(
-                    title: "Open Project",
-                    subtitle: "Continue working",
-                    icon: "folder",
-                    color: .purple,
-                    action: onOpenExisting
-                )
+                    title: "Open Project", 
+                    subtitle: "Browse existing projects",
+                    icon: "square.and.arrow.down.on.square",
+                    color: .purple
+                ) {
+                    closeAllSheets()
+                    showProjectBrowser = true
+                }
 
                 ActionCard(
                     title: "Import",
-                    subtitle: "Import jupyter notebooks",
-                    icon: "square.grid.2x2",
+                    subtitle: "Import juypter notebooks",
+                    icon: "folder.badge.gearshape",
                     color: .green
                 ) {
                     closeAllSheets()
                     showTemplates = true
+
                 }
             }
         }

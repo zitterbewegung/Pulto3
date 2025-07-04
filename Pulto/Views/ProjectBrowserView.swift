@@ -37,7 +37,7 @@ struct ProjectBrowserView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Open Project")
+            //.navigationTitle("Open Project")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
