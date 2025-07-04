@@ -176,7 +176,7 @@ struct WorkspaceDialog: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(20)
-                .background(Color.secondary.opacity(0.1))
+                .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -191,7 +191,7 @@ struct WorkspaceDialog: View {
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.green.opacity(0.2))
+                            .background(Color.green.opacity(0.3))
                             .foregroundStyle(.green)
                             .clipShape(Capsule())
                     }
@@ -208,13 +208,13 @@ struct WorkspaceDialog: View {
                             }
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.blue.opacity(0.25))
                             .clipShape(Capsule())
                         }
                     }
                 }
                 .padding()
-                .background(Color.blue.opacity(0.05))
+                .background(Color.blue.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
@@ -294,7 +294,7 @@ struct WorkspaceDialog: View {
                                 }
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(selectedCategory.color.opacity(0.2))
+                                .background(selectedCategory.color.opacity(0.3))
                                 .clipShape(Capsule())
                             }
                         }
@@ -302,7 +302,7 @@ struct WorkspaceDialog: View {
                 }
             }
             .padding()
-            .background(Color.secondary.opacity(0.05))
+            .background(Color.primary.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
@@ -329,7 +329,7 @@ struct WorkspaceDialog: View {
                 }
             }
             .padding()
-            .background(Color.secondary.opacity(0.1))
+            .background(Color.primary.opacity(0.08))
             
             // Workspace list
             let workspaces = searchQuery.isEmpty ? 
@@ -549,7 +549,7 @@ struct WorkspaceRowView: View {
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(workspace.category.color.opacity(0.2))
+                    .background(workspace.category.color.opacity(0.3))
                     .clipShape(Capsule())
                     
                     Text(workspace.formattedModifiedDate)
@@ -603,14 +603,14 @@ struct WorkspaceRowView: View {
                             .font(.caption2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.blue.opacity(0.2))
                             .clipShape(Capsule())
                     }
                 }
             }
         }
         .padding()
-        .background(Color.secondary.opacity(0.05))
+        .background(Color.primary.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

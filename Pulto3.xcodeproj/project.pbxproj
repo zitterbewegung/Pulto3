@@ -86,6 +86,7 @@
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
+		DC7630212E17017200BE77CD /* DEV.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEV.md; sourceTree = "<group>"; };
 		DC85D57F2E0399A900559301 /* NotebookFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFile.swift; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
@@ -188,6 +189,7 @@
 				DC3F86032E0F79D70042AAD3 /* .github */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
+				DC7630212E17017200BE77CD /* DEV.md */,
 				DF58AE1D2BCD826D00C8F737 /* Pulto */,
 				DC3F8DD52E103E090042AAD3 /* PultoTests */,
 				DF58AE1C2BCD826D00C8F737 /* Products */,
@@ -250,10 +252,10 @@
 				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
 				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
 				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
-				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
 				DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */,
 				DCF74ECF2E0619550078C4B8 /* GridConstants.swift */,
+				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */,
 				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
 				DC661B302E049681005454FE /* TemplateView.swift */,

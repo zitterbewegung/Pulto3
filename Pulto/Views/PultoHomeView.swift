@@ -193,10 +193,19 @@ struct PultoHomeView: View {
                     .frame(width: 700, height: 800)
             }
             .sheet(isPresented: $showTemplates) {
-                NotebookImportDialog(
-                    isPresented: $showImportDialog,
-                    windowManager: windowManager
-                )
+                NavigationView {
+                    NotebookImportDialog(
+                        isPresented: $showTemplates,
+                        windowManager: windowManager
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Close") {
+                                showTemplates = false
+                            }
+                        }
+                    }
+                }
                 .frame(width: 1200, height: 700)
             }
         }
@@ -208,22 +217,7 @@ struct PultoHomeView: View {
         showLogin = false
         showTemplates = false
         showAppleSignIn = false
-    }
-
-    // MARK: - Subviews
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: viewModel.isDarkMode ? [
-                Color(red: 0.07, green: 0.07, blue: 0.12),
-                Color(red: 0.05, green: 0.05, blue: 0.08)
-            ] : [
-                Color(red: 0.98, green: 0.98, blue: 1.0),
-                Color(red: 0.95, green: 0.95, blue: 0.98)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
+        showImportDialog = false
     }
 
     private var mainContent: some View {
@@ -234,7 +228,11 @@ struct PultoHomeView: View {
                     showTemplates: $showTemplates,
                     onOpenProject: {
                         closeAllSheets()
-                        openWindow(id: "open-project-window")
+                        openWindow(id: "main")  // Open the spatial workspace
+                    },
+                    onOpenExisting: {
+                        closeAllSheets()
+                        openWindow(id: "open-project-window")  // Open existing project browser
                     },
                     isDarkMode: viewModel.isDarkMode,
                     closeAllSheets: closeAllSheets
@@ -262,6 +260,21 @@ struct PultoHomeView: View {
             .padding(.horizontal, 40)
             .padding(.bottom, 20)
         }
+    }
+
+    private var backgroundGradient: some View {
+        LinearGradient(
+            colors: viewModel.isDarkMode ? [
+                Color(red: 0.07, green: 0.07, blue: 0.12),
+                Color(red: 0.05, green: 0.05, blue: 0.08)
+            ] : [
+                Color(red: 0.98, green: 0.98, blue: 1.0),
+                Color(red: 0.95, green: 0.95, blue: 0.98)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
     }
 
     private var toolbarButtons: some View {
@@ -366,6 +379,7 @@ struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
     @Binding var showTemplates: Bool
     let onOpenProject: () -> Void
+    let onOpenExisting: () -> Void
     let isDarkMode: Bool
     let closeAllSheets: () -> Void
 
@@ -389,15 +403,13 @@ struct PrimaryActionsGrid: View {
                     title: "Open Project",
                     subtitle: "Continue working",
                     icon: "folder",
-                    color: .purple
-                ) {
-                    closeAllSheets()
-                    showCreateProject = true
-                }
+                    color: .purple,
+                    action: onOpenExisting
+                )
 
                 ActionCard(
                     title: "Import",
-                    subtitle: "Import jupyter notebooks.",
+                    subtitle: "Import jupyter notebooks",
                     icon: "square.grid.2x2",
                     color: .green
                 ) {

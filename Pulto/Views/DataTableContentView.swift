@@ -3,7 +3,7 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/16/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 import SwiftUI
 import RealityKit
@@ -97,13 +97,13 @@ struct DataTableContentView: View {
     let alternatingRowColor = Color(NSColor.alternatingContentBackgroundColors[1])
     let selectedContentColor = Color(NSColor.selectedContentBackgroundColor)
     #else
-    let backgroundColor = Color(UIColor.systemGroupedBackground)
-    let windowBackgroundColor = Color(UIColor.systemBackground)
-    let textBackgroundColor = Color(UIColor.systemBackground)
-    let separatorColor = Color(UIColor.separator)
-    let gridColor = Color(UIColor.systemGray5)
-    let alternatingRowColor = Color(UIColor.secondarySystemBackground)
-    let selectedContentColor = Color(UIColor.systemGray3)
+    let backgroundColor = Color.primary.opacity(0.05)
+    let windowBackgroundColor = Color.primary.opacity(0.02)
+    let textBackgroundColor = Color.primary.opacity(0.02)
+    let separatorColor = Color.primary.opacity(0.2)
+    let gridColor = Color.primary.opacity(0.1)
+    let alternatingRowColor = Color.primary.opacity(0.03)
+    let selectedContentColor = Color.primary.opacity(0.15)
     #endif
 
     // Static method to provide default sample data
@@ -181,12 +181,21 @@ struct DataTableContentView: View {
         @State private var customDelimiter = ","
         @State private var hasHeaders = true
         @State private var importError: String?
+        @State private var urlString = ""
+        @State private var isDownloading = false
+        @State private var apiEndpoint = ""
+        @State private var apiHeaders: [String: String] = [:]
+        @State private var newHeaderKey = ""
+        @State private var newHeaderValue = ""
         
         enum ImportMethod: String, CaseIterable {
             case file = "File"
             case paste = "Paste"
             case sample = "Sample"
             case csv = "CSV with Chart Recommendations"
+            case webUrl = "Web URL"
+            case webApi = "Web API"
+            case shareSheet = "Share from Safari"
             
             var icon: String {
                 switch self {
@@ -194,6 +203,9 @@ struct DataTableContentView: View {
                 case .paste: return "doc.on.clipboard"
                 case .sample: return "sparkles"
                 case .csv: return "chart.bar.doc.horizontal"
+                case .webUrl: return "globe"
+                case .webApi: return "server.rack"
+                case .shareSheet: return "square.and.arrow.up"
                 }
             }
         }
@@ -217,7 +229,7 @@ struct DataTableContentView: View {
                     }
                     
                     // Import methods
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                         ForEach(ImportMethod.allCases, id: \.self) { method in
                             ImportMethodCard(
                                 method: method,
@@ -230,34 +242,21 @@ struct DataTableContentView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Options for paste method
-                    if importMethod == .paste {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Paste your data below:")
-                                .font(.headline)
-                            
-                            HStack {
-                                Text("Delimiter:")
-                                TextField("Delimiter", text: $customDelimiter)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                
-                                Toggle("Has Headers", isOn: $hasHeaders)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            // Options for different import methods
+                            switch importMethod {
+                            case .paste:
+                                pasteDataView
+                            case .webUrl:
+                                webUrlView
+                            case .webApi:
+                                webApiView
+                            case .shareSheet:
+                                shareSheetView
+                            default:
+                                EmptyView()
                             }
-                            
-                            TextEditor(text: $sampleText)
-                                .font(.system(.body, design: .monospaced))
-                                .frame(height: 200)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                )
-                            
-                            Button("Import Data") {
-                                handlePasteImport()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(sampleText.isEmpty)
                         }
                         .padding(.horizontal)
                     }
@@ -286,7 +285,12 @@ struct DataTableContentView: View {
                     handleFileImport(result)
                 }
                 .sheet(isPresented: $showingCSVRecommender) {
-                    CSVChartRecommenderView()
+                    if #available(iOS 16.0, macOS 13.0, *) {
+                        CSVChartRecommenderView()
+                    } else {
+                        Text("CSV Chart Recommender requires iOS 16.0 or macOS 13.0")
+                            .padding()
+                    }
                 }
                 .alert("Import Error", isPresented: .constant(importError != nil)) {
                     Button("OK") { importError = nil }
@@ -296,18 +300,400 @@ struct DataTableContentView: View {
             }
         }
         
+        // MARK: - Individual Import Views
+        
+        private var pasteDataView: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Paste your data below:")
+                    .font(.headline)
+                
+                HStack {
+                    Text("Delimiter:")
+                    TextField("Delimiter", text: $customDelimiter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                    
+                    Toggle("Has Headers", isOn: $hasHeaders)
+                }
+                
+                TextEditor(text: $sampleText)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(height: 200)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+                
+                Button("Import Data") {
+                    handlePasteImport()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(sampleText.isEmpty)
+            }
+        }
+        
+        private var webUrlView: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Import CSV from Web URL:")
+                    .font(.headline)
+                
+                Text("Enter a direct link to a CSV file (must be HTTPS)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                TextField("https://example.com/data.csv", text: $urlString)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.URL)
+                    .autocapitalization(.none)
+                
+                HStack {
+                    Text("Delimiter:")
+                    TextField("Delimiter", text: $customDelimiter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                    
+                    Toggle("Has Headers", isOn: $hasHeaders)
+                }
+                
+                // Sample URLs for testing
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sample URLs:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Button("Sample Sales Data") {
+                        urlString = "https://raw.githubusercontent.com/datasets/gdp/master/data/gdp.csv"
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    
+                    Button("World Population Data") {
+                        urlString = "https://raw.githubusercontent.com/datasets/population/master/data/population.csv"
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+                
+                Button("Download and Import") {
+                    Task {
+                        await downloadFromWeb()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(urlString.isEmpty || isDownloading)
+                
+                if isDownloading {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Downloading...")
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+        
+        private var webApiView: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Import from Web API:")
+                    .font(.headline)
+                
+                Text("Connect to a REST API that returns CSV data")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                TextField("https://api.example.com/data", text: $apiEndpoint)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.URL)
+                    .autocapitalization(.none)
+                
+                // API Headers section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("API Headers (Optional):")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    HStack {
+                        TextField("Header Key", text: $newHeaderKey)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Header Value", text: $newHeaderValue)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Add") {
+                            if !newHeaderKey.isEmpty && !newHeaderValue.isEmpty {
+                                apiHeaders[newHeaderKey] = newHeaderValue
+                                newHeaderKey = ""
+                                newHeaderValue = ""
+                            }
+                        }
+                        .disabled(newHeaderKey.isEmpty || newHeaderValue.isEmpty)
+                    }
+                    
+                    // Display existing headers
+                    ForEach(Array(apiHeaders.keys), id: \.self) { key in
+                        HStack {
+                            Text("\(key): \(apiHeaders[key] ?? "")")
+                                .font(.caption)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(4)
+                            
+                            Spacer()
+                            
+                            Button("Remove") {
+                                apiHeaders.removeValue(forKey: key)
+                            }
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+                
+                // Common API examples
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Common API Patterns:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Button("JSONPlaceholder (Demo API)") {
+                        apiEndpoint = "https://jsonplaceholder.typicode.com/users"
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    
+                    Button("GitHub API (Public repos)") {
+                        apiEndpoint = "https://api.github.com/search/repositories?q=swift&sort=stars"
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+                
+                HStack {
+                    Text("Response Format:")
+                    Picker("Format", selection: .constant("JSON")) {
+                        Text("JSON").tag("JSON")
+                        Text("CSV").tag("CSV")
+                    }
+                    .pickerStyle(.segmented)
+                }
+                
+                Button("Fetch from API") {
+                    Task {
+                        await fetchFromAPI()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(apiEndpoint.isEmpty || isDownloading)
+                
+                if isDownloading {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Fetching data...")
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+        
+        private var shareSheetView: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Share from Safari:")
+                    .font(.headline)
+                
+                Text("Use this method to import CSV files from web pages")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Instructions:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Group {
+                        Text("1. Open Safari and navigate to a CSV file")
+                        Text("2. Tap the Share button")
+                        Text("3. Select this app from the share sheet")
+                        Text("4. The CSV will be automatically imported")
+                    }
+                    .font(.caption)
+                    .padding(.leading, 16)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Supported Sources:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Group {
+                        Text("• Google Sheets (published as CSV)")
+                        Text("• Dropbox public links")
+                        Text("• GitHub raw CSV files")
+                        Text("• Government open data portals")
+                        Text("• Any direct CSV download link")
+                    }
+                    .font(.caption)
+                    .padding(.leading, 16)
+                }
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(8)
+                
+                Button("Open Safari") {
+                    if let url = URL(string: "https://www.google.com/search?q=csv+data+site:github.com") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        
+        // MARK: - Import Methods
+        
         private func handleMethodSelection(_ method: ImportMethod) {
             switch method {
             case .file:
                 showingFileImporter = true
             case .csv:
-                showingCSVRecommender = true
+                if #available(iOS 16.0, macOS 13.0, *) {
+                    showingCSVRecommender = true
+                } else {
+                    importError = "CSV Chart Recommender requires iOS 16.0 or macOS 13.0"
+                }
             case .sample:
                 loadSampleDataset()
-            case .paste:
-                break // UI will show text editor
+            case .paste, .webUrl, .webApi, .shareSheet:
+                break // UI will show appropriate form
             }
         }
+        
+        private func downloadFromWeb() async {
+            guard let url = URL(string: urlString), url.scheme == "https" else {
+                importError = "Please enter a valid HTTPS URL"
+                return
+            }
+            
+            isDownloading = true
+            defer { isDownloading = false }
+            
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    importError = "Failed to download: Invalid response"
+                    return
+                }
+                
+                guard let content = String(data: data, encoding: .utf8) else {
+                    importError = "Failed to decode CSV data"
+                    return
+                }
+                
+                let importedData = try parseDelimitedText(content, delimiter: customDelimiter, hasHeaders: hasHeaders)
+                onDataImported(importedData)
+                dismiss()
+                
+            } catch {
+                importError = "Download failed: \(error.localizedDescription)"
+            }
+        }
+        
+        private func fetchFromAPI() async {
+            guard let url = URL(string: apiEndpoint) else {
+                importError = "Please enter a valid API endpoint"
+                return
+            }
+            
+            isDownloading = true
+            defer { isDownloading = false }
+            
+            do {
+                var request = URLRequest(url: url)
+                
+                // Add custom headers
+                for (key, value) in apiHeaders {
+                    request.setValue(value, forHTTPHeaderField: key)
+                }
+                
+                // Set content type
+                request.setValue("application/json", forHTTPHeaderField: "Accept")
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                      200...299 ~= httpResponse.statusCode else {
+                    importError = "API request failed: Invalid response"
+                    return
+                }
+                
+                // Try to parse as JSON first, then convert to CSV format
+                if let jsonObject = try? JSONSerialization.jsonObject(with: data) {
+                    let importedData = try convertJSONToDataFrame(json: jsonObject)
+                    onDataImported(importedData)
+                    dismiss()
+                } else if let content = String(data: data, encoding: .utf8) {
+                    // Try to parse as direct CSV
+                    let importedData = try parseDelimitedText(content, delimiter: customDelimiter, hasHeaders: hasHeaders)
+                    onDataImported(importedData)
+                    dismiss()
+                } else {
+                    importError = "Unable to parse API response"
+                }
+                
+            } catch {
+                importError = "API request failed: \(error.localizedDescription)"
+            }
+        }
+        
+        private func convertJSONToDataFrame(json: Any) throws -> DataFrameData {
+            if let array = json as? [[String: Any]] {
+                // Array of objects
+                let allKeys = Set(array.flatMap { $0.keys })
+                let columns = Array(allKeys).sorted()
+                
+                let rows = array.map { object in
+                    columns.map { column in
+                        if let value = object[column] {
+                            return String(describing: value)
+                        } else {
+                            return ""
+                        }
+                    }
+                }
+                
+                let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
+                return DataFrameData(
+                    columns: columns,
+                    rows: rows,
+                    dtypes: dtypes
+                )
+                
+            } else if let object = json as? [String: Any] {
+                // Single object - treat each key-value as a row
+                let columns = ["Key", "Value"]
+                let rows = object.map { [String($0.key), String(describing: $0.value)] }
+                let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
+                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+                
+            } else {
+                throw ImportError.invalidFormat
+            }
+        }
+        
+        // ... rest of the existing methods remain the same ...
         
         private func loadSampleDataset() {
             let sampleData = DataFrameData(
@@ -342,9 +728,19 @@ struct DataTableContentView: View {
         private func handleFileImport(_ result: Result<[URL], Error>) {
             switch result {
             case .success(let urls):
-                guard let url = urls.first else { return }
+                guard let url = urls.first else { 
+                    importError = "No file selected"
+                    return 
+                }
                 
                 do {
+                    // Ensure we can access the file
+                    guard url.startAccessingSecurityScopedResource() else {
+                        importError = "Cannot access the selected file"
+                        return
+                    }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    
                     let content = try String(contentsOf: url)
                     let fileExtension = url.pathExtension.lowercased()
                     
@@ -358,8 +754,14 @@ struct DataTableContentView: View {
                     case "json":
                         importedData = try parseJSONData(content)
                     default:
-                        // Try to auto-detect delimiter
-                        importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+                        // Try to auto-detect delimiter for unknown extensions
+                        if content.contains(",") {
+                            importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+                        } else if content.contains("\t") {
+                            importedData = try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+                        } else {
+                            throw ImportError.invalidFormat
+                        }
                     }
                     
                     onDataImported(importedData)
@@ -396,7 +798,7 @@ struct DataTableContentView: View {
             }
             
             // Auto-detect data types
-            let dtypes = autoDetectTypes(columns: columns, rows: dataRows)
+            let dtypes = autoDetectDataTypes(columns: columns, rows: dataRows)
             
             return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
         }
@@ -407,28 +809,10 @@ struct DataTableContentView: View {
             }
             
             let json = try JSONSerialization.jsonObject(with: data)
-            
-            if let array = json as? [[String: Any]] {
-                // Array of objects
-                let columns = Array(Set(array.flatMap { $0.keys })).sorted()
-                let rows = array.map { object in
-                    columns.map { column in
-                        if let value = object[column] {
-                            return String(describing: value)
-                        } else {
-                            return ""
-                        }
-                    }
-                }
-                
-                let dtypes = autoDetectTypes(columns: columns, rows: rows)
-                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
-            } else {
-                throw ImportError.invalidFormat
-            }
+            return try convertJSONToDataFrame(json: json)
         }
         
-        private func autoDetectTypes(columns: [String], rows: [[String]]) -> [String: String] {
+        private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
             var dtypes: [String: String] = [:]
             
             for (index, column) in columns.enumerated() {
@@ -477,7 +861,7 @@ struct DataTableContentView: View {
             }
         }
     }
-
+    
     struct ImportMethodCard: View {
         let method: DataImportSheet.ImportMethod
         let isSelected: Bool
@@ -525,6 +909,7 @@ struct DataTableContentView: View {
 
             // Action buttons
             HStack(spacing: 8) {
+                /*
                 Button(action: { showingDataImport = true }) {
                     Label("Import Data", systemImage: "square.and.arrow.down")
                 }
@@ -533,6 +918,7 @@ struct DataTableContentView: View {
                 .padding(.vertical, 6)
                 .background(Color.purple.opacity(0.1))
                 .cornerRadius(6)
+                */
 
                 Button(action: { loadSampleData() }) {
                     Label("Sample Data", systemImage: "doc.text")
@@ -902,7 +1288,10 @@ struct DataTableContentView: View {
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
+            guard let url = urls.first else { 
+                importError = "No file selected"
+                return 
+            }
             
             do {
                 let content = try String(contentsOf: url)
@@ -1038,6 +1427,7 @@ struct DataTableContentView: View {
             }
             
             let numericCount = columnValues.compactMap { Double($0) }.count
+            let booleanCount = columnValues.filter { $0.lowercased() == "true" || $0.lowercased() == "false" }.count
             
             if Double(numericCount) / Double(columnValues.count) > 0.8 {
                 if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
@@ -1045,6 +1435,8 @@ struct DataTableContentView: View {
                 } else {
                     dtypes[column] = "int"
                 }
+            } else if Double(booleanCount) / Double(columnValues.count) > 0.8 {
+                dtypes[column] = "bool"
             } else {
                 dtypes[column] = "string"
             }

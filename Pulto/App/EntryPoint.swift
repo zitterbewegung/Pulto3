@@ -10,6 +10,8 @@ import SwiftUI
 
 @main
 struct EntryPoint: App {
+    @StateObject private var windowManager = WindowTypeManager.shared
+    
     /* Helper to apply placement + sizing to each window scene.
     private func configureScene(_ scene: WindowGroup<some View>, row: Int, col: Int) -> some Scene {
         let size = CGSize(width: GridConstants.tileWidth, height: GridConstants.tileHeight)
@@ -21,53 +23,84 @@ struct EntryPoint: App {
             }
     }*/
     var body: some Scene {
-        // Primary window - always loaded
-        WindowGroup(id: "main") {
+        // Primary home window - main interface
+        WindowGroup(id: "home") {
             PultoHomeView()
+                .environmentObject(windowManager)
+                .onOpenURL { url in
+                    handleSharedURL(url)
+                }
         }
+        .windowStyle(.plain)
+        .defaultSize(width: 1400, height: 900)
+        
+        // Spatial workspace window - for data visualization
+        WindowGroup(id: "main") {
+            EnvironmentView()
+                .environmentObject(windowManager)
+        }
+        .windowStyle(.volumetric)
         .defaultSize(width: 1280, height: 850)
-        // Root controller that lets the person launch the grid.
-        WindowGroup {
+        
+        // Grid launcher (original functionality)
+        WindowGroup(id: "launcher") {
             LauncherView()
         }
         .windowStyle(.plain)
-        //.defaultSize(width: 500, height: 300)
-        /*
-        // --- 3 × 3 Grid ----------------------------------------------------
-        configureScene(WindowGroup(id: "grid-0-0") { GridTileView(row: 0, col: 0) }, row: 0, col: 0)
-        configureScene(WindowGroup(id: "grid-0-1") { GridTileView(row: 0, col: 1) }, row: 0, col: 1)
-        configureScene(WindowGroup(id: "grid-0-2") { GridTileView(row: 0, col: 2) }, row: 0, col: 2)
-
-        configureScene(WindowGroup(id: "grid-1-0") { GridTileView(row: 1, col: 0) }, row: 1, col: 0)
-        configureScene(WindowGroup(id: "grid-1-1") { GridTileView(row: 1, col: 1) }, row: 1, col: 1)
-        configureScene(WindowGroup(id: "grid-1-2") { GridTileView(row: 1, col: 2) }, row: 1, col: 2)
-
-        configureScene(WindowGroup(id: "grid-2-0") { GridTileView(row: 2, col: 0) }, row: 2, col: 0)
-        configureScene(WindowGroup(id: "grid-2-1") { GridTileView(row: 2, col: 1) }, row: 2, col: 1)
-        configureScene(WindowGroup(id: "grid-2-2") { GridTileView(row: 2, col: 2) }, row: 2, col: 2)
-      */
+        .defaultSize(width: 800, height: 600)
+        
         // Secondary windows - loaded on demand
         Group {
             WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
                 NewWindow(id: id ?? 1)
             }
 
-            //WindowGroup("Volumetric") {
-            //    VolumetricWindow()
-            //}
-            //.windowStyle(.volumetric)
-            //.defaultSize(width: 1280, height: 720)
-
             WindowGroup(id: "open-project-window") {
                 EnvironmentView()
             }
-            //.windowStyle(.volumetric)
-            .defaultSize(width: 1280, height: 800,)
-
+            .windowStyle(.volumetric)
+            .defaultSize(width: 1280, height: 800)
         }
-
-
-
+    }
+    
+    private func handleSharedURL(_ url: URL) {
+        // Handle CSV files shared from Safari or other apps
+        if url.pathExtension.lowercased() == "csv" {
+            Task {
+                do {
+                    let content = try String(contentsOf: url)
+                    if let csvData = CSVParser.parse(content) {
+                        // Convert CSVData to DataFrameData
+                        let dataFrame = DataFrameData(
+                            columns: csvData.headers,
+                            rows: csvData.rows,
+                            dtypes: csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
+                                let (index, type) = item
+                                if index < csvData.headers.count {
+                                    switch type {
+                                    case .numeric:
+                                        result[csvData.headers[index]] = "float"
+                                    case .categorical:
+                                        result[csvData.headers[index]] = "string"
+                                    case .date:
+                                        result[csvData.headers[index]] = "string"
+                                    case .unknown:
+                                        result[csvData.headers[index]] = "string"
+                                    }
+                                }
+                            }
+                        )
+                        
+                        // Create a new DataFrame window with the imported data
+                        let windowId = windowManager.getNextWindowID()
+                        let newWindow = windowManager.createWindow(.column, id: windowId)
+                        windowManager.updateWindowDataFrame(newWindow.id, dataFrame: dataFrame)
+                        windowManager.markWindowAsOpened(newWindow.id)
+                    }
+                } catch {
+                    print("Error importing shared CSV: \(error)")
+                }
+            }
         }
+    }
 }
-

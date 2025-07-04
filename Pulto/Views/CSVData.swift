@@ -385,8 +385,8 @@ struct HistogramView: View {
     }
 }
 
+// CSVChartRecommenderView is defined in its own file - CSVChartRecommenderView.swift
 // MARK: - Main View
-// CSVChartRecommenderView is defined in its own file
 struct CSVChartRecommenderView: View {
     @State private var csvData: CSVData?
     @State private var recommendations: [ChartScore] = []

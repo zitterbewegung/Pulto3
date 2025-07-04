@@ -1,7 +1,7 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
-
-// MARK: - Design System Constants (Smaller Version)
+// MARK: - Design System Constants 
 struct DesignSystem {
     // Spacing
     static let spacing = (
@@ -93,7 +93,7 @@ extension View {
     }
 }
 
-// MARK: - EnvironmentView (Enhanced with Workspace Management)
+// MARK: - EnvironmentView (Standard Window Management)
 struct EnvironmentView: View {
     @State var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
@@ -103,8 +103,9 @@ struct EnvironmentView: View {
     @State private var showImportDialog = false
     @State private var showTemplateGallery = false
     @State private var showWorkspaceDialog = false
-    @State private var selectedWindowType: WindowType?
-    @State private var hoveredWindowType: WindowType?
+    @State private var showDataTableImport = false
+    @State private var selectedWindowType: StandardWindowType?
+    @State private var hoveredWindowType: StandardWindowType?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -115,6 +116,7 @@ struct EnvironmentView: View {
                     VStack(spacing: DesignSystem.spacing.xxl) {
                         workspaceManagementSection
                         windowTypeSection
+                        dataImportSection
 
                         if !windowManager.getAllWindows().isEmpty {
                             activeWindowsSection
@@ -150,6 +152,18 @@ struct EnvironmentView: View {
             TemplateView()
                 .frame(minWidth: 800, minHeight: 600)
         }
+        .fileImporter(
+            isPresented: $showDataTableImport,
+            allowedContentTypes: [
+                UTType.commaSeparatedText,
+                UTType.tabSeparatedText, 
+                UTType.json,
+                UTType.plainText
+            ],
+            allowsMultipleSelection: false
+        ) { result in
+            handleDataTableImport(result)
+        }
     }
 
     // MARK: - View Components
@@ -157,11 +171,11 @@ struct EnvironmentView: View {
     private var headerSection: some View {
         HStack(alignment: .center, spacing: DesignSystem.spacing.lg) {
             VStack(alignment: .leading, spacing: DesignSystem.spacing.sm) {
-                Text("Workspace Manager")
+                Text("Project Manager")
                     .font(.system(.title, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
                 if !workspaceManager.getCustomWorkspaces().isEmpty {
-                    Text("\(workspaceManager.getCustomWorkspaces().count) saved workspace\(workspaceManager.getCustomWorkspaces().count == 1 ? "" : "s")")
+                    Text("\(workspaceManager.getCustomWorkspaces().count) saved project\(workspaceManager.getCustomWorkspaces().count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -186,15 +200,15 @@ struct EnvironmentView: View {
     private var workspaceManagementSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
             SectionHeader(
-                title: "Workspace Management",
-                subtitle: "Create, save, and manage your 3D workspace configurations",
+                title: "Project Management",
+                subtitle: "Create, save, and manage your data analysis projects",
                 icon: "folder.badge.gearshape"
             )
 
             HStack(spacing: DesignSystem.spacing.md) {
                 PrimaryActionCard(
-                    title: "Workspace Manager",
-                    subtitle: "Create, load, and manage workspaces",
+                    title: "Project Manager",
+                    subtitle: "Create, load, and manage projects",
                     icon: "folder.fill.badge.plus",
                     action: { showWorkspaceDialog = true },
                     style: .prominent
@@ -202,8 +216,8 @@ struct EnvironmentView: View {
 
                 PrimaryActionCard(
                     title: "Template Gallery",
-                    subtitle: "Browse pre-built workspaces",
-                    icon: "cube.box.fill",
+                    subtitle: "Browse pre-built projects",
+                    icon: "doc.badge.gearshape",
                     action: { showTemplateGallery = true },
                     style: .secondary
                 )
@@ -241,10 +255,45 @@ struct EnvironmentView: View {
         .cardStyle()
     }
 
+    private var dataImportSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
+            SectionHeader(
+                title: "Data Import",
+                subtitle: "Import CSV, JSON, and other data files into table views",
+                icon: "square.and.arrow.down"
+            )
+
+            HStack(spacing: DesignSystem.spacing.md) {
+                DataImportActionCard(
+                    title: "Import Data Table",
+                    subtitle: "CSV, TSV, JSON files",
+                    icon: "tablecells",
+                    action: { createDataTableWithImport() },
+                    style: .prominent
+                )
+
+                DataImportActionCard(
+                    title: "Create Blank Table",
+                    subtitle: "Start with sample data",
+                    icon: "plus.rectangle.on.rectangle",
+                    action: { createBlankDataTable() },
+                    style: .secondary
+                )
+            }
+
+            Text("Import data files to create interactive data table views for analysis and visualization")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, DesignSystem.padding.sm)
+        }
+        .padding(DesignSystem.padding.xl)
+        .cardStyle()
+    }
+
     private var quickWorkspacesSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
             HStack {
-                Text("Recent Workspaces")
+                Text("Recent Projects")
                     .font(.subheadline)
                     .fontWeight(.medium)
 
@@ -260,7 +309,7 @@ struct EnvironmentView: View {
             let recentWorkspaces = Array(workspaceManager.getCustomWorkspaces().prefix(3))
 
             if recentWorkspaces.isEmpty {
-                Text("No saved workspaces yet")
+                Text("No saved projects yet")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .italic()
@@ -283,8 +332,8 @@ struct EnvironmentView: View {
     private var windowTypeSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
             SectionHeader(
-                title: "Create New Window",
-                subtitle: "Choose a window type to add to your workspace",
+                title: "Create New View",
+                subtitle: "Choose a view type to add to your project",
                 icon: "plus.rectangle.on.folder"
             )
 
@@ -295,15 +344,15 @@ struct EnvironmentView: View {
                 ],
                 spacing: DesignSystem.spacing.md
             ) {
-                ForEach(WindowType.allCases, id: \.self) { windowType in
-                    WindowTypeCard(
+                ForEach(StandardWindowType.allCases, id: \.self) { windowType in
+                    StandardWindowTypeCard(
                         windowType: windowType,
                         isSelected: selectedWindowType == windowType,
                         isHovered: hoveredWindowType == windowType,
                         action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 selectedWindowType = windowType
-                                createWindow(type: windowType)
+                                createStandardWindow(type: windowType)
                             }
                         }
                     )
@@ -321,8 +370,8 @@ struct EnvironmentView: View {
         VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
             HStack {
                 SectionHeader(
-                    title: "Active Windows",
-                    subtitle: "\(windowManager.getAllWindows().count) window\(windowManager.getAllWindows().count == 1 ? "" : "s") currently open",
+                    title: "Active Views",
+                    subtitle: "\(windowManager.getAllWindows().count) view\(windowManager.getAllWindows().count == 1 ? "" : "s") currently open",
                     icon: "rectangle.3.group"
                 )
 
@@ -372,7 +421,7 @@ struct EnvironmentView: View {
 
                         Spacer()
 
-                        PositionBadge(position: window.position)
+                        WindowSizeBadge(width: window.position.width, height: window.position.height)
 
                         HStack(spacing: DesignSystem.spacing.sm) {
                             CircularButton(
@@ -402,15 +451,17 @@ struct EnvironmentView: View {
         .frame(maxHeight: 250)
     }
 
-    private func createWindow(type: WindowType) {
-        let position = WindowPosition(
-            x: Double.random(in: -200...200),
-            y: Double.random(in: -100...100),
-            z: Double.random(in: -50...50),
-            width: 600,
-            height: 450
+    private func createStandardWindow(type: StandardWindowType) {
+        let standardPosition = WindowPosition(
+            x: 100,
+            y: 100,
+            z: 0,
+            width: 800,
+            height: 600
         )
-        _ = windowManager.createWindow(type, id: nextWindowID, position: position)
+        
+        let windowType = type.toWindowType()
+        _ = windowManager.createWindow(windowType, id: nextWindowID, position: standardPosition)
         openWindow(value: nextWindowID)
         windowManager.markWindowAsOpened(nextWindowID)
         nextWindowID += 1
@@ -425,21 +476,21 @@ struct EnvironmentView: View {
         guard !windows.isEmpty else { return }
 
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
-        let workspaceName = "Workspace \(timestamp)"
+        let workspaceName = "Project \(timestamp)"
 
         Task {
             do {
                 _ = try await workspaceManager.createNewWorkspace(
                     name: workspaceName,
-                    description: "Quick save with \(windows.count) windows",
+                    description: "Quick save with \(windows.count) views",
                     category: .custom,
                     tags: ["quick-save"],
                     windowManager: windowManager
                 )
 
-                print(" Quick workspace saved: \(workspaceName)")
+                print(" Quick project saved: \(workspaceName)")
             } catch {
-                print(" Failed to quick save workspace: \(error)")
+                print(" Failed to quick save project: \(error)")
             }
         }
     }
@@ -458,21 +509,21 @@ struct EnvironmentView: View {
 
                 print(" Workspace loaded: \(workspace.name)")
             } catch {
-                print(" Failed to load workspace: \(error)")
+                print(" Failed to load project: \(error)")
             }
         }
     }
 
     private func createSampleWorkspace() {
-        let windowTypes: [WindowType] = [.charts, .spatial, .column, .volume]
+        let windowTypes: [WindowType] = [.charts, .column, .volume, .model3d]
 
         for (index, type) in windowTypes.enumerated() {
             let position = WindowPosition(
-                x: Double(index * 150 - 150),
-                y: Double(index * 75),
-                z: Double(index * 50),
-                width: 500,
-                height: 400
+                x: Double(100 + index * 50),
+                y: Double(100 + index * 50),
+                z: 0,
+                width: 600,
+                height: 450
             )
             _ = windowManager.createWindow(type, id: nextWindowID, position: position)
 
@@ -491,9 +542,6 @@ struct EnvironmentView: View {
                     """
                 )
                 windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-            case .spatial:
-                let samplePointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
-                windowManager.updateWindowPointCloud(nextWindowID, pointCloud: samplePointCloud)
             case .column:
                 let sampleDataFrame = DataFrameData(
                     columns: ["Name", "Value", "Category"],
@@ -506,10 +554,6 @@ struct EnvironmentView: View {
                 )
                 windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
                 windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
-            case .model3d:
-                let sampleCube = Model3DData.generateCube(size: 3.0)
-                windowManager.updateWindowModel3DData(nextWindowID, model3DData: sampleCube)
-                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
             case .volume:
                 windowManager.updateWindowContent(
                     nextWindowID,
@@ -531,10 +575,12 @@ struct EnvironmentView: View {
                     """
                 )
                 windowManager.updateWindowTemplate(nextWindowID, template: .custom)
-            case .pointcloud:
-                let sampleTorus = PointCloudDemo.generateTorusPointCloudData(majorRadius: 8.0, minorRadius: 3.0, points: 1000)
-                windowManager.updateWindowPointCloud(nextWindowID, pointCloud: sampleTorus)
+            case .model3d:
+                let sampleCube = Model3DData.generateCube(size: 3.0)
+                windowManager.updateWindowModel3DData(nextWindowID, model3DData: sampleCube)
                 windowManager.updateWindowTemplate(nextWindowID, template: .custom)
+            default:
+                break
             }
 
             windowManager.addWindowTag(nextWindowID, tag: "demo")
@@ -551,14 +597,235 @@ struct EnvironmentView: View {
         }
     }
 
+    private func createDataTableWithImport() {
+        showDataTableImport = true
+    }
+    
+    private func createBlankDataTable() {
+        let position = WindowPosition(
+            x: 100,
+            y: 100,
+            z: 0,
+            width: 1000,
+            height: 700
+        )
+        
+        _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
+        
+        let sampleDataFrame = DataFrameData(
+            columns: ["Name", "Value", "Category", "Date"],
+            rows: [
+                ["Sample A", "100", "Type 1", "2024-01-01"],
+                ["Sample B", "200", "Type 2", "2024-01-02"],
+                ["Sample C", "150", "Type 1", "2024-01-03"]
+            ],
+            dtypes: ["Name": "string", "Value": "int", "Category": "string", "Date": "string"]
+        )
+        windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
+        
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+    
+    private func handleDataTableImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            do {
+                guard url.startAccessingSecurityScopedResource() else {
+                    print("Cannot access the selected file")
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+                
+                let content = try String(contentsOf: url)
+                let fileExtension = url.pathExtension.lowercased()
+                
+                let importedData: DataFrameData
+                
+                switch fileExtension {
+                case "csv":
+                    importedData = try parseCSVForDataTable(content)
+                case "tsv", "txt":
+                    importedData = try parseTSVForDataTable(content)
+                case "json":
+                    importedData = try parseJSONForDataTable(content)
+                default:
+                    importedData = try parseCSVForDataTable(content)
+                }
+                
+                let position = WindowPosition(
+                    x: 100,
+                    y: 100,
+                    z: 0,
+                    width: 1000,
+                    height: 700
+                )
+                
+                _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
+                windowManager.updateWindowDataFrame(nextWindowID, dataFrame: importedData)
+                openWindow(value: nextWindowID)
+                windowManager.markWindowAsOpened(nextWindowID)
+                nextWindowID += 1
+                
+            } catch {
+                print("Error importing file: \(error.localizedDescription)")
+            }
+            
+        case .failure(let error):
+            print("Import failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func parseCSVForDataTable(_ content: String) throws -> DataFrameData {
+        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !lines.isEmpty else {
+            throw ImportError.noData
+        }
+        
+        let rows = lines.map { line in
+            line.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+        
+        let columns = rows.first ?? []
+        let dataRows = Array(rows.dropFirst())
+        
+        let dtypes = autoDetectDataTypesForTable(columns: columns, rows: dataRows)
+        
+        return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
+    }
+    
+    private func parseTSVForDataTable(_ content: String) throws -> DataFrameData {
+        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !lines.isEmpty else {
+            throw ImportError.noData
+        }
+        
+        let rows = lines.map { line in
+            line.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+        
+        let columns = rows.first ?? []
+        let dataRows = Array(rows.dropFirst())
+        
+        let dtypes = autoDetectDataTypesForTable(columns: columns, rows: dataRows)
+        
+        return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
+    }
+    
+    private func parseJSONForDataTable(_ content: String) throws -> DataFrameData {
+        guard let data = content.data(using: .utf8) else {
+            throw ImportError.invalidFormat
+        }
+        
+        let json = try JSONSerialization.jsonObject(with: data)
+        
+        if let array = json as? [[String: Any]] {
+            let allKeys = Set(array.flatMap { $0.keys })
+            let columns = Array(allKeys).sorted()
+            
+            let rows = array.map { object in
+                columns.map { column in
+                    if let value = object[column] {
+                        return String(describing: value)
+                    } else {
+                        return ""
+                    }
+                }
+            }
+            
+            let dtypes = autoDetectDataTypesForTable(columns: columns, rows: rows)
+            return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+            
+        } else if let object = json as? [String: Any] {
+            let columns = ["Key", "Value"]
+            let rows = object.map { [String($0.key), String(describing: $0.value)] }
+            let dtypes = autoDetectDataTypesForTable(columns: columns, rows: rows)
+            return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+        } else {
+            throw ImportError.invalidFormat
+        }
+    }
+    
+    private func autoDetectDataTypesForTable(columns: [String], rows: [[String]]) -> [String: String] {
+        var dtypes: [String: String] = [:]
+        
+        for (index, column) in columns.enumerated() {
+            let columnValues = rows.compactMap { row in
+                index < row.count ? row[index] : nil
+            }.filter { !$0.isEmpty }
+            
+            if columnValues.isEmpty {
+                dtypes[column] = "string"
+                continue
+            }
+            
+            let numericCount = columnValues.compactMap { Double($0) }.count
+            
+            if Double(numericCount) / Double(columnValues.count) > 0.8 {
+                if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
+                    dtypes[column] = "float"
+                } else {
+                    dtypes[column] = "int"
+                }
+            } else {
+                dtypes[column] = "string"
+            }
+        }
+        
+        return dtypes
+    }
+
+    enum ImportError: LocalizedError {
+        case noData
+        case invalidFormat
+        case parsingFailed
+        
+        var errorDescription: String? {
+            switch self {
+            case .noData:
+                return "No data found in the file"
+            case .invalidFormat:
+                return "Invalid file format"
+            case .parsingFailed:
+                return "Failed to parse the data"
+            }
+        }
+    }
+
     private func iconForWindowType(_ type: WindowType) -> String {
         switch type {
         case .charts: return "chart.line.uptrend.xyaxis"
-        case .spatial: return "cube"
+        case .spatial: return "rectangle.3.group"
         case .column: return "tablecells"
         case .volume: return "gauge"
-        case .pointcloud: return "dot.scope"
+        case .pointcloud: return "circle.grid.3x3"
         case .model3d: return "cube.transparent"
+        }
+    }
+}
+
+// MARK: - Standard Window Types (Non-Volumetric)
+enum StandardWindowType: String, CaseIterable {
+    case charts = "Charts"
+    case dataFrame = "DataFrame Viewer"
+    case metrics = "Model Metric Viewer"
+    case spatial = "Spatial Editor"
+    case model3d = "3D Model Viewer"
+    
+    var displayName: String {
+        return self.rawValue
+    }
+    
+    func toWindowType() -> WindowType {
+        switch self {
+        case .charts: return .charts
+        case .dataFrame: return .column
+        case .metrics: return .volume
+        case .spatial: return .spatial
+        case .model3d: return .model3d
         }
     }
 }
@@ -575,7 +842,7 @@ struct QuickWorkspaceRowView: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
 
-                Text("\(workspace.totalWindows) windows • \(workspace.formattedModifiedDate)")
+                Text("\(workspace.totalWindows) views • \(workspace.formattedModifiedDate)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -599,13 +866,51 @@ struct QuickWorkspaceRowView: View {
     }
 }
 
+// MARK: - Data Import Action Card
+struct DataImportActionCard: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let action: () -> Void
+    var style: ActionCardStyle = .secondary
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: DesignSystem.spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: DesignSystem.iconSize.xl, weight: .medium))
+                    .foregroundStyle(style == .prominent ? .white : Color.accentColor)
+
+                VStack(spacing: DesignSystem.spacing.xs) {
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(style == .prominent ? .white : .primary)
+
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(style == .prominent ? .white.opacity(0.8) : .secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: DesignSystem.cardHeight.md)
+            .padding(DesignSystem.padding.md)
+            .background(style == .prominent ? Color.orange : Color.secondary.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
+        }
+        .buttonStyle(.plain)
+        .hoverEffect()
+    }
+}
+
 // MARK: - Reusable Components
 
 struct WindowCountIndicator: View {
     let count: Int
 
     var body: some View {
-        Label("\(count)", systemImage: "cube.box")
+        Label("\(count)", systemImage: "rectangle.3.group")
             .font(.headline)
             .padding(.horizontal, DesignSystem.padding.md)
             .padding(.vertical, DesignSystem.padding.xs)
@@ -738,8 +1043,8 @@ struct SecondaryActionButton: View {
     }
 }
 
-struct WindowTypeCard: View {
-    let windowType: WindowType
+struct StandardWindowTypeCard: View {
+    let windowType: StandardWindowType
     let isSelected: Bool
     let isHovered: Bool
     let action: () -> Void
@@ -752,7 +1057,7 @@ struct WindowTypeCard: View {
                         .fill(Color.accentColor.opacity(isSelected ? 0.2 : 0.15))
                         .frame(width: DesignSystem.buttonHeight.lg, height: DesignSystem.buttonHeight.lg)
 
-                    Image(systemName: iconForWindowType(windowType))
+                    Image(systemName: iconForStandardWindowType(windowType))
                         .font(.system(size: DesignSystem.iconSize.lg, weight: .medium))
                         .foregroundStyle(Color.accentColor)
                 }
@@ -765,7 +1070,7 @@ struct WindowTypeCard: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
 
-                    Text(descriptionForWindowType(windowType))
+                    Text(descriptionForStandardWindowType(windowType))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -787,34 +1092,33 @@ struct WindowTypeCard: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
     }
 
-    private func iconForWindowType(_ type: WindowType) -> String {
+    private func iconForStandardWindowType(_ type: StandardWindowType) -> String {
         switch type {
         case .charts: return "chart.line.uptrend.xyaxis"
-        case .spatial: return "cube"
-        case .column: return "tablecells"
-        case .volume: return "gauge"
-        case .pointcloud: return "dot.scope"
+        case .dataFrame: return "tablecells"
+        case .metrics: return "gauge"
+        case .spatial: return "rectangle.3.group"
         case .model3d: return "cube.transparent"
         }
     }
 
-    private func descriptionForWindowType(_ type: WindowType) -> String {
+    private func descriptionForStandardWindowType(_ type: StandardWindowType) -> String {
         switch type {
         case .charts: return "Visualize data with charts and graphs"
-        case .spatial: return "3D spatial data visualization"
-        case .column: return "Tabular data exploration"
-        case .volume: return "Performance metrics and analytics"
-        case .pointcloud: return "Point cloud data visualization"
+        case .dataFrame: return "Browse and analyze tabular data"
+        case .metrics: return "Performance metrics and analytics"
+        case .spatial: return "Interactive spatial editor"
         case .model3d: return "3D model rendering and interaction"
         }
     }
 }
 
-struct PositionBadge: View {
-    let position: WindowPosition
+struct WindowSizeBadge: View {
+    let width: Double
+    let height: Double
 
     var body: some View {
-        Text("(\(Int(position.x)), \(Int(position.y)), \(Int(position.z)))")
+        Text("\(Int(width))×\(Int(height))")
             .font(.caption2)
             .fontDesign(.monospaced)
             .padding(.horizontal, DesignSystem.padding.sm)
@@ -832,11 +1136,11 @@ struct EmptyStateView: View {
                 .font(.system(size: DesignSystem.iconSize.xl))
                 .foregroundStyle(.secondary)
 
-            Text("No Active Windows")
+            Text("No Active Views")
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Text("Create a new window to get started")
+            Text("Create a new view to get started")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
