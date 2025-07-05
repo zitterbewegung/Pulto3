@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Sign-In Integration Example</title>
+    
+    <!-- Apple Sign-In Meta Tags -->
+    <meta name="appleid-signin-client-id" content="YOUR_SERVICE_ID">
+    <meta name="appleid-signin-redirect-uri" content="http://localhost:8000/api/auth/apple/callback">
+    <meta name="appleid-signin-scope" content="name email">
+    <meta name="appleid-signin-use-popup" content="true">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 20px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #86868b;
+            font-size: 1.2rem;
+        }
+        
+        .auth-section {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        
+        .auth-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .auth-methods {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .auth-method {
+            padding: 30px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .auth-method h3 {
+            margin-bottom: 20px;
+            color: #1d1d1f;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #1d1d1f;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #0071e3;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px 24px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #0071e3;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0077ed;
+        }
+        
+        .divider {
+            margin: 20px 0;
+            text-align: center;
+            color: #86868b;
+        }
+        
+        #user-info {
+            display: none;
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        #user-info h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .user-details {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            margin-top: 15px;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .api-demo {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .api-demo h3 {
+            margin-bottom: 15px;
+        }
+        
+        .api-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .api-btn {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .api-btn:hover {
+            background: #5a6268;
+        }
+        
+        #api-response {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0071e3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Apple Sign-In Integration</h1>
+            <p class="subtitle">Complete example with traditional login fallback</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="auth-section" id="auth-section">
+            <h2>Sign In to Your Account</h2>
+            
+            <div id="user-info">
+                <h3>Welcome! You're signed in</h3>
+                <div class="user-details" id="user-details"></div>
+                <button class="btn logout-btn" onclick="logout()">Sign Out</button>
+            </div>
+            
+            <div id="login-forms">
+                <div class="auth-methods">
+                    <div class="auth-method">
+                        <h3>Sign in with Apple</h3>
+                        <p style="margin-bottom: 20px; color: #86868b;">
+                            Use your Apple ID for quick and secure sign-in
+                        </p>
+                        
+                        <!-- Apple Sign In Button -->
+                        <div id="appleid-signin" 
+                             data-color="black" 
+                             data-border="false" 
+                             data-type="sign in"
+                             style="display: inline-block;"></div>
+                        
+                        <p style="margin-top: 20px; font-size: 14px; color: #86868b;">
+                            Your Apple ID information stays private
+                        </p>
+                    </div>
+                    
+                    <div class="auth-method">
+                        <h3>Traditional Sign In</h3>
+                        
+                        <form id="login-form" onsubmit="traditionalLogin(event)">
+                            <div class="form-group">
+                                <label for="username">Username or Email</label>
+                                <input type="text" id="username" name="username" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Sign In</button>
+                        </form>
+                        
+                        <div class="divider">or</div>
+                        
+                        <button class="btn" onclick="showRegisterForm()" style="background: #e8e8ed;">
+                            Create New Account
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="error-message" id="error-message"></div>
+                <div class="success-message" id="success-message"></div>
+            </div>
+        </div>
+        
+        <div class="api-demo" id="api-demo" style="display: none;">
+            <h3>API Demo - Test Authenticated Endpoints</h3>
+            <p>Now that you're signed in, try these API endpoints:</p>
+            
+            <div class="api-buttons">
+                <button class="api-btn" onclick="testAPI('profile')">Get Profile</button>
+                <button class="api-btn" onclick="testAPI('notebooks')">List Notebooks</button>
+                <button class="api-btn" onclick="testAPI('pointclouds')">List Point Clouds</button>
+                <button class="api-btn" onclick="testAPI('health')">Health Check</button>
+            </div>
+            
+            <pre id="api-response"></pre>
+        </div>
+    </div>
+    
+    <!-- Load Apple Sign In SDK -->
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000';
+        let authToken = localStorage.getItem('authToken');
+        
+        // Check if user is already logged in
+        window.onload = function() {
+            if (authToken) {
+                checkAuthStatus();
+            }
+        };
+        
+        // Apple Sign In Event Listeners
+        document.addEventListener('AppleIDSignInOnSuccess', (event) => {
+            console.log('Apple Sign In Success:', event);
+            showMessage('success', 'Redirecting to Apple for authentication...');
+        });
+        
+        document.addEventListener('AppleIDSignInOnFailure', (event) => {
+            console.error('Apple Sign In Failed:', event);
+            showMessage('error', 'Apple Sign In failed. Please try again.');
+        });
+        
+        // Listen for callback from Apple auth window
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'apple-auth-success') {
+                console.log('Received auth success:', event.data);
+                authToken = event.data.token;
+                localStorage.setItem('authToken', authToken);
+                
+                // Update UI
+                showUserInfo(event.data.user);
+                showMessage('success', 'Successfully signed in with Apple ID!');
+            }
+        });
+        
+        // Traditional login
+        async function traditionalLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    showUserInfo(data.user);
+                    showMessage('success', 'Successfully signed in!');
+                } else {
+                    showMessage('error', data.error || 'Login failed');
+                }
+            } catch (error) {
+                showMessage('error', 'Network error. Please try again.');
+            }
+        }
+        
+        // Check auth status
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showUserInfo(data.user);
+                } else {
+                    // Token invalid, clear it
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+            }
+        }
+        
+        // Show user info
+        function showUserInfo(user) {
+            document.getElementById('login-forms').style.display = 'none';
+            document.getElementById('user-info').style.display = 'block';
+            document.getElementById('api-demo').style.display = 'block';
+            
+            let userHtml = `
+                <p><strong>Username:</strong> ${user.username}</p>
+                <p><strong>Email:</strong> ${user.email}</p>
+            `;
+            
+            if (user.full_name) {
+                userHtml += `<p><strong>Name:</strong> ${user.full_name}</p>`;
+            }
+            
+            if (user.oauth_provider) {
+                userHtml += `<p><strong>Auth Method:</strong> ${user.oauth_provider}</p>`;
+            }
+            
+            if (user.point_cloud_count !== undefined) {
+                userHtml += `<p><strong>Point Clouds:</strong> ${user.point_cloud_count}</p>`;
+                userHtml += `<p><strong>Notebooks:</strong> ${user.notebook_count}</p>`;
+            }
+            
+            document.getElementById('user-details').innerHTML = userHtml;
+        }
+        
+        // Logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            authToken = null;
+            
+            document.getElementById('login-forms').style.display = 'block';
+            document.getElementById('user-info').style.display = 'none';
+            document.getElementById('api-demo').style.display = 'none';
+            document.getElementById('api-response').style.display = 'none';
+            
+            showMessage('success', 'Successfully signed out');
+        }
+        
+        // Test API endpoints
+        async function testAPI(endpoint) {
+            const endpoints = {
+                'profile': '/api/auth/profile',
+                'notebooks': '/notebooks',
+                'pointclouds': '/api/point-clouds',
+                'health': '/health'
+            };
+            
+            const responseDiv = document.getElementById('api-response');
+            responseDiv.style.display = 'block';
+            responseDiv.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(`${API_BASE}${endpoints[endpoint]}`, {
+                    headers: authToken ? {
+                        'Authorization': `Bearer ${authToken}`
+                    } : {}
+                });
+                
+                const data = await response.json();
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Show messages
+        function showMessage(type, message) {
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            if (type === 'error') {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            } else {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+            }
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Show register form (placeholder)
+        function showRegisterForm() {
+            alert('Registration form would go here. For demo, use the /api/auth/register endpoint directly.');
+        }
+    </script>
+</body>
+</html>

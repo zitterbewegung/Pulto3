@@ -1,0 +1,519 @@
+# Additional imports for Apple ID authentication
+import os, secrets, time
+import sqlalchemy
+from urllib.parse import urlencode
+import requests
+from jwt import PyJWKClient
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend
+
+# Add these to your existing Flask app imports and configuration
+
+# Apple ID Configuration
+class AppleAuthConfig:
+    # These values come from your Apple Developer account
+    CLIENT_ID = os.environ.get('APPLE_CLIENT_ID', 'com.yourcompany.yourapp')  # Service ID
+    TEAM_ID = os.environ.get('APPLE_TEAM_ID', 'YOUR_TEAM_ID')
+    KEY_ID = os.environ.get('APPLE_KEY_ID', 'YOUR_KEY_ID')
+    PRIVATE_KEY = os.environ.get('APPLE_PRIVATE_KEY', '')  # Base64 encoded
+    REDIRECT_URI = os.environ.get('APPLE_REDIRECT_URI', 'http://localhost:8000/api/auth/apple/callback')
+    
+    # Apple endpoints
+    AUTH_URL = 'https://appleid.apple.com/auth/authorize'
+    TOKEN_URL = 'https://appleid.apple.com/auth/token'
+    KEYS_URL = 'https://appleid.apple.com/auth/keys'
+
+# Add to your User model
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String(80), unique=True, nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Nullable for OAuth users
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(db.Boolean, default=True)
+    
+    # OAuth fields
+    apple_id = Column(String(255), unique=True, nullable=True)
+    oauth_provider = Column(String(50), nullable=True)  # 'apple', 'google', etc.
+    full_name = Column(String(255), nullable=True)
+    
+    # Relationships
+    point_clouds = db.relationship('PointCloud', backref='user', lazy=True, cascade='all, delete-orphan')
+    notebooks = db.relationship('Notebook', backref='user', lazy=True, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        if password:
+            self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return bcrypt.check_password_hash(self.password_hash, password)
+    
+    def generate_token(self):
+        payload = {
+            'user_id': self.id,
+            'username': self.username,
+            'exp': datetime.utcnow() + app.config['JWT_ACCESS_TOKEN_EXPIRES']
+        }
+        return jwt.encode(payload, app.config['JWT_SECRET_KEY'], algorithm='HS256')
+
+# Apple Auth Helper Class
+class AppleAuthHelper:
+    def __init__(self):
+        self.client_id = AppleAuthConfig.CLIENT_ID
+        self.team_id = AppleAuthConfig.TEAM_ID
+        self.key_id = AppleAuthConfig.KEY_ID
+        self.redirect_uri = AppleAuthConfig.REDIRECT_URI
+        
+        # Load private key
+        if AppleAuthConfig.PRIVATE_KEY:
+            try:
+                # Decode base64 private key
+                self.private_key = base64.b64decode(AppleAuthConfig.PRIVATE_KEY).decode('utf-8')
+            except:
+                self.private_key = AppleAuthConfig.PRIVATE_KEY
+        else:
+            self.private_key = None
+    
+    def generate_client_secret(self):
+        """Generate client secret JWT for Apple"""
+        if not self.private_key:
+            raise ValueError("Apple private key not configured")
+        
+        headers = {
+            'kid': self.key_id,
+            'alg': 'ES256'
+        }
+        
+        payload = {
+            'iss': self.team_id,
+            'iat': int(time.time()),
+            'exp': int(time.time()) + 86400 * 180,  # 6 months
+            'aud': 'https://appleid.apple.com',
+            'sub': self.client_id
+        }
+        
+        # Sign with private key
+        client_secret = jwt.encode(
+            payload,
+            self.private_key,
+            algorithm='ES256',
+            headers=headers
+        )
+        
+        return client_secret
+    
+    def verify_apple_token(self, id_token):
+        """Verify and decode Apple's ID token"""
+        try:
+            # Get Apple's public keys
+            jwks_client = PyJWKClient(AppleAuthConfig.KEYS_URL)
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+            
+            # Decode and verify the token
+            data = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=['RS256'],
+                audience=self.client_id,
+                issuer='https://appleid.apple.com'
+            )
+            
+            return data
+        except Exception as e:
+            print(f"Token verification failed: {e}")
+            return None
+
+# Initialize Apple Auth Helper
+apple_auth = AppleAuthHelper()
+
+# ========== APPLE AUTHENTICATION ENDPOINTS ==========
+
+@app.route('/api/auth/apple/login', methods=['GET'])
+def apple_login():
+    """Initiate Apple ID login flow"""
+    # Generate random state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    
+    # Store state in session (you might want to use Redis in production)
+    session['apple_auth_state'] = state
+    
+    # Build authorization URL
+    params = {
+        'client_id': AppleAuthConfig.CLIENT_ID,
+        'redirect_uri': AppleAuthConfig.REDIRECT_URI,
+        'response_type': 'code id_token',
+        'response_mode': 'form_post',
+        'scope': 'name email',
+        'state': state
+    }
+    
+    auth_url = f"{AppleAuthConfig.AUTH_URL}?{urlencode(params)}"
+    
+    return jsonify({
+        'auth_url': auth_url,
+        'message': 'Redirect user to auth_url'
+    })
+
+@app.route('/api/auth/apple/callback', methods=['POST'])
+def apple_callback():
+    """Handle Apple ID callback"""
+    try:
+        # Get data from Apple's POST request
+        code = request.form.get('code')
+        id_token = request.form.get('id_token')
+        state = request.form.get('state')
+        user_json = request.form.get('user')  # Only provided on first sign-in
+        
+        # Verify state for CSRF protection
+        if state != session.get('apple_auth_state'):
+            return jsonify({'error': 'Invalid state parameter'}), 400
+        
+        # Clear state from session
+        session.pop('apple_auth_state', None)
+        
+        # Verify the ID token
+        token_data = apple_auth.verify_apple_token(id_token)
+        if not token_data:
+            return jsonify({'error': 'Invalid ID token'}), 400
+        
+        # Extract user info
+        apple_id = token_data.get('sub')
+        email = token_data.get('email')
+        email_verified = token_data.get('email_verified', False)
+        
+        # Parse additional user info if provided (first sign-in only)
+        full_name = None
+        if user_json:
+            try:
+                user_info = json.loads(user_json)
+                name_parts = user_info.get('name', {})
+                first_name = name_parts.get('firstName', '')
+                last_name = name_parts.get('lastName', '')
+                full_name = f"{first_name} {last_name}".strip()
+            except:
+                pass
+        
+        # Check if user exists
+        user = User.query.filter_by(apple_id=apple_id).first()
+        
+        if not user:
+            # Check if email already exists
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                # Link Apple ID to existing account
+                existing_user.apple_id = apple_id
+                existing_user.oauth_provider = 'apple'
+                if full_name and not existing_user.full_name:
+                    existing_user.full_name = full_name
+                db.session.commit()
+                user = existing_user
+            else:
+                # Create new user
+                username = email.split('@')[0]
+                # Ensure unique username
+                base_username = username
+                counter = 1
+                while User.query.filter_by(username=username).first():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User(
+                    username=username,
+                    email=email,
+                    apple_id=apple_id,
+                    oauth_provider='apple',
+                    full_name=full_name
+                )
+                db.session.add(user)
+                db.session.commit()
+        
+        # Generate JWT token
+        token = user.generate_token()
+        
+        # Return success response with redirect
+        return f"""
+        <html>
+        <body>
+        <script>
+            // Post message to parent window (if in popup/iframe)
+            if (window.opener) {{
+                window.opener.postMessage({{
+                    type: 'apple-auth-success',
+                    token: '{token}',
+                    user: {{
+                        id: {user.id},
+                        username: '{user.username}',
+                        email: '{user.email}',
+                        full_name: '{user.full_name or ""}'
+                    }}
+                }}, '*');
+                window.close();
+            }} else {{
+                // Redirect to app with token
+                window.location.href = '/?token={token}';
+            }}
+        </script>
+        <p>Authentication successful! Redirecting...</p>
+        </body>
+        </html>
+        """
+        
+    except Exception as e:
+        return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
+
+@app.route('/api/auth/apple/web-config', methods=['GET'])
+def apple_web_config():
+    """Return configuration for Sign in with Apple JS"""
+    return jsonify({
+        'clientId': AppleAuthConfig.CLIENT_ID,
+        'redirectUri': AppleAuthConfig.REDIRECT_URI,
+        'scope': 'name email',
+        'usePopup': True
+    })
+
+# ========== ENHANCED LOGIN ENDPOINT ==========
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Enhanced login supporting both password and OAuth tokens"""
+    data = request.get_json()
+    
+    # Check if this is an OAuth token verification
+    if data.get('oauth_token'):
+        # Verify the OAuth token we issued
+        try:
+            payload = jwt.decode(
+                data['oauth_token'], 
+                app.config['JWT_SECRET_KEY'], 
+                algorithms=['HS256']
+            )
+            user = User.query.get(payload['user_id'])
+            
+            if user and user.is_active:
+                return jsonify({
+                    'message': 'OAuth login successful',
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'full_name': user.full_name,
+                        'oauth_provider': user.oauth_provider
+                    },
+                    'token': data['oauth_token']
+                }), 200
+        except:
+            pass
+    
+    # Traditional username/password login
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Username and password are required'}), 400
+    
+    # Find user by username or email
+    user = User.query.filter(
+        (User.username == data['username']) | (User.email == data['username'])
+    ).first()
+    
+    if not user or not user.check_password(data['password']):
+        return jsonify({'error': 'Invalid credentials'}), 401
+    
+    if not user.is_active:
+        return jsonify({'error': 'Account is deactivated'}), 401
+    
+    # Generate token
+    token = user.generate_token()
+    
+    return jsonify({
+        'message': 'Login successful',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': user.full_name,
+            'oauth_provider': user.oauth_provider
+        },
+        'token': token
+    }), 200
+
+# ========== FRONTEND HTML TEMPLATE ==========
+
+@app.route('/apple-login-demo')
+def apple_login_demo():
+    """Demo page showing Sign in with Apple button"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Sign in with Apple Demo</title>
+        <meta name="appleid-signin-client-id" content="''' + AppleAuthConfig.CLIENT_ID + '''">
+        <meta name="appleid-signin-redirect-uri" content="''' + AppleAuthConfig.REDIRECT_URI + '''">
+        <meta name="appleid-signin-scope" content="name email">
+        <meta name="appleid-signin-use-popup" content="true">
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                background: #f5f5f7;
+            }
+            .container {
+                background: white;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                text-align: center;
+                max-width: 400px;
+            }
+            h1 {
+                margin-bottom: 30px;
+                color: #1d1d1f;
+            }
+            .divider {
+                margin: 30px 0;
+                color: #86868b;
+                position: relative;
+            }
+            .divider::before,
+            .divider::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                width: 45%;
+                height: 1px;
+                background: #d2d2d7;
+            }
+            .divider::before { left: 0; }
+            .divider::after { right: 0; }
+            .traditional-login {
+                margin-top: 20px;
+            }
+            input {
+                width: 100%;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid #d2d2d7;
+                border-radius: 8px;
+                font-size: 16px;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                margin: 8px 0;
+                background: #0071e3;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #0077ed;
+            }
+            #result {
+                margin-top: 20px;
+                padding: 12px;
+                background: #f0f0f0;
+                border-radius: 8px;
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Sign In</h1>
+            
+            <!-- Sign in with Apple button -->
+            <div id="appleid-signin" data-color="black" data-border="false" data-type="sign in"></div>
+            
+            <div class="divider">or</div>
+            
+            <!-- Traditional login form -->
+            <div class="traditional-login">
+                <input type="text" id="username" placeholder="Username or Email">
+                <input type="password" id="password" placeholder="Password">
+                <button onclick="traditionalLogin()">Sign In</button>
+            </div>
+            
+            <div id="result"></div>
+        </div>
+        
+        <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+        <script>
+            // Listen for Apple Sign In success
+            document.addEventListener('AppleIDSignInOnSuccess', (event) => {
+                console.log('Apple Sign In Success:', event);
+                // The actual authentication is handled by the callback
+            });
+            
+            // Listen for Apple Sign In failure
+            document.addEventListener('AppleIDSignInOnFailure', (event) => {
+                console.error('Apple Sign In Failed:', event);
+                showResult('Apple Sign In failed. Please try again.', 'error');
+            });
+            
+            // Listen for postMessage from callback window
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'apple-auth-success') {
+                    console.log('Authentication successful:', event.data);
+                    localStorage.setItem('authToken', event.data.token);
+                    showResult(`Welcome ${event.data.user.full_name || event.data.user.username}!`, 'success');
+                    
+                    // Redirect or update UI
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+            });
+            
+            // Traditional login
+            async function traditionalLogin() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        localStorage.setItem('authToken', data.token);
+                        showResult(`Welcome ${data.user.username}!`, 'success');
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        showResult(data.error || 'Login failed', 'error');
+                    }
+                } catch (error) {
+                    showResult('Network error. Please try again.', 'error');
+                }
+            }
+            
+            function showResult(message, type) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.textContent = message;
+                resultDiv.style.display = 'block';
+                resultDiv.style.backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
+                resultDiv.style.color = type === 'success' ? '#155724' : '#721c24';
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+# Update the error handler for sessions
+from flask import session
+app.secret_key = app.config['SECRET_KEY']  # Required for sessions
