@@ -6,6 +6,7 @@
 //  Copyright 2025 Apple. All rights reserved.
 //
 import SwiftUI
+import Charts
 import RealityKit
 import UniformTypeIdentifiers
 
@@ -25,7 +26,7 @@ struct SpatialDataItem {
     let dimensions: SIMD3<Float>
     let pointCount: Int
     let metadata: [String: Any]
-    
+
     init(dataType: SpatialDataType, rawData: Data = Data(), dimensions: SIMD3<Float> = SIMD3<Float>(1, 1, 1), pointCount: Int = 100, metadata: [String: Any] = [:]) {
         self.dataType = dataType
         self.rawData = rawData
@@ -39,11 +40,11 @@ struct PointCloudVisualizationData {
     let points: [SIMD3<Float>]
     let colors: [SIMD3<Float>]?
     let center: SIMD3<Float>
-    
+
     init(points: [SIMD3<Float>], colors: [SIMD3<Float>]? = nil) {
         self.points = points
         self.colors = colors
-        
+
         // Calculate center
         let sum = points.reduce(SIMD3<Float>(0, 0, 0)) { $0 + $1 }
         self.center = sum / Float(points.count)
@@ -86,6 +87,10 @@ struct DataTableContentView: View {
     @State private var filterText = ""
     @FocusState private var isFilterFieldFocused: Bool
 
+    // Chart integration states
+    @State private var showingChartRecommender = false
+    @State private var selectedChartRecommendation: ChartRecommendation?
+
     // Column widths
     @State private var columnWidths: [String: CGFloat] = [:]
 
@@ -126,13 +131,13 @@ struct DataTableContentView: View {
         if filterText.isEmpty {
             return sampleData
         }
-        
+
         let filteredRows = sampleData.rows.filter { row in
             row.contains { cell in
                 cell.localizedCaseInsensitiveContains(filterText)
             }
         }
-        
+
         return DataFrameData(
             columns: sampleData.columns,
             rows: filteredRows,
@@ -171,6 +176,29 @@ struct DataTableContentView: View {
                 }
             )
         }
+        .sheet(isPresented: $showingChartRecommender) {
+            if let csvData = convertDataFrameToCSV() {
+                ChartRecommenderSheet(
+                    csvData: csvData,
+                    onChartSelected: { recommendation, chartData in
+                        selectedChartRecommendation = recommendation
+                        openSpatialEditorWithChart(recommendation: recommendation, chartData: chartData)
+                        showingChartRecommender = false
+                    }
+                )
+            } else {
+                VStack {
+                    Text("Unable to convert data for chart visualization")
+                        .font(.headline)
+                        .padding()
+                    Button("Close") {
+                        showingChartRecommender = false
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .frame(width: 300, height: 200)
+            }
+        }
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [
@@ -187,6 +215,219 @@ struct DataTableContentView: View {
             Button("OK") { importError = nil }
         } message: {
             Text(importError ?? "")
+        }
+    }
+
+    // MARK: - Chart Recommender Sheet
+    struct ChartRecommenderSheet: View {
+        let csvData: CSVData
+        let onChartSelected: (ChartRecommendation, ChartData) -> Void
+        @Environment(\.dismiss) private var dismiss
+        @State private var recommendations: [ChartScore] = []
+        @State private var selectedRecommendation: ChartRecommendation?
+
+        var body: some View {
+            NavigationView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "chart.xyaxis.line")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+
+                        Text("Chart Recommendations")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+
+                        Text("Based on your data structure")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top)
+
+                    // Data Summary
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Data Summary")
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        HStack(spacing: 30) {
+                            DataSummaryItem(
+                                icon: "tablecells",
+                                label: "Rows",
+                                value: "\(csvData.rows.count)"
+                            )
+
+                            DataSummaryItem(
+                                icon: "rectangle.split.3x1",
+                                label: "Columns",
+                                value: "\(csvData.headers.count)"
+                            )
+
+                            DataSummaryItem(
+                                icon: "number",
+                                label: "Numeric",
+                                value: "\(csvData.columnTypes.filter { $0 == .numeric }.count)"
+                            )
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(10)
+                    }
+                    .padding(.horizontal)
+
+                    // Recommendations
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Recommended Charts")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+
+                            ForEach(recommendations, id: \.recommendation) { score in
+                                RecommendationCard(
+                                    score: score,
+                                    isSelected: selectedRecommendation == score.recommendation,
+                                    action: { selectedRecommendation = score.recommendation }
+                                )
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+
+                    // Chart Preview
+                    if let selected = selectedRecommendation {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Chart Preview")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+
+                            SampleChartView(data: csvData, recommendation: selected)
+                                .padding(.horizontal)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Action buttons
+                    HStack(spacing: 16) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Send to Spatial Editor") {
+                            if let selected = selectedRecommendation {
+                                let chartData = createChartData(from: csvData, recommendation: selected)
+                                onChartSelected(selected, chartData)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(selectedRecommendation == nil)
+                    }
+                    .padding()
+                }
+                .navigationBarHidden(true)
+                .onAppear {
+                    recommendations = ChartRecommender.recommend(for: csvData)
+                    selectedRecommendation = recommendations.first?.recommendation
+                }
+            }
+        }
+
+        private func createChartData(from csvData: CSVData, recommendation: ChartRecommendation) -> ChartData {
+            // Find appropriate columns for the chart
+            let numericColumns = csvData.headers.enumerated().compactMap { index, header in
+                csvData.columnTypes[index] == .numeric ? header : nil
+            }
+
+            let categoricalColumns = csvData.headers.enumerated().compactMap { index, header in
+                csvData.columnTypes[index] == .categorical ? header : nil
+            }
+
+            let dateColumns = csvData.headers.enumerated().compactMap { index, header in
+                csvData.columnTypes[index] == .date ? header : nil
+            }
+
+            // Create appropriate data based on recommendation
+            var xLabel = "X Axis"
+            var yLabel = "Y Axis"
+            var xData: [Double] = []
+            var yData: [Double] = []
+
+            switch recommendation {
+            case .lineChart, .areaChart:
+                if let dateCol = dateColumns.first ?? categoricalColumns.first,
+                   let numCol = numericColumns.first,
+                   let dateIndex = csvData.headers.firstIndex(of: dateCol),
+                   let numIndex = csvData.headers.firstIndex(of: numCol) {
+                    xLabel = dateCol
+                    yLabel = numCol
+                    xData = csvData.rows.indices.map { Double($0) }
+                    yData = csvData.rows.compactMap { row in
+                        numIndex < row.count ? Double(row[numIndex]) : nil
+                    }
+                }
+
+            case .barChart, .histogram:
+                if let catCol = categoricalColumns.first ?? csvData.headers.first,
+                   let numCol = numericColumns.first,
+                   let numIndex = csvData.headers.firstIndex(of: numCol) {
+                    xLabel = catCol
+                    yLabel = numCol
+                    xData = csvData.rows.indices.map { Double($0) }
+                    yData = csvData.rows.compactMap { row in
+                        numIndex < row.count ? Double(row[numIndex]) : nil
+                    }
+                }
+
+            case .scatterPlot:
+                if numericColumns.count >= 2,
+                   let xIndex = csvData.headers.firstIndex(of: numericColumns[0]),
+                   let yIndex = csvData.headers.firstIndex(of: numericColumns[1]) {
+                    xLabel = numericColumns[0]
+                    yLabel = numericColumns[1]
+                    xData = csvData.rows.compactMap { row in
+                        xIndex < row.count ? Double(row[xIndex]) : nil
+                    }
+                    yData = csvData.rows.compactMap { row in
+                        yIndex < row.count ? Double(row[yIndex]) : nil
+                    }
+                }
+
+            case .pieChart:
+                if let catCol = categoricalColumns.first,
+                   let numCol = numericColumns.first,
+                   let catIndex = csvData.headers.firstIndex(of: catCol),
+                   let numIndex = csvData.headers.firstIndex(of: numCol) {
+                    xLabel = catCol
+                    yLabel = numCol
+                    // Aggregate data for pie chart
+                    var aggregated: [String: Double] = [:]
+                    for row in csvData.rows {
+                        if catIndex < row.count && numIndex < row.count,
+                           let value = Double(row[numIndex]) {
+                            let category = row[catIndex]
+                            aggregated[category, default: 0] += value
+                        }
+                    }
+                    xData = Array(0..<aggregated.count).map { Double($0) }
+                    yData = Array(aggregated.values)
+                }
+            }
+
+            return ChartData(
+                title: "\(recommendation.name) - \(yLabel) by \(xLabel)",
+                chartType: recommendation.name,
+                xLabel: xLabel,
+                yLabel: yLabel,
+                xData: xData,
+                yData: yData,
+                color: "blue",
+                style: "solid"
+            )
         }
     }
 
@@ -207,7 +448,7 @@ struct DataTableContentView: View {
         @State private var apiHeaders: [String: String] = [:]
         @State private var newHeaderKey = ""
         @State private var newHeaderValue = ""
-        
+
         enum ImportMethod: String, CaseIterable {
             case file = "File"
             case paste = "Paste"
@@ -216,7 +457,7 @@ struct DataTableContentView: View {
             case webUrl = "Web URL"
             case webApi = "Web API"
             case shareSheet = "Share from Safari"
-            
+
             var icon: String {
                 switch self {
                 case .file: return "doc.text"
@@ -229,7 +470,7 @@ struct DataTableContentView: View {
                 }
             }
         }
-        
+
         var body: some View {
             NavigationView {
                 VStack(spacing: 20) {
@@ -238,16 +479,16 @@ struct DataTableContentView: View {
                         Image(systemName: "square.and.arrow.down.on.square")
                             .font(.system(size: 50))
                             .foregroundColor(.blue)
-                        
+
                         Text("Import Data")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                        
+
                         Text("Choose how you'd like to import your data")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     // Import methods
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                         ForEach(ImportMethod.allCases, id: \.self) { method in
@@ -261,7 +502,7 @@ struct DataTableContentView: View {
                         }
                     }
                     .padding(.horizontal)
-                    
+
                     ScrollView {
                         VStack(spacing: 16) {
                             // Options for different import methods
@@ -280,7 +521,7 @@ struct DataTableContentView: View {
                         }
                         .padding(.horizontal)
                     }
-                    
+
                     Spacer()
                 }
                 .navigationTitle("Data Import")
@@ -319,23 +560,23 @@ struct DataTableContentView: View {
                 }
             }
         }
-        
+
         // MARK: - Individual Import Views
-        
+
         private var pasteDataView: some View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Paste your data below:")
                     .font(.headline)
-                
+
                 HStack {
                     Text("Delimiter:")
                     TextField("Delimiter", text: $customDelimiter)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
-                    
+
                     Toggle("Has Headers", isOn: $hasHeaders)
                 }
-                
+
                 TextEditor(text: $sampleText)
                     .font(.system(.body, design: .monospaced))
                     .frame(height: 200)
@@ -343,7 +584,7 @@ struct DataTableContentView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                     )
-                
+
                 Button("Import Data") {
                     handlePasteImport()
                 }
@@ -351,42 +592,42 @@ struct DataTableContentView: View {
                 .disabled(sampleText.isEmpty)
             }
         }
-        
+
         private var webUrlView: some View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Import CSV from Web URL:")
                     .font(.headline)
-                
+
                 Text("Enter a direct link to a CSV file (must be HTTPS)")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 TextField("https://example.com/data.csv", text: $urlString)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(.URL)
                     .autocapitalization(.none)
-                
+
                 HStack {
                     Text("Delimiter:")
                     TextField("Delimiter", text: $customDelimiter)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
-                    
+
                     Toggle("Has Headers", isOn: $hasHeaders)
                 }
-                
+
                 // Sample URLs for testing
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Sample URLs:")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    
+
                     Button("Sample Sales Data") {
                         urlString = "https://raw.githubusercontent.com/datasets/gdp/master/data/gdp.csv"
                     }
                     .font(.caption)
                     .foregroundColor(.blue)
-                    
+
                     Button("World Population Data") {
                         urlString = "https://raw.githubusercontent.com/datasets/population/master/data/population.csv"
                     }
@@ -396,7 +637,7 @@ struct DataTableContentView: View {
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
-                
+
                 Button("Download and Import") {
                     Task {
                         await downloadFromWeb()
@@ -404,7 +645,7 @@ struct DataTableContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(urlString.isEmpty || isDownloading)
-                
+
                 if isDownloading {
                     HStack {
                         ProgressView()
@@ -415,27 +656,27 @@ struct DataTableContentView: View {
                 }
             }
         }
-        
+
         private var webApiView: some View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Import from Web API:")
                     .font(.headline)
-                
+
                 Text("Connect to a REST API that returns CSV data")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 TextField("https://api.example.com/data", text: $apiEndpoint)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(.URL)
                     .autocapitalization(.none)
-                
+
                 // API Headers section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("API Headers (Optional):")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    
+
                     HStack {
                         TextField("Header Key", text: $newHeaderKey)
                             .textFieldStyle(.roundedBorder)
@@ -450,7 +691,7 @@ struct DataTableContentView: View {
                         }
                         .disabled(newHeaderKey.isEmpty || newHeaderValue.isEmpty)
                     }
-                    
+
                     // Display existing headers
                     ForEach(Array(apiHeaders.keys), id: \.self) { key in
                         HStack {
@@ -460,9 +701,9 @@ struct DataTableContentView: View {
                                 .padding(.horizontal, 8)
                                 .background(Color.blue.opacity(0.1))
                                 .cornerRadius(4)
-                            
+
                             Spacer()
-                            
+
                             Button("Remove") {
                                 apiHeaders.removeValue(forKey: key)
                             }
@@ -474,19 +715,19 @@ struct DataTableContentView: View {
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
-                
+
                 // Common API examples
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Common API Patterns:")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    
+
                     Button("JSONPlaceholder (Demo API)") {
                         apiEndpoint = "https://jsonplaceholder.typicode.com/users"
                     }
                     .font(.caption)
                     .foregroundColor(.blue)
-                    
+
                     Button("GitHub API (Public repos)") {
                         apiEndpoint = "https://api.github.com/search/repositories?q=swift&sort=stars"
                     }
@@ -496,7 +737,7 @@ struct DataTableContentView: View {
                 .padding()
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
-                
+
                 HStack {
                     Text("Response Format:")
                     Picker("Format", selection: .constant("JSON")) {
@@ -505,7 +746,7 @@ struct DataTableContentView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                
+
                 Button("Fetch from API") {
                     Task {
                         await fetchFromAPI()
@@ -513,7 +754,7 @@ struct DataTableContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(apiEndpoint.isEmpty || isDownloading)
-                
+
                 if isDownloading {
                     HStack {
                         ProgressView()
@@ -524,21 +765,21 @@ struct DataTableContentView: View {
                 }
             }
         }
-        
+
         private var shareSheetView: some View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Share from Safari:")
                     .font(.headline)
-                
+
                 Text("Use this method to import CSV files from web pages")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Instructions:")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    
+
                     Group {
                         Text("1. Open Safari and navigate to a CSV file")
                         Text("2. Tap the Share button")
@@ -551,12 +792,12 @@ struct DataTableContentView: View {
                 .padding()
                 .background(Color.blue.opacity(0.1))
                 .cornerRadius(8)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Supported Sources:")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    
+
                     Group {
                         Text("• Google Sheets (published as CSV)")
                         Text("• Dropbox public links")
@@ -570,18 +811,20 @@ struct DataTableContentView: View {
                 .padding()
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
-                
+
                 Button("Open Safari") {
+                    #if os(iOS)
                     if let url = URL(string: "https://www.google.com/search?q=csv+data+site:github.com") {
                         UIApplication.shared.open(url)
                     }
+                    #endif
                 }
                 .buttonStyle(.borderedProminent)
             }
         }
-        
+
         // MARK: - Import Methods
-        
+
         private func handleMethodSelection(_ method: ImportMethod) {
             switch method {
             case .file:
@@ -598,67 +841,67 @@ struct DataTableContentView: View {
                 break // UI will show appropriate form
             }
         }
-        
+
         private func downloadFromWeb() async {
             guard let url = URL(string: urlString), url.scheme == "https" else {
                 importError = "Please enter a valid HTTPS URL"
                 return
             }
-            
+
             isDownloading = true
             defer { isDownloading = false }
-            
+
             do {
                 let (data, response) = try await URLSession.shared.data(from: url)
-                
+
                 guard let httpResponse = response as? HTTPURLResponse,
                       httpResponse.statusCode == 200 else {
                     importError = "Failed to download: Invalid response"
                     return
                 }
-                
+
                 guard let content = String(data: data, encoding: .utf8) else {
                     importError = "Failed to decode CSV data"
                     return
                 }
-                
+
                 let importedData = try parseDelimitedText(content, delimiter: customDelimiter, hasHeaders: hasHeaders)
                 onDataImported(importedData)
                 dismiss()
-                
+
             } catch {
                 importError = "Download failed: \(error.localizedDescription)"
             }
         }
-        
+
         private func fetchFromAPI() async {
             guard let url = URL(string: apiEndpoint) else {
                 importError = "Please enter a valid API endpoint"
                 return
             }
-            
+
             isDownloading = true
             defer { isDownloading = false }
-            
+
             do {
                 var request = URLRequest(url: url)
-                
+
                 // Add custom headers
                 for (key, value) in apiHeaders {
                     request.setValue(value, forHTTPHeaderField: key)
                 }
-                
+
                 // Set content type
                 request.setValue("application/json", forHTTPHeaderField: "Accept")
-                
+
                 let (data, response) = try await URLSession.shared.data(for: request)
-                
+
                 guard let httpResponse = response as? HTTPURLResponse,
                       200...299 ~= httpResponse.statusCode else {
                     importError = "API request failed: Invalid response"
                     return
                 }
-                
+
                 // Try to parse as JSON first, then convert to CSV format
                 if let jsonObject = try? JSONSerialization.jsonObject(with: data) {
                     let importedData = try convertJSONToDataFrame(json: jsonObject)
@@ -672,18 +915,18 @@ struct DataTableContentView: View {
                 } else {
                     importError = "Unable to parse API response"
                 }
-                
+
             } catch {
                 importError = "API request failed: \(error.localizedDescription)"
             }
         }
-        
+
         private func convertJSONToDataFrame(json: Any) throws -> DataFrameData {
             if let array = json as? [[String: Any]] {
                 // Array of objects
                 let allKeys = Set(array.flatMap { $0.keys })
                 let columns = Array(allKeys).sorted()
-                
+
                 let rows = array.map { object in
                     columns.map { column in
                         if let value = object[column] {
@@ -693,28 +936,26 @@ struct DataTableContentView: View {
                         }
                     }
                 }
-                
+
                 let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
                 return DataFrameData(
                     columns: columns,
                     rows: rows,
                     dtypes: dtypes
                 )
-                
+
             } else if let object = json as? [String: Any] {
                 // Single object - treat each key-value as a row
                 let columns = ["Key", "Value"]
                 let rows = object.map { [String($0.key), String(describing: $0.value)] }
                 let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
                 return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
-                
+
             } else {
                 throw ImportError.invalidFormat
             }
         }
-        
-        // ... rest of the existing methods remain the same ...
-        
+
         private func loadSampleDataset() {
             let sampleData = DataFrameData(
                 columns: ["Product", "Sales", "Region", "Quarter", "Profit"],
@@ -730,11 +971,11 @@ struct DataTableContentView: View {
                 ],
                 dtypes: ["Product": "string", "Sales": "int", "Region": "string", "Quarter": "string", "Profit": "int"]
             )
-            
+
             onDataImported(sampleData)
             dismiss()
         }
-        
+
         private func handlePasteImport() {
             do {
                 let importedData = try parseDelimitedText(sampleText, delimiter: customDelimiter, hasHeaders: hasHeaders)
@@ -744,15 +985,15 @@ struct DataTableContentView: View {
                 importError = "Failed to parse pasted data: \(error.localizedDescription)"
             }
         }
-        
+
         private func handleFileImport(_ result: Result<[URL], Error>) {
             switch result {
             case .success(let urls):
-                guard let url = urls.first else { 
+                guard let url = urls.first else {
                     importError = "No file selected"
-                    return 
+                    return
                 }
-                
+
                 do {
                     // Ensure we can access the file
                     guard url.startAccessingSecurityScopedResource() else {
@@ -760,12 +1001,12 @@ struct DataTableContentView: View {
                         return
                     }
                     defer { url.stopAccessingSecurityScopedResource() }
-                    
+
                     let content = try String(contentsOf: url)
                     let fileExtension = url.pathExtension.lowercased()
-                    
+
                     let importedData: DataFrameData
-                    
+
                     switch fileExtension {
                     case "csv":
                         importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
@@ -783,31 +1024,31 @@ struct DataTableContentView: View {
                             throw ImportError.invalidFormat
                         }
                     }
-                    
+
                     onDataImported(importedData)
                     dismiss()
                 } catch {
                     importError = "Error reading file: \(error.localizedDescription)"
                 }
-                
+
             case .failure(let error):
                 importError = "Import failed: \(error.localizedDescription)"
             }
         }
-        
+
         private func parseDelimitedText(_ content: String, delimiter: String, hasHeaders: Bool) throws -> DataFrameData {
             let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             guard !lines.isEmpty else {
                 throw ImportError.noData
             }
-            
+
             let rows = lines.map { line in
                 line.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
             }
-            
+
             let columns: [String]
             let dataRows: [[String]]
-            
+
             if hasHeaders && !rows.isEmpty {
                 columns = rows[0]
                 dataRows = Array(rows.dropFirst())
@@ -816,38 +1057,38 @@ struct DataTableContentView: View {
                 columns = (1...columnCount).map { "Column \($0)" }
                 dataRows = rows
             }
-            
+
             // Auto-detect data types
             let dtypes = autoDetectDataTypes(columns: columns, rows: dataRows)
-            
+
             return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
         }
-        
+
         private func parseJSONData(_ content: String) throws -> DataFrameData {
             guard let data = content.data(using: .utf8) else {
                 throw ImportError.invalidFormat
             }
-            
+
             let json = try JSONSerialization.jsonObject(with: data)
             return try convertJSONToDataFrame(json: json)
         }
-        
+
         private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
             var dtypes: [String: String] = [:]
-            
+
             for (index, column) in columns.enumerated() {
                 let columnValues = rows.compactMap { row in
                     index < row.count ? row[index] : nil
                 }.filter { !$0.isEmpty }
-                
+
                 if columnValues.isEmpty {
                     dtypes[column] = "string"
                     continue
                 }
-                
+
                 let numericCount = columnValues.compactMap { Double($0) }.count
                 let booleanCount = columnValues.filter { $0.lowercased() == "true" || $0.lowercased() == "false" }.count
-                
+
                 if Double(numericCount) / Double(columnValues.count) > 0.8 {
                     if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
                         dtypes[column] = "float"
@@ -860,15 +1101,15 @@ struct DataTableContentView: View {
                     dtypes[column] = "string"
                 }
             }
-            
+
             return dtypes
         }
-        
+
         enum ImportError: LocalizedError {
             case noData
             case invalidFormat
             case parsingFailed
-            
+
             var errorDescription: String? {
                 switch self {
                 case .noData:
@@ -881,19 +1122,19 @@ struct DataTableContentView: View {
             }
         }
     }
-    
+
     struct ImportMethodCard: View {
         let method: DataImportSheet.ImportMethod
         let isSelected: Bool
         let action: () -> Void
-        
+
         var body: some View {
             Button(action: action) {
                 VStack(spacing: 12) {
                     Image(systemName: method.icon)
                         .font(.system(size: 40))
                         .foregroundColor(isSelected ? .white : .blue)
-                    
+
                     Text(method.rawValue)
                         .font(.headline)
                         .foregroundColor(isSelected ? .white : .primary)
@@ -929,8 +1170,8 @@ struct DataTableContentView: View {
 
             // Filter field
             HStack(spacing: 8) {
-                Button(action: { 
-                    isFilterFieldFocused = true 
+                Button(action: {
+                    isFilterFieldFocused = true
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "magnifyingglass")
@@ -942,7 +1183,7 @@ struct DataTableContentView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                
+
                 TextField("Filter data...", text: $filterText)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 150)
@@ -954,9 +1195,9 @@ struct DataTableContentView: View {
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(isFilterFieldFocused ? Color.blue : Color.clear, lineWidth: 2)
                     )
-                
+
                 if !filterText.isEmpty {
-                    Button(action: { 
+                    Button(action: {
                         filterText = ""
                         isFilterFieldFocused = false
                     }) {
@@ -985,6 +1226,16 @@ struct DataTableContentView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.green.opacity(0.1))
+                .cornerRadius(6)
+
+                // NEW: Visualize Chart Button
+                Button(action: { showingChartRecommender = true }) {
+                    Label("Visualize Chart", systemImage: "chart.xyaxis.line")
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.purple.opacity(0.1))
                 .cornerRadius(6)
 
                 Button(action: { saveDataToWindow() }) {
@@ -1268,16 +1519,16 @@ struct DataTableContentView: View {
             sortColumn = column
             sortAscending = true
         }
-        
+
         // Clear filter when sorting to avoid confusion
         filterText = ""
-        
+
         // Implement actual sorting
         let sortedIndices = sampleData.rows.indices.sorted { i, j in
             let colIndex = sampleData.columns.firstIndex(of: column) ?? 0
             let val1 = sampleData.rows[i][colIndex]
             let val2 = sampleData.rows[j][colIndex]
-            
+
             if let dtype = sampleData.dtypes[column] {
                 switch dtype {
                 case "int":
@@ -1292,10 +1543,10 @@ struct DataTableContentView: View {
                     return sortAscending ? val1 < val2 : val1 > val2
                 }
             }
-            
+
             return sortAscending ? val1 < val2 : val1 > val2
         }
-        
+
         sampleData = DataFrameData(
             columns: sampleData.columns,
             rows: sortedIndices.map { sampleData.rows[$0] },
@@ -1347,17 +1598,17 @@ struct DataTableContentView: View {
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { 
+            guard let url = urls.first else {
                 importError = "No file selected"
-                return 
+                return
             }
-            
+
             do {
                 let content = try String(contentsOf: url)
                 let fileExtension = url.pathExtension.lowercased()
-                
+
                 let importedData: DataFrameData
-                
+
                 switch fileExtension {
                 case "csv":
                     importedData = try parseCSVContent(content)
@@ -1369,22 +1620,22 @@ struct DataTableContentView: View {
                     // Try CSV as default
                     importedData = try parseCSVContent(content)
                 }
-                
+
                 sampleData = importedData
                 initializeColumnWidths()
-                
+
                 if let windowID = windowID {
                     saveDataToWindow()
                 }
             } catch {
                 importError = "Error importing file: \(error.localizedDescription)"
             }
-            
+
         case .failure(let error):
             importError = "Import failed: \(error.localizedDescription)"
         }
     }
-    
+
     private func parseCSVContent(_ content: String) throws -> DataFrameData {
         if let csvData = CSVParser.parse(content) {
             let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
@@ -1402,7 +1653,7 @@ struct DataTableContentView: View {
                     }
                 }
             }
-            
+
             return DataFrameData(
                 columns: csvData.headers,
                 rows: csvData.rows,
@@ -1413,18 +1664,18 @@ struct DataTableContentView: View {
             return try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
         }
     }
-    
+
     private func parseTSVContent(_ content: String) throws -> DataFrameData {
         return try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
     }
-    
+
     private func parseJSONContent(_ content: String) throws -> DataFrameData {
         guard let data = content.data(using: .utf8) else {
             throw DataImportError.invalidFormat
         }
-        
+
         let json = try JSONSerialization.jsonObject(with: data)
-        
+
         if let array = json as? [[String: Any]] {
             let columns = Array(Set(array.flatMap { $0.keys })).sorted()
             let rows = array.map { object in
@@ -1436,27 +1687,27 @@ struct DataTableContentView: View {
                     }
                 }
             }
-            
+
             let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
             return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
         } else {
             throw DataImportError.invalidFormat
         }
     }
-    
+
     private func parseDelimitedText(_ content: String, delimiter: String, hasHeaders: Bool) throws -> DataFrameData {
         let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !lines.isEmpty else {
             throw DataImportError.noData
         }
-        
+
         let rows = lines.map { line in
             line.components(separatedBy: delimiter).map { $0.trimmingCharacters(in: .whitespaces) }
         }
-        
+
         let columns: [String]
         let dataRows: [[String]]
-        
+
         if hasHeaders && !rows.isEmpty {
             columns = rows[0]
             dataRows = Array(rows.dropFirst())
@@ -1465,29 +1716,29 @@ struct DataTableContentView: View {
             columns = (1...columnCount).map { "Column \($0)" }
             dataRows = rows
         }
-        
+
         // Auto-detect data types
         let dtypes = autoDetectDataTypes(columns: columns, rows: dataRows)
-        
+
         return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
     }
-    
+
     private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
         var dtypes: [String: String] = [:]
-        
+
         for (index, column) in columns.enumerated() {
             let columnValues = rows.compactMap { row in
                 index < row.count ? row[index] : nil
             }.filter { !$0.isEmpty }
-            
+
             if columnValues.isEmpty {
                 dtypes[column] = "string"
                 continue
             }
-            
+
             let numericCount = columnValues.compactMap { Double($0) }.count
             let booleanCount = columnValues.filter { $0.lowercased() == "true" || $0.lowercased() == "false" }.count
-            
+
             if Double(numericCount) / Double(columnValues.count) > 0.8 {
                 if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
                     dtypes[column] = "float"
@@ -1500,15 +1751,146 @@ struct DataTableContentView: View {
                 dtypes[column] = "string"
             }
         }
-        
+
         return dtypes
     }
-    
+
+    // MARK: - Chart Integration Functions
+
+    private func convertDataFrameToCSV() -> CSVData? {
+        let headers = sampleData.columns
+        let rows = sampleData.rows
+
+        // Detect column types based on dtypes
+        let columnTypes: [ColumnType] = headers.map { header in
+            guard let dtype = sampleData.dtypes[header] else { return .unknown }
+
+            switch dtype {
+            case "int", "float":
+                return .numeric
+            case "date":
+                return .date
+            case "string":
+                return .categorical
+            default:
+                return .unknown
+            }
+        }
+
+        return CSVData(
+            headers: headers,
+            rows: rows,
+            columnTypes: columnTypes
+        )
+    }
+
+    private func openSpatialEditorWithChart(recommendation: ChartRecommendation, chartData: ChartData) {
+        guard let csvData = convertDataFrameToCSV() else { return }
+
+        // Save to window manager if we have a window ID
+        if let windowID = windowID {
+            windowManager.updateWindowChartData(windowID, chartData: chartData)
+
+            // Generate Python code for the chart
+            let pythonCode = generateChartPythonCode(chartData: chartData, csvData: csvData)
+            windowManager.updateWindowContent(windowID, content: pythonCode)
+
+            // Here you would typically open the SpatialEditorView
+            // This depends on your navigation/window management system
+            // For example:
+            // windowManager.openSpatialEditor(with: chartData)
+
+            print("📊 Chart data saved to window \(windowID) for spatial visualization")
+            print("📊 Chart type: \(recommendation.name)")
+            print("📊 Data points: \(chartData.xData.count)")
+        }
+    }
+
+    private func generateChartPythonCode(chartData: ChartData, csvData: CSVData) -> String {
+        var pythonCode = """
+        # Chart Visualization Data
+        # Generated from DataTable
+        
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        import numpy as np
+        
+        # Data
+        data = {
+        """
+
+        for (index, header) in csvData.headers.enumerated() {
+            let columnData = csvData.rows.map { row in
+                index < row.count ? row[index] : ""
+            }
+            pythonCode += "\n    '\(header)': \(columnData),"
+        }
+
+        pythonCode += """
+        }
+        
+        df = pd.DataFrame(data)
+        
+        # Chart: \(chartData.chartType)
+        plt.figure(figsize=(10, 6))
+        
+        """
+
+        switch chartData.chartType {
+        case "Line Chart":
+            pythonCode += """
+            plt.plot(range(len(df)), df['\(chartData.yLabel)'], marker='o')
+            plt.xlabel('\(chartData.xLabel)')
+            plt.ylabel('\(chartData.yLabel)')
+            """
+
+        case "Bar Chart":
+            pythonCode += """
+            plt.bar(range(len(df)), df['\(chartData.yLabel)'])
+            plt.xlabel('\(chartData.xLabel)')
+            plt.ylabel('\(chartData.yLabel)')
+            """
+
+        case "Scatter Plot":
+            pythonCode += """
+            plt.scatter(df['\(chartData.xLabel)'], df['\(chartData.yLabel)'])
+            plt.xlabel('\(chartData.xLabel)')
+            plt.ylabel('\(chartData.yLabel)')
+            """
+
+        default:
+            pythonCode += "# Custom chart implementation needed"
+        }
+
+        pythonCode += """
+        
+        plt.title('\(chartData.title)')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+        
+        # Chart metadata
+        chart_info = {
+            'type': '\(chartData.chartType)',
+            'x_label': '\(chartData.xLabel)',
+            'y_label': '\(chartData.yLabel)',
+            'data_points': len(df),
+            'columns': list(df.columns)
+        }
+        
+        print("Chart Information:")
+        for key, value in chart_info.items():
+            print(f"  {key}: {value}")
+        """
+
+        return pythonCode
+    }
+
     enum DataImportError: LocalizedError {
         case noData
         case invalidFormat
         case parsingFailed
-        
+
         var errorDescription: String? {
             switch self {
             case .noData:

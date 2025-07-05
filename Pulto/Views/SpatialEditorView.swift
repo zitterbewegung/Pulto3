@@ -10,17 +10,29 @@ import SwiftUI
 import Charts
 
 // MARK: - Main View
-// Enhanced Spatial Editor View with Point Cloud Integration
+// Enhanced Spatial Editor View with Point Cloud and Chart Integration
 struct SpatialEditorView: View {
+    // MARK: – Visualization Types
+    enum VisualizationType {
+        case pointCloud(PointCloudData)
+        case chart(ChartVisualizationData)
+    }
+
+    struct ChartVisualizationData {
+        let csvData: CSVData
+        var recommendation: ChartRecommendation
+        let chartData: ChartData
+    }
+
     // MARK: – Immutable inputs
     let windowID: Int?
-    let initialPointCloud: PointCloudData?
+    let initialVisualization: VisualizationType?
 
     // MARK: – State
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var selectedDemo = 0
     @State private var rotationAngle = 0.0
-    @State private var currentPointCloud: PointCloudData
+    @State private var currentVisualization: VisualizationType
     @State private var showControls = false
 
     @State private var headerPosition: CGSize = .zero
@@ -53,16 +65,20 @@ struct SpatialEditorView: View {
     private let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube"]
 
     // MARK: – Init
-    init(windowID: Int? = nil, initialPointCloud: PointCloudData? = nil) {
-        // 1.  Initialize stored constants FIRST
+    init(windowID: Int? = nil, initialPointCloud: PointCloudData? = nil, initialChart: ChartVisualizationData? = nil) {
         self.windowID = windowID
-        self.initialPointCloud = initialPointCloud
 
-        // 2.  Produce a non-optional point cloud
-        let cloud = initialPointCloud ?? PointCloudDemo.generateSpherePointCloudData()
-
-        // 3.  Initialize the @State backing store
-        _currentPointCloud = State(initialValue: cloud)
+        if let chart = initialChart {
+            self.initialVisualization = .chart(chart)
+            _currentVisualization = State(initialValue: .chart(chart))
+        } else if let pointCloud = initialPointCloud {
+            self.initialVisualization = .pointCloud(pointCloud)
+            _currentVisualization = State(initialValue: .pointCloud(pointCloud))
+        } else {
+            let defaultPointCloud = PointCloudDemo.generateSpherePointCloudData()
+            self.initialVisualization = .pointCloud(defaultPointCloud)
+            _currentVisualization = State(initialValue: .pointCloud(defaultPointCloud))
+        }
     }
 
     // MARK: – Body
@@ -72,8 +88,16 @@ struct SpatialEditorView: View {
 
             if showControls {
                 VStack(spacing: 12) {
-                    parameterControlsView
-                    demoSelectorView
+                    // Toggle between point cloud and chart
+                    visualizationTypeSelector
+
+                    switch currentVisualization {
+                    case .pointCloud:
+                        parameterControlsView
+                        demoSelectorView
+                    case .chart:
+                        chartControlsView
+                    }
                 }
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.95)),
@@ -81,7 +105,13 @@ struct SpatialEditorView: View {
                 ))
             }
 
-            pointCloudVisualizationView
+            // Main visualization
+            switch currentVisualization {
+            case .pointCloud:
+                pointCloudVisualizationView
+            case .chart(let chartData):
+                chartVisualizationView(chartData: chartData)
+            }
 
             if showControls {
                 VStack(spacing: 12) {
@@ -104,14 +134,15 @@ struct SpatialEditorView: View {
             return .handled
         }
         .onAppear {
-            // If we weren’t given an explicit cloud, try loading from the window
-            if initialPointCloud == nil {
-                loadPointCloudFromWindow()
+            loadVisualizationFromWindow()
+            if case .pointCloud = currentVisualization {
+                startRotationAnimation()
             }
-            startRotationAnimation()
         }
         .onChange(of: selectedDemo) { _ in
-            updatePointCloud()
+            if case .pointCloud = currentVisualization {
+                updatePointCloud()
+            }
         }
     }
 
@@ -119,11 +150,21 @@ struct SpatialEditorView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Spatial Point Cloud Editor")
+                Text("Spatial Visualization Editor")
                     .font(.title2).bold()
                 if let windowID {
-                    Text("Window #\(windowID) • \(currentPointCloud.totalPoints) points")
-                        .font(.caption).foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        Text("Window #\(windowID)")
+                        Text("•")
+                        switch currentVisualization {
+                        case .pointCloud(let data):
+                            Text("\(data.totalPoints) points")
+                        case .chart(let data):
+                            Text("\(data.chartData.xData.count) data points")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 }
             }
 
@@ -145,6 +186,120 @@ struct SpatialEditorView: View {
                 .cornerRadius(6)
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: – New Sub-Views for Chart Support
+    private var visualizationTypeSelector: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Visualization Type").font(.subheadline).bold()
+            Picker("Type", selection: Binding(
+                get: {
+                    switch currentVisualization {
+                    case .pointCloud: return 0
+                    case .chart: return 1
+                    }
+                },
+                set: { newValue in
+                    if newValue == 0 {
+                        currentVisualization = .pointCloud(PointCloudDemo.generateSpherePointCloudData())
+                        startRotationAnimation()
+                    } else {
+                        // Load chart data from window if available
+                        if let windowID = windowID,
+                           let chartData = windowManager.getWindowChartData(for: windowID) {
+                            // Create dummy CSV data for now
+                            let csvData = CSVData(
+                                headers: ["X", "Y"],
+                                rows: chartData.xData.enumerated().map { ["\($0.element)", "\(chartData.yData[$0.offset])"] },
+                                columnTypes: [.numeric, .numeric]
+                            )
+                            currentVisualization = .chart(ChartVisualizationData(
+                                csvData: csvData,
+                                recommendation: .lineChart,
+                                chartData: chartData
+                            ))
+                        }
+                    }
+                }
+            )) {
+                Text("Point Cloud").tag(0)
+                Text("Chart").tag(1)
+            }
+            .pickerStyle(SegmentedPickerStyle())
+        }
+    }
+
+    private var chartControlsView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Chart Options").font(.subheadline).bold()
+
+            if case .chart(let chartViz) = currentVisualization {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Chart Type: \(chartViz.recommendation.name)")
+                        .font(.caption)
+                    Text("Data Points: \(chartViz.chartData.xData.count)")
+                        .font(.caption)
+                    Text("X: \(chartViz.chartData.xLabel)")
+                        .font(.caption)
+                    Text("Y: \(chartViz.chartData.yLabel)")
+                        .font(.caption)
+                }
+
+                // Chart type selector
+                Picker("Chart Type", selection: Binding(
+                    get: { chartViz.recommendation },
+                    set: { newRecommendation in
+                        if case .chart(var viz) = currentVisualization {
+                            viz.recommendation = newRecommendation
+                            currentVisualization = .chart(viz)
+                        }
+                    }
+                )) {
+                    ForEach(ChartRecommendation.allCases, id: \.self) { recommendation in
+                        Text(recommendation.name).tag(recommendation)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+            }
+        }
+        .padding(12)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
+    }
+
+    private func chartVisualizationView(chartData: ChartVisualizationData) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gray.opacity(0.1))
+                .frame(height: 300)
+
+            // Use the sample chart view from CSVData
+            SampleChartView(data: chartData.csvData, recommendation: chartData.recommendation)
+                .padding()
+
+            if !showControls {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 2) {
+                            Text("Controls Hidden")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("Press 'H' or tap eye icon")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(6)
+                        .opacity(0.7)
+                    }
+                }
+                .padding(12)
+            }
         }
     }
 
@@ -218,30 +373,32 @@ struct SpatialEditorView: View {
 
             GeometryReader { _ in
                 Canvas { ctx, size in
-                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    let scale = min(size.width, size.height) / 40
-                    let θ = rotationAngle * .pi / 180
+                    if case .pointCloud(let pointCloud) = currentVisualization {
+                        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                        let scale = min(size.width, size.height) / 40
+                        let θ = rotationAngle * .pi / 180
 
-                    for p in currentPointCloud.points {
-                        // Y-axis rotation
-                        let xR = p.x * cos(θ) - p.z * sin(θ)
-                        let zR = p.x * sin(θ) + p.z * cos(θ)
-                        // 2-D projection
-                        let plotX = center.x + xR * scale
-                        let plotY = center.y - p.y * scale
-                        // Size + color
-                        let sz = 2.0 + (zR + 20) / 20
-                        let intensity = p.intensity ?? ((p.z + 10) / 20)
-                        let col = Color(hue: 0.6 - intensity * 0.4,
-                                        saturation: 0.8,
-                                        brightness: 0.9)
-                        ctx.fill(
-                            Path(ellipseIn: CGRect(x: plotX - sz/2,
-                                                   y: plotY - sz/2,
-                                                   width: sz,
-                                                   height: sz)),
-                            with: .color(col.opacity(0.8))
-                        )
+                        for p in pointCloud.points {
+                            // Y-axis rotation
+                            let xR = p.x * cos(θ) - p.z * sin(θ)
+                            let zR = p.x * sin(θ) + p.z * cos(θ)
+                            // 2-D projection
+                            let plotX = center.x + xR * scale
+                            let plotY = center.y - p.y * scale
+                            // Size + color
+                            let sz = 2.0 + (zR + 20) / 20
+                            let intensity = p.intensity ?? ((p.z + 10) / 20)
+                            let col = Color(hue: 0.6 - intensity * 0.4,
+                                            saturation: 0.8,
+                                            brightness: 0.9)
+                            ctx.fill(
+                                Path(ellipseIn: CGRect(x: plotX - sz/2,
+                                                       y: plotY - sz/2,
+                                                       width: sz,
+                                                       height: sz)),
+                                with: .color(col.opacity(0.8))
+                            )
+                        }
                     }
                 }
             }
@@ -272,23 +429,46 @@ struct SpatialEditorView: View {
         }
     }
 
+    // MARK: – Modified Statistics View
     private var statisticsView: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Statistics").font(.subheadline).bold()
-            HStack {
-                Label("\(currentPointCloud.totalPoints) points", systemImage: "circle.grid.3x3.fill")
-                Spacer()
-                Label(String(format: "%.1f°", rotationAngle.truncatingRemainder(dividingBy: 360)), systemImage: "rotate.3d")
-            }
-            .font(.caption2).foregroundColor(.secondary)
 
-            if !currentPointCloud.parameters.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Parameters:").font(.caption2).bold()
-                    ForEach(currentPointCloud.parameters.keys.sorted(), id: \.self) { key in
-                        Text("\(key): \(currentPointCloud.parameters[key] ?? 0, specifier: "%.1f")")
-                            .font(.caption2).foregroundColor(.secondary)
+            switch currentVisualization {
+            case .pointCloud(let pointCloud):
+                HStack {
+                    Label("\(pointCloud.totalPoints) points", systemImage: "circle.grid.3x3.fill")
+                    Spacer()
+                    Label(String(format: "%.1f°", rotationAngle.truncatingRemainder(dividingBy: 360)), systemImage: "rotate.3d")
+                }
+                .font(.caption2).foregroundColor(.secondary)
+
+                if !pointCloud.parameters.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Parameters:").font(.caption2).bold()
+                        ForEach(pointCloud.parameters.keys.sorted(), id: \.self) { key in
+                            Text("\(key): \(pointCloud.parameters[key] ?? 0, specifier: "%.1f")")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
                     }
+                }
+
+            case .chart(let chartData):
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Label("\(chartData.chartData.xData.count) data points", systemImage: "chart.dots.scatter")
+                        Spacer()
+                        Image(systemName: chartData.recommendation.icon)
+                            .foregroundColor(.blue)
+                    }
+                    .font(.caption2).foregroundColor(.secondary)
+
+                    Text("Chart: \(chartData.recommendation.name)")
+                        .font(.caption2).bold()
+                    Text("X: \(chartData.chartData.xLabel)")
+                        .font(.caption2).foregroundColor(.secondary)
+                    Text("Y: \(chartData.chartData.yLabel)")
+                        .font(.caption2).foregroundColor(.secondary)
                 }
             }
         }
@@ -327,38 +507,70 @@ struct SpatialEditorView: View {
     }
 
     // MARK: – Helpers
-    private func loadPointCloudFromWindow() {
-        guard let windowID,
-              let saved = windowManager.getWindowPointCloud(for: windowID) else { return }
-        currentPointCloud = saved
-        if let idx = demoNames.firstIndex(where: { saved.demoType.lowercased().contains($0.lowercased()) }) {
-            selectedDemo = idx
+    private func loadVisualizationFromWindow() {
+        guard let windowID = windowID else { return }
+
+        // Try to load chart data first
+        if let chartData = windowManager.getWindowChartData(for: windowID) {
+            // Create visualization from chart data
+            let csvData = CSVData(
+                headers: ["Index", chartData.xLabel, chartData.yLabel],
+                rows: chartData.xData.enumerated().map { index, xValue in
+                    ["\(index)", "\(xValue)", "\(chartData.yData[index])"]
+                },
+                columnTypes: [.numeric, .numeric, .numeric]
+            )
+
+            // Determine best chart type based on data
+            let recommendation: ChartRecommendation = {
+                switch chartData.chartType.lowercased() {
+                case "line chart": return .lineChart
+                case "bar chart": return .barChart
+                case "scatter plot": return .scatterPlot
+                case "pie chart": return .pieChart
+                case "area chart": return .areaChart
+                case "histogram": return .histogram
+                default: return .lineChart
+                }
+            }()
+
+            currentVisualization = .chart(ChartVisualizationData(
+                csvData: csvData,
+                recommendation: recommendation,
+                chartData: chartData
+            ))
+        } else if let pointCloud = windowManager.getWindowPointCloud(for: windowID) {
+            // Fall back to point cloud
+            currentVisualization = .pointCloud(pointCloud)
+            if let idx = demoNames.firstIndex(where: { pointCloud.demoType.lowercased().contains($0.lowercased()) }) {
+                selectedDemo = idx
+            }
         }
     }
 
     private func updatePointCloud() {
         switch selectedDemo {
         case 0:
-            currentPointCloud = PointCloudDemo.generateSpherePointCloudData(
+            currentVisualization = .pointCloud(PointCloudDemo.generateSpherePointCloudData(
                 radius: sphereRadius,
-                points: Int(spherePoints))
+                points: Int(spherePoints)))
         case 1:
-            currentPointCloud = PointCloudDemo.generateTorusPointCloudData(
+            currentVisualization = .pointCloud(PointCloudDemo.generateTorusPointCloudData(
                 majorRadius: torusMajorRadius,
                 minorRadius: torusMinorRadius,
-                points: Int(torusPoints))
+                points: Int(torusPoints)))
         case 2:
-            currentPointCloud = PointCloudDemo.generateWaveSurfaceData(
+            currentVisualization = .pointCloud(PointCloudDemo.generateWaveSurfaceData(
                 size: waveSize,
-                resolution: Int(waveResolution))
+                resolution: Int(waveResolution)))
         case 3:
-            currentPointCloud = PointCloudDemo.generateSpiralGalaxyData(
+            currentVisualization = .pointCloud(PointCloudDemo.generateSpiralGalaxyData(
                 arms: Int(galaxyArms),
-                points: Int(galaxyPoints))
+                points: Int(galaxyPoints)))
         case 4:
-            currentPointCloud = PointCloudDemo.generateNoisyCubeData(
+            currentVisualization = .pointCloud(PointCloudDemo.generateNoisyCubeData(
                 size: cubeSize,
-                pointsPerFace: Int(cubePointsPerFace))
+                pointsPerFace: Int(cubePointsPerFace)))
         default: break
         }
     }
@@ -370,33 +582,154 @@ struct SpatialEditorView: View {
     }
 
     private func saveToWindow() {
-        guard let windowID else { return }
-        windowManager.updateWindowPointCloud(windowID, pointCloud: currentPointCloud)
-        windowManager.updateWindowContent(windowID, content: currentPointCloud.toPythonCode())
-        print(" Point cloud saved to window #\(windowID)")
+        guard let windowID = windowID else { return }
+
+        switch currentVisualization {
+        case .pointCloud(let pointCloud):
+            windowManager.updateWindowPointCloud(windowID, pointCloud: pointCloud)
+            windowManager.updateWindowContent(windowID, content: pointCloud.toPythonCode())
+            print("📍 Point cloud saved to window #\(windowID)")
+
+        case .chart(let chartData):
+            windowManager.updateWindowChartData(windowID, chartData: chartData.chartData)
+            let pythonCode = generateChartPythonCode(chartData: chartData)
+            windowManager.updateWindowContent(windowID, content: pythonCode)
+            print("📊 Chart saved to window #\(windowID)")
+        }
     }
 
     private func exportToJupyter() {
-        let code = currentPointCloud.toPythonCode()
-        let name = "pointcloud_\(currentPointCloud.demoType)_\(Date().timeIntervalSince1970).py"
+        let code: String
+        let name: String
+
+        switch currentVisualization {
+        case .pointCloud(let pointCloud):
+            code = pointCloud.toPythonCode()
+            name = "pointcloud_\(pointCloud.demoType)_\(Date().timeIntervalSince1970).py"
+
+        case .chart(let chartData):
+            code = generateChartPythonCode(chartData: chartData)
+            name = "chart_\(chartData.recommendation.name.replacingOccurrences(of: " ", with: "_"))_\(Date().timeIntervalSince1970).py"
+        }
+
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let url = docs.appendingPathComponent(name)
         do {
             try code.write(to: url, atomically: true, encoding: .utf8)
-            print(" Exported to: \(url.path)")
+            print("📄 Exported to: \(url.path)")
         } catch {
-            print(" Error: \(error)")
+            print("❌ Error: \(error)")
         }
         saveToWindow()
     }
 
     private func copyPythonCode() {
-        let code = currentPointCloud.toPythonCode()
+        let code: String
+
+        switch currentVisualization {
+        case .pointCloud(let pointCloud):
+            code = pointCloud.toPythonCode()
+
+        case .chart(let chartData):
+            code = generateChartPythonCode(chartData: chartData)
+        }
+
         #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(code, forType: .string)
-        print(" Python code copied to clipboard")
+        print("📋 Python code copied to clipboard")
         #endif
+    }
+
+    private func generateChartPythonCode(chartData: ChartVisualizationData) -> String {
+        var pythonCode = """
+        # Chart Visualization
+        # Type: \(chartData.recommendation.name)
+        # Generated from Spatial Editor
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
+        # Data
+        x_data = \(chartData.chartData.xData)
+        y_data = \(chartData.chartData.yData)
+        
+        # Create figure
+        plt.figure(figsize=(10, 6))
+        
+        """
+
+        switch chartData.recommendation {
+        case .lineChart:
+            pythonCode += """
+            plt.plot(x_data, y_data, marker='o', linewidth=2, markersize=6)
+            plt.xlabel('\(chartData.chartData.xLabel)')
+            plt.ylabel('\(chartData.chartData.yLabel)')
+            """
+
+        case .barChart:
+            pythonCode += """
+            plt.bar(range(len(y_data)), y_data)
+            plt.xlabel('\(chartData.chartData.xLabel)')
+            plt.ylabel('\(chartData.chartData.yLabel)')
+            plt.xticks(range(len(x_data)), [str(x) for x in x_data], rotation=45)
+            """
+
+        case .scatterPlot:
+            pythonCode += """
+            plt.scatter(x_data, y_data, alpha=0.6, s=50)
+            plt.xlabel('\(chartData.chartData.xLabel)')
+            plt.ylabel('\(chartData.chartData.yLabel)')
+            """
+
+        case .pieChart:
+            pythonCode += """
+            plt.pie(y_data, labels=[str(x) for x in x_data], autopct='%1.1f%%')
+            plt.axis('equal')
+            """
+
+        case .areaChart:
+            pythonCode += """
+            plt.fill_between(range(len(x_data)), y_data, alpha=0.4)
+            plt.plot(range(len(x_data)), y_data, linewidth=2)
+            plt.xlabel('\(chartData.chartData.xLabel)')
+            plt.ylabel('\(chartData.chartData.yLabel)')
+            """
+
+        case .histogram:
+            pythonCode += """
+            plt.hist(y_data, bins=20, alpha=0.7, edgecolor='black')
+            plt.xlabel('\(chartData.chartData.yLabel)')
+            plt.ylabel('Frequency')
+            """
+        }
+
+        pythonCode += """
+        
+        plt.title('\(chartData.chartData.title)')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        # Display the plot
+        plt.show()
+        
+        # Chart Statistics
+        print("Chart Statistics:")
+        print("-" * 40)
+        print(f"Chart Type: \(chartData.recommendation.name)")
+        print(f"Data Points: {len(x_data)}")
+        print(f"X Range: [{min(x_data):.2f}, {max(x_data):.2f}]")
+        print(f"Y Range: [{min(y_data):.2f}, {max(y_data):.2f}]")
+        print(f"Y Mean: {np.mean(y_data):.2f}")
+        print(f"Y Std Dev: {np.std(y_data):.2f}")
+        
+        # Save options (uncomment to use)
+        # plt.savefig('chart_\(chartData.recommendation.name.lowercased().replacingOccurrences(of: " ", with: "_")).png', dpi=300, bbox_inches='tight')
+        # plt.savefig('chart_\(chartData.recommendation.name.lowercased().replacingOccurrences(of: " ", with: "_")).pdf', bbox_inches='tight')
+        """
+
+        return pythonCode
     }
 }
 
