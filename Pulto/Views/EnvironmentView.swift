@@ -147,7 +147,7 @@ struct EnvironmentView: View {
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
         .frame(minWidth: 800, minHeight: 600)
-        .background(Color(.systemBackground))
+        .background(Color(.gray))
         .sheet(isPresented: $showWorkspaceDialog) {
             WorkspaceDialog(
                 isPresented: $showWorkspaceDialog,
@@ -169,12 +169,12 @@ struct EnvironmentView: View {
             allowedContentTypes: [
                 UTType.commaSeparatedText,    // CSV files
                 UTType.tabSeparatedText,      // TSV files  
-                UTType.json,                  // JSON files
+                UTType.json,                     // JSON files
                 UTType.plainText,             // TXT files
                 UTType.image,                 // Images
                 UTType.usdz,                  // 3D models
-                UTType.threeDContent,         // 3D content
-                UTType.data                   // Other data files
+                UTType.threeDContent,     // 3D content
+                UTType.data                 // Other data files
             ],
             allowsMultipleSelection: false
         ) { result in

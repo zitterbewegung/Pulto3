@@ -74,7 +74,8 @@ final class PultoHomeViewModel: ObservableObject {
                 lastModified: Date(),
                 visualizations: recentProjects[index].visualizations,
                 dataPoints: recentProjects[index].dataPoints,
-                collaborators: recentProjects[index].collaborators
+                collaborators: recentProjects[index].collaborators,
+                filename: recentProjects[index].filename
             )
             
             recentProjects[index] = updatedProject
@@ -158,35 +159,343 @@ final class PultoHomeViewModel: ObservableObject {
         }
 
         do {
-            // Try to locate the on-disk JSON file that stores the user’s projects
-            let url = try recentProjectsFileURL()
-
-            // If the file exists, decode it into `[Project]`
-            if FileManager.default.fileExists(atPath: url.path) {
-                let data = try Data(contentsOf: url)
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-
-                var projects = try decoder.decode([Project].self, from: data)
-
-                // Sort by last-modified so the newest projects appear first
-                projects.sort { $0.lastModified > $1.lastModified }
-
-                // Cache & publish
-                projectsCache = projects
-                recentProjects = projects
-                return
+            // Get the Documents/RecentProjects directory
+            guard let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw URLError(.fileDoesNotExist)
             }
+            
+            let recentProjectsDir = docsURL.appendingPathComponent("RecentProjects")
+            
+            // Create directory if it doesn't exist
+            if !FileManager.default.fileExists(atPath: recentProjectsDir.path) {
+                try FileManager.default.createDirectory(at: recentProjectsDir, withIntermediateDirectories: true)
+            }
+            
+            // Get all .ipynb files in the RecentProjects directory
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: recentProjectsDir,
+                includingPropertiesForKeys: [.contentModificationDateKey, .nameKey],
+                options: [.skipsHiddenFiles]
+            )
+            
+            let notebookFiles = fileURLs.filter { $0.pathExtension.lowercased() == "ipynb" }
+            
+            // If no .ipynb files exist, create some sample ones
+            if notebookFiles.isEmpty {
+                try createSampleNotebooks(in: recentProjectsDir)
+                
+                // Re-scan the directory after creating samples
+                let updatedFileURLs = try FileManager.default.contentsOfDirectory(
+                    at: recentProjectsDir,
+                    includingPropertiesForKeys: [.contentModificationDateKey, .nameKey],
+                    options: [.skipsHiddenFiles]
+                )
+                
+                processNotebookFiles(updatedFileURLs.filter { $0.pathExtension.lowercased() == "ipynb" })
+            } else {
+                processNotebookFiles(notebookFiles)
+            }
+            
         } catch {
-            // If anything goes wrong we’ll fall back to sample data.
-            // In a real app you might surface an error or write to a log here.
+            // If anything goes wrong, we'll have an empty projects array
+            print("Failed to load projects from disk: \(error)")
+            projectsCache = []
+            recentProjects = []
         }
-
-        // Fallback – sample data seeded in the app bundle
-        let projects = Project.sampleProjects
+    }
+    
+    private func createSampleNotebooks(in directory: URL) throws {
+        let sampleNotebooks = [
+            ("Sales_Dashboard.ipynb", createSalesNotebookContent(), -3600),
+            ("Climate_Model.ipynb", createClimateNotebookContent(), -7200),
+            ("Stock_Analysis.ipynb", createStockNotebookContent(), -86400),
+            ("Population_Data.ipynb", createPopulationNotebookContent(), -172800)
+        ]
+        
+        for (filename, content, timeOffset) in sampleNotebooks {
+            let fileURL = directory.appendingPathComponent(filename)
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            
+            // Set the modification date
+            let modificationDate = Date().addingTimeInterval(TimeInterval(timeOffset))
+            try FileManager.default.setAttributes([.modificationDate: modificationDate], ofItemAtPath: fileURL.path)
+        }
+    }
+    
+    private func processNotebookFiles(_ fileURLs: [URL]) {
+        var projects: [Project] = []
+        
+        for fileURL in fileURLs {
+            let filename = fileURL.lastPathComponent
+            let projectName = fileURL.deletingPathExtension().lastPathComponent
+            
+            // Get file modification date
+            let resourceValues = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey])
+            let modificationDate = resourceValues?.contentModificationDate ?? Date()
+            
+            // Try to determine project type from notebook content
+            let projectType = determineProjectTypeFromNotebook(fileURL) ?? "Jupyter Notebook"
+            let (icon, color) = getIconAndColor(for: projectType)
+            
+            // Try to get stats from notebook content
+            let (visualizations, dataPoints, collaborators) = getNotebookStats(fileURL)
+            
+            let project = Project(
+                name: projectName,
+                type: projectType,
+                icon: icon,
+                color: color,
+                lastModified: modificationDate,
+                visualizations: visualizations,
+                dataPoints: dataPoints,
+                collaborators: collaborators,
+                filename: filename
+            )
+            
+            projects.append(project)
+        }
+        
+        // Sort by last-modified so the newest projects appear first
+        projects.sort { $0.lastModified > $1.lastModified }
+        
+        // Cache & publish
         projectsCache = projects
         recentProjects = projects
+    }
+    
+    private func createSalesNotebookContent() -> String {
+        return """
+        {
+         "cells": [
+          {
+           "cell_type": "markdown",
+           "metadata": {},
+           "source": ["# Sales Dashboard Analysis"]
+          },
+          {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+            "import pandas as pd\\n",
+            "import matplotlib.pyplot as plt\\n",
+            "import seaborn as sns\\n",
+            "\\n",
+            "# Load sales data\\n",
+            "data = pd.read_csv('sales_data.csv')\\n",
+            "\\n",
+            "# Create visualization\\n",
+            "plt.figure(figsize=(10, 6))\\n",
+            "plt.plot(data['date'], data['revenue'])\\n",
+            "plt.title('Sales Revenue Over Time')\\n",
+            "plt.show()"
+           ]
+          }
+         ],
+         "metadata": {
+          "kernelspec": {
+           "display_name": "Python 3",
+           "language": "python",
+           "name": "python3"
+          }
+         },
+         "nbformat": 4,
+         "nbformat_minor": 4
+        }
+        """
+    }
+    
+    private func createClimateNotebookContent() -> String {
+        return """
+        {
+         "cells": [
+          {
+           "cell_type": "markdown",
+           "metadata": {},
+           "source": ["# Climate Model Visualization"]
+          },
+          {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+            "import numpy as np\\n",
+            "import matplotlib.pyplot as plt\\n",
+            "import plotly.graph_objects as go\\n",
+            "\\n",
+            "# Load climate data\\n",
+            "temperature_data = pd.read_csv('climate_data.csv')\\n",
+            "\\n",
+            "# 3D visualization\\n",
+            "fig = go.Figure()\\n",
+            "fig.add_trace(go.Scatter3d(x=data.x, y=data.y, z=data.z))\\n",
+            "fig.show()"
+           ]
+          }
+         ],
+         "metadata": {
+          "kernelspec": {
+           "display_name": "Python 3",
+           "language": "python",
+           "name": "python3"
+          }
+         },
+         "nbformat": 4,
+         "nbformat_minor": 4
+        }
+        """
+    }
+    
+    private func createStockNotebookContent() -> String {
+        return """
+        {
+         "cells": [
+          {
+           "cell_type": "markdown",
+           "metadata": {},
+           "source": ["# Stock Analysis - Time Series"]
+          },
+          {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+            "import pandas as pd\\n",
+            "import numpy as np\\n",
+            "from sklearn.linear_model import LinearRegression\\n",
+            "import matplotlib.pyplot as plt\\n",
+            "\\n",
+            "# Load stock data\\n",
+            "stock_data = pd.read_json('stock_prices.json')\\n",
+            "\\n",
+            "# Time series analysis\\n",
+            "plt.figure(figsize=(12, 8))\\n",
+            "plt.plot(stock_data.index, stock_data.price)\\n",
+            "plt.title('Stock Price Analysis')\\n",
+            "plt.show()"
+           ]
+          }
+         ],
+         "metadata": {
+          "kernelspec": {
+           "display_name": "Python 3",
+           "language": "python",
+           "name": "python3"
+          }
+         },
+         "nbformat": 4,
+         "nbformat_minor": 4
+        }
+        """
+    }
+    
+    private func createPopulationNotebookContent() -> String {
+        return """
+        {
+         "cells": [
+          {
+           "cell_type": "markdown",
+           "metadata": {},
+           "source": ["# Population Data Heatmap"]
+          },
+          {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+            "import pandas as pd\\n",
+            "import seaborn as sns\\n",
+            "import matplotlib.pyplot as plt\\n",
+            "\\n",
+            "# Load population data\\n",
+            "pop_data = pd.read_csv('population.csv')\\n",
+            "\\n",
+            "# Create heatmap\\n",
+            "plt.figure(figsize=(10, 8))\\n",
+            "sns.heatmap(pop_data.corr(), annot=True)\\n",
+            "plt.title('Population Data Correlation Heatmap')\\n",
+            "plt.show()"
+           ]
+          }
+         ],
+         "metadata": {
+          "kernelspec": {
+           "display_name": "Python 3",
+           "language": "python",
+           "name": "python3"
+          }
+         },
+         "nbformat": 4,
+         "nbformat_minor": 4
+        }
+        """
+    }
+    
+    private func determineProjectTypeFromNotebook(_ fileURL: URL) -> String? {
+        do {
+            let content = try String(contentsOf: fileURL)
+            let lowercaseContent = content.lowercased()
+            
+            if lowercaseContent.contains("matplotlib") || lowercaseContent.contains("plotly") || lowercaseContent.contains("seaborn") {
+                return "Data Visualization"
+            } else if lowercaseContent.contains("pandas") || lowercaseContent.contains("dataframe") {
+                return "Data Analysis"
+            } else if lowercaseContent.contains("sklearn") || lowercaseContent.contains("tensorflow") || lowercaseContent.contains("pytorch") {
+                return "Machine Learning"
+            } else if lowercaseContent.contains("numpy") || lowercaseContent.contains("scipy") {
+                return "Scientific Computing"
+            } else {
+                return "Jupyter Notebook"
+            }
+        } catch {
+            return nil
+        }
+    }
+    
+    private func getNotebookStats(_ fileURL: URL) -> (Int, Int, Int) {
+        do {
+            let content = try String(contentsOf: fileURL)
+            
+            // Count visualizations (rough estimate based on plot commands)
+            let plotKeywords = ["plt.show()", "plt.plot()", "plt.scatter()", "plotly", "seaborn"]
+            let visualizations = plotKeywords.reduce(0) { count, keyword in
+                count + content.components(separatedBy: keyword).count - 1
+            }
+            
+            // Estimate data points (rough estimate based on data loading)
+            let dataKeywords = ["pd.read_csv", "pd.read_json", "load_data"]
+            let dataPoints = dataKeywords.reduce(0) { count, keyword in
+                count + (content.components(separatedBy: keyword).count - 1) * 100
+            }
+            
+            // Default collaborators to 1 (could be enhanced to read from notebook metadata)
+            let collaborators = 1
+            
+            return (max(visualizations, 1), max(dataPoints, 50), collaborators)
+        } catch {
+            return (1, 50, 1)
+        }
+    }
+    
+    private func getIconAndColor(for projectType: String) -> (String, Color) {
+        switch projectType.lowercased() {
+        case "data visualization":
+            return ("chart.bar", .blue)
+        case "data analysis":
+            return ("tablecells", .purple)
+        case "machine learning":
+            return ("brain.head.profile", .green)
+        case "scientific computing":
+            return ("function", .orange)
+        case "3d visualization":
+            return ("cube.transparent", .mint)
+        default:
+            return ("doc.text", .gray)
+        }
     }
 
     private func recentProjectsFileURL() throws -> URL {
@@ -194,7 +503,7 @@ final class PultoHomeViewModel: ObservableObject {
                                                      in: .userDomainMask).first else {
             throw URLError(.fileDoesNotExist)
         }
-        return docsURL.appendingPathComponent("recentProjects.json")
+        return docsURL.appendingPathComponent("RecentProjects")
     }
 
     private func loadUserStats() async {
@@ -735,7 +1044,8 @@ struct RecentProjectsSection: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
-                    ForEach(projects) { project in
+                    // Only show the last 5 recent projects
+                    ForEach(Array(projects.prefix(5))) { project in
                         RecentProjectCard(
                             project: project,
                             onTap: { onProjectTap(project) } 
@@ -767,7 +1077,7 @@ struct RecentProjectCard: View {
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.name)
+                    Text("\(project.filename)")  
                         .font(.headline)
                         .lineLimit(1)
 
@@ -881,6 +1191,7 @@ struct Project: Identifiable, Codable {
     let visualizations: Int
     let dataPoints: Int
     let collaborators: Int
+    let filename: String  // Actual filename on disk
     
     // Computed property to get Color from string
     var color: Color {
@@ -895,7 +1206,8 @@ struct Project: Identifiable, Codable {
          lastModified: Date,
          visualizations: Int,
          dataPoints: Int,
-         collaborators: Int) {
+         collaborators: Int,
+         filename: String? = nil) {
         self.id = id
         self.name = name
         self.type = type
@@ -905,95 +1217,49 @@ struct Project: Identifiable, Codable {
         self.visualizations = visualizations
         self.dataPoints = dataPoints
         self.collaborators = collaborators
+        // Use provided filename or generate one
+        self.filename = filename ?? "\(name.replacingOccurrences(of: " ", with: "_")).ipynb"
     }
 
-    static let sampleProjects = [
-        Project(
-            name: "Sales Dashboard",
-            type: "2D Chart",
-            icon: "chart.bar",
-            color: .blue,
-            lastModified: Date().addingTimeInterval(-3600),
-            visualizations: 6,
-            dataPoints: 320,
-            collaborators: 2
-        ),
-        Project(
-            name: "Climate Model",
-            type: "3D Visualization",
-            icon: "globe",
-            color: .green,
-            lastModified: Date().addingTimeInterval(-7200),
-            visualizations: 15,
-            dataPoints: 580,
-            collaborators: 3
-        ),
-        Project(
-            name: "Stock Analysis",
-            type: "Time Series",
-            icon: "chart.line.uptrend.xyaxis",
-            color: .purple,
-            lastModified: Date().addingTimeInterval(-86400),
-            visualizations: 10,
-            dataPoints: 1400,
-            collaborators: 1
-        ),
-        Project(
-            name: "Population Data",
-            type: "Heatmap",
-            icon: "map",
-            color: .orange,
-            lastModified: Date().addingTimeInterval(-172800),
-            visualizations: 16,
-            dataPoints: 920,
-            collaborators: 2
-        )
-    ]
-}
-
-extension Color {
-    func toString() -> String {
-        switch self {
-        case .blue: return "blue"
-        case .green: return "green"
-        case .purple: return "purple"
-        case .orange: return "orange"
-        case .red: return "red"
-        case .yellow: return "yellow"
-        case .pink: return "pink"
-        case .cyan: return "cyan"
-        case .mint: return "mint"
-        case .indigo: return "indigo"
-        case .teal: return "teal"
-        case .brown: return "brown"
-        case .gray: return "gray"
-        case .black: return "black"
-        case .white: return "white"
-        case .clear: return "clear"
-        default: return "blue" // fallback
-        }
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+        case icon
+        case colorString = "color"
+        case lastModified
+        case visualizations
+        case dataPoints
+        case collaborators
+        case filename
     }
     
-    static func fromString(_ string: String) -> Color {
-        switch string.lowercased() {
-        case "blue": return .blue
-        case "green": return .green
-        case "purple": return .purple
-        case "orange": return .orange
-        case "red": return .red
-        case "yellow": return .yellow
-        case "pink": return .pink
-        case "cyan": return .cyan
-        case "mint": return .mint
-        case "indigo": return .indigo
-        case "teal": return .teal
-        case "brown": return .brown
-        case "gray": return .gray
-        case "black": return .black
-        case "white": return .white
-        case "clear": return .clear
-        default: return .blue // fallback
-        }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decode(String.self, forKey: .type)
+        icon = try container.decode(String.self, forKey: .icon)
+        colorString = try container.decode(String.self, forKey: .colorString)
+        lastModified = try container.decode(Date.self, forKey: .lastModified)
+        visualizations = try container.decode(Int.self, forKey: .visualizations)
+        dataPoints = try container.decode(Int.self, forKey: .dataPoints)
+        collaborators = try container.decode(Int.self, forKey: .collaborators)
+        filename = try container.decode(String.self, forKey: .filename)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(type, forKey: .type)
+        try container.encode(icon, forKey: .icon)
+        try container.encode(colorString, forKey: .colorString)
+        try container.encode(lastModified, forKey: .lastModified)
+        try container.encode(visualizations, forKey: .visualizations)
+        try container.encode(dataPoints, forKey: .dataPoints)
+        try container.encode(collaborators, forKey: .collaborators)
+        try container.encode(filename, forKey: .filename)
     }
 }
 
@@ -1043,5 +1309,52 @@ struct LoginView: View {
 struct PultoHomeView_Previews: PreviewProvider {
     static var previews: some View {
         PultoHomeView()
+    }
+}
+
+// MARK: - Color Extensions for Codable Support
+extension Color {
+    func toString() -> String {
+        switch self {
+        case .blue: return "blue"
+        case .green: return "green"
+        case .purple: return "purple"
+        case .orange: return "orange"
+        case .red: return "red"
+        case .yellow: return "yellow"
+        case .pink: return "pink"
+        case .cyan: return "cyan"
+        case .mint: return "mint"
+        case .indigo: return "indigo"
+        case .teal: return "teal"
+        case .brown: return "brown"
+        case .gray: return "gray"
+        case .black: return "black"
+        case .white: return "white"
+        case .clear: return "clear"
+        default: return "blue" // fallback
+        }
+    }
+    
+    static func fromString(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "blue": return .blue
+        case "green": return .green
+        case "purple": return .purple
+        case "orange": return .orange
+        case "red": return .red
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "mint": return .mint
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "brown": return .brown
+        case "gray": return .gray
+        case "black": return .black
+        case "white": return .white
+        case "clear": return .clear
+        default: return .blue // fallback
+        }
     }
 }
