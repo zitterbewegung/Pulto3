@@ -720,6 +720,58 @@ enum WorkspaceError: LocalizedError {
     }
 }
 
+// MARK: - Navigation Helper
+// Add this to your main app or navigation controller
+
+struct ChartVisualizationNavigator {
+    static func openSpatialEditorWithChart(
+        windowID: Int,
+        csvData: CSVData,
+        recommendation: ChartRecommendation,
+        chartData: ChartData
+    ) {
+        let chartVizData = SpatialEditorView.ChartVisualizationData(
+            csvData: csvData,
+            recommendation: recommendation,
+            chartData: chartData
+        )
+
+        // Create and present the spatial editor
+        // This depends on your navigation system
+        // Example for SwiftUI:
+
+        #if os(iOS)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            let spatialEditor = SpatialEditorView(
+                windowID: windowID,
+                initialChart: chartVizData
+            )
+
+            let hostingController = UIHostingController(rootView: spatialEditor)
+            window.rootViewController?.present(hostingController, animated: true)
+        }
+        #elseif os(macOS)
+        let spatialEditor = SpatialEditorView(
+            windowID: windowID,
+            initialChart: chartVizData
+        )
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.center()
+        window.title = "Spatial Editor - Window #\(windowID)"
+        window.contentView = NSHostingView(rootView: spatialEditor)
+        window.makeKeyAndOrderFront(nil)
+        #endif
+    }
+}
+
+
 // MARK: - Helper Extensions
 
 extension DateFormatter {

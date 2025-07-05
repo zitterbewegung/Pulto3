@@ -17,8 +17,19 @@ class WindowTypeManager: ObservableObject {
 
     @Published private var windows: [Int: NewWindowID] = [:]
     @Published private var openWindowIDs: Set<Int> = []
+    @Published var selectedProject: Project? = nil
 
     private init() {}
+
+    func setSelectedProject(_ project: Project) {
+        selectedProject = project
+        objectWillChange.send()
+    }
+
+    func clearSelectedProject() {
+        selectedProject = nil
+        objectWillChange.send()
+    }
 
     func getNextWindowID() -> Int {
         let currentMaxID = getAllWindows().map { $0.id }.max() ?? 0

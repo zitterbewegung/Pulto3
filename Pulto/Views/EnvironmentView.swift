@@ -114,6 +114,11 @@ struct EnvironmentView: View {
             ScrollView {
                 LazyVStack(spacing: DesignSystem.spacing.xxl) {
                     headerSection
+                    
+                    if let selectedProject = windowManager.selectedProject {
+                        selectedProjectSection(selectedProject)
+                    }
+                    
                     VStack(spacing: DesignSystem.spacing.xxl) {
                         workspaceManagementSection
                         windowTypeSection
@@ -175,9 +180,230 @@ struct EnvironmentView: View {
         ) { result in
             handleFileImport(result)
         }
+        .onAppear {
+            // Load the selected project's data when the view appears
+            if let selectedProject = windowManager.selectedProject {
+                loadProjectData(selectedProject)
+            }
+        }
     }
 
-    // MARK: - View Components
+    // MARK: - Selected Project Section
+    private func selectedProjectSection(_ project: Project) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
+            SectionHeader(
+                title: "Current Project",
+                subtitle: "Working on: \(project.name)",
+                icon: "folder.fill"
+            )
+            
+            HStack(spacing: DesignSystem.spacing.lg) {
+                // Project info card
+                VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
+                    HStack {
+                        Image(systemName: project.icon)
+                            .font(.system(size: DesignSystem.iconSize.xl))
+                            .foregroundStyle(project.color)
+                        
+                        VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
+                            Text(project.name)
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            Text(project.type)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Button("Close Project") {
+                            windowManager.clearSelectedProject()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    
+                    HStack(spacing: DesignSystem.spacing.lg) {
+                        Label("\(project.visualizations)", systemImage: "chart.bar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Label("\(project.dataPoints)", systemImage: "circle.grid.3x3")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Label("\(project.collaborators)", systemImage: "person.2")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        Text("Last opened: \(project.lastModified, style: .relative)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(DesignSystem.padding.xl)
+                .background(project.color.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
+                        .stroke(project.color.opacity(0.3), lineWidth: 1)
+                )
+            }
+        }
+        .padding(DesignSystem.padding.xl)
+        .cardStyle()
+    }
+
+    // MARK: - Project Data Loading
+    private func loadProjectData(_ project: Project) {
+        // Create initial windows based on the project type
+        switch project.type {
+        case "2D Chart":
+            createChartWindow(for: project)
+        case "3D Visualization":
+            create3DWindow(for: project)
+        case "Time Series":
+            createTimeSeriesWindow(for: project)
+        case "Heatmap":
+            createHeatmapWindow(for: project)
+        default:
+            createGenericWindow(for: project)
+        }
+    }
+    
+    private func createChartWindow(for project: Project) {
+        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
+        _ = windowManager.createWindow(.charts, id: nextWindowID, position: position)
+        
+        windowManager.updateWindowContent(
+            nextWindowID,
+            content: """
+            # \(project.name) - \(project.type)
+            # Project loaded from recent projects
+            
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            # Sample data for \(project.name)
+            x = np.linspace(0, 10, 100)
+            y = np.sin(x) * np.exp(-x/5)
+            
+            plt.figure(figsize=(10, 6))
+            plt.plot(x, y, label='\(project.name)', color='\(project.color.toString())')
+            plt.title('\(project.name) - \(project.type)')
+            plt.xlabel('Time')
+            plt.ylabel('Value')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            plt.show()
+            """
+        )
+        
+        windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
+        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+    
+    private func create3DWindow(for project: Project) {
+        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
+        _ = windowManager.createWindow(.model3d, id: nextWindowID, position: position)
+        
+        let model3D = Model3DData.generateSphere(radius: 2.0, segments: 16)
+        windowManager.updateWindowModel3DData(nextWindowID, model3DData: model3D)
+        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+    
+    private func createTimeSeriesWindow(for project: Project) {
+        let position = WindowPosition(x: 200, y: 200, z: 0, width: 1000, height: 700)
+        _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
+        
+        let timeSeriesData = DataFrameData(
+            columns: ["Date", "Value", "Category"],
+            rows: [
+                ["2024-01-01", "100", "A"],
+                ["2024-01-02", "120", "B"],
+                ["2024-01-03", "95", "A"],
+                ["2024-01-04", "140", "C"],
+                ["2024-01-05", "110", "B"]
+            ],
+            dtypes: ["Date": "string", "Value": "int", "Category": "string"]
+        )
+        
+        windowManager.updateWindowDataFrame(nextWindowID, dataFrame: timeSeriesData)
+        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+    
+    private func createHeatmapWindow(for project: Project) {
+        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
+        _ = windowManager.createWindow(.charts, id: nextWindowID, position: position)
+        
+        windowManager.updateWindowContent(
+            nextWindowID,
+            content: """
+            # \(project.name) - Heatmap Visualization
+            
+            import matplotlib.pyplot as plt
+            import numpy as np
+            import seaborn as sns
+            
+            # Generate sample heatmap data for \(project.name)
+            data = np.random.rand(10, 12)
+            
+            plt.figure(figsize=(10, 8))
+            sns.heatmap(data, annot=True, cmap='viridis', 
+                       cbar_kws={'label': 'Value'})
+            plt.title('\(project.name) - Heatmap Analysis')
+            plt.xlabel('X Axis')
+            plt.ylabel('Y Axis')
+            plt.show()
+            """
+        )
+        
+        windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
+        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+    
+    private func createGenericWindow(for project: Project) {
+        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
+        _ = windowManager.createWindow(.spatial, id: nextWindowID, position: position)
+        
+        windowManager.updateWindowContent(
+            nextWindowID,
+            content: """
+            # \(project.name) - \(project.type)
+            
+            This project contains \(project.visualizations) visualizations and \(project.dataPoints) data points.
+            
+            **Project Details:**
+            - Name: \(project.name)
+            - Type: \(project.type)
+            - Collaborators: \(project.collaborators)
+            - Last Modified: \(project.lastModified)
+            
+            Use the tools above to create charts, import data, and build your analysis.
+            """
+        )
+        
+        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
 
     private var headerSection: some View {
         HStack(alignment: .center, spacing: DesignSystem.spacing.lg) {

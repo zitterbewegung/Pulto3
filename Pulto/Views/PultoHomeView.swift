@@ -1,5 +1,6 @@
 import SwiftUI
 import RealityKit
+import Foundation
 
 // MARK: - View Models
 @MainActor
@@ -22,44 +23,207 @@ final class PultoHomeViewModel: ObservableObject {
         // Load user authentication state
         await loadUserState()
 
-        // Load projects only if user is logged in
-        if isUserLoggedIn {
-            await loadRecentProjects()
-            await loadUserStats()
-        }
+        // Load projects regardless of login state
+        await loadRecentProjects()
+
+        // Don't load user stats for now
+        // if isUserLoggedIn {
+        //     await loadUserStats()
+        // }
 
         isLoadingProjects = false
     }
 
+    func saveRecentProjects() async {
+        do {
+            let url = try recentProjectsFileURL()
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            
+            let data = try encoder.encode(recentProjects)
+            try data.write(to: url)
+            
+            // Update cache
+            projectsCache = recentProjects
+        } catch {
+            print("Failed to save recent projects: \(error)")
+        }
+    }
+    
+    func addRecentProject(_ project: Project) async {
+        // Add to beginning of array (most recent)
+        recentProjects.insert(project, at: 0)
+        
+        // Keep only the most recent 10 projects
+        if recentProjects.count > 10 {
+            recentProjects = Array(recentProjects.prefix(10))
+        }
+        
+        // Save to disk
+        await saveRecentProjects()
+    }
+    
+    func updateProjectLastModified(_ projectId: UUID) async {
+        if let index = recentProjects.firstIndex(where: { $0.id == projectId }) {
+            let updatedProject = Project(
+                id: recentProjects[index].id,
+                name: recentProjects[index].name,
+                type: recentProjects[index].type,
+                icon: recentProjects[index].icon,
+                color: recentProjects[index].color,
+                lastModified: Date(),
+                visualizations: recentProjects[index].visualizations,
+                dataPoints: recentProjects[index].dataPoints,
+                collaborators: recentProjects[index].collaborators
+            )
+            
+            recentProjects[index] = updatedProject
+            
+            // Re-sort by last modified
+            recentProjects.sort { $0.lastModified > $1.lastModified }
+            
+            // Save to disk
+            await saveRecentProjects()
+        }
+    }
+    
+    func removeRecentProject(_ projectId: UUID) async {
+        recentProjects.removeAll { $0.id == projectId }
+        await saveRecentProjects()
+    }
+
     private func loadUserState() async {
-        // Simulate checking authentication
-        //try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-        // In real app, check actual auth state
+        // Step 1: Check for stored authentication token in Keychain
+        let tokenKey = "pulto.auth.token"
+        let userNameKey = "pulto.userName"
+        
+        // Try to retrieve auth token from Keychain
+        if let authToken = KeychainHelper.shared.read(key: tokenKey) {
+            // Step 2: Validate token with server/auth service
+            let isValid = await validateAuthToken(authToken)
+            
+            if isValid {
+                // Token is valid, restore user state
+                if let storedUserName = KeychainHelper.shared.read(key: userNameKey) {
+                    userName = storedUserName
+                    isUserLoggedIn = true
+                } else {
+                    // Token valid but no username - fetch from server
+                    let userInfo = await fetchUserInfo(authToken)
+                    userName = userInfo?.name ?? "User"
+                    isUserLoggedIn = true
+                    
+                    // Store username for future use
+                    KeychainHelper.shared.store(key: userNameKey, value: userName)
+                }
+                return
+            } else {
+                // Token invalid - clear stored credentials
+                KeychainHelper.shared.delete(key: tokenKey)
+                KeychainHelper.shared.delete(key: userNameKey)
+            }
+        }
+        
+        // Step 3: Check for remembered login preference
+        let rememberLoginKey = "pulto.rememberLogin"
+        if UserDefaults.standard.bool(forKey: rememberLoginKey) {
+            // User previously chose to be remembered but no valid token
+            // Set as guest but could trigger re-authentication
+            userName = "Guest (Sign In Required)"
+            isUserLoggedIn = false
+        } else {
+            // Fresh start - no previous login
+            userName = "Guest"
+            isUserLoggedIn = false
+        }
+    }
+    
+    private func validateAuthToken(_ token: String) async -> Bool {
+        // In a real app, this would make an HTTP request to your auth server
+        // For now, just check if token follows expected format
+        return token.hasPrefix("pulto_token_") && token.count > 20
+    }
+    
+    private func fetchUserInfo(_ token: String) async -> UserInfo? {
+        // In a real app, this would make an HTTP request to your user service
+        // For now, return nil to use fallback username
+        return nil
     }
 
     private func loadRecentProjects() async {
-        // Simulate network delay
-        //try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
-
-        // Use cached projects if available
+        // Return cached projects if we already fetched them this session
         if let cached = projectsCache {
             recentProjects = cached
-        } else {
-            let projects = Project.sampleProjects
-            projectsCache = projects
-            recentProjects = projects
+            return
         }
+
+        do {
+            // Try to locate the on-disk JSON file that stores the user’s projects
+            let url = try recentProjectsFileURL()
+
+            // If the file exists, decode it into `[Project]`
+            if FileManager.default.fileExists(atPath: url.path) {
+                let data = try Data(contentsOf: url)
+
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+
+                var projects = try decoder.decode([Project].self, from: data)
+
+                // Sort by last-modified so the newest projects appear first
+                projects.sort { $0.lastModified > $1.lastModified }
+
+                // Cache & publish
+                projectsCache = projects
+                recentProjects = projects
+                return
+            }
+        } catch {
+            // If anything goes wrong we’ll fall back to sample data.
+            // In a real app you might surface an error or write to a log here.
+        }
+
+        // Fallback – sample data seeded in the app bundle
+        let projects = Project.sampleProjects
+        projectsCache = projects
+        recentProjects = projects
+    }
+
+    private func recentProjectsFileURL() throws -> URL {
+        guard let docsURL = FileManager.default.urls(for: .documentDirectory,
+                                                     in: .userDomainMask).first else {
+            throw URLError(.fileDoesNotExist)
+        }
+        return docsURL.appendingPathComponent("recentProjects.json")
     }
 
     private func loadUserStats() async {
-        // Simulate loading stats
-        //try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 seconds
+        // Calculate stats from the user’s current projects
+        let totalProjects = recentProjects.count
+        let visualizations = recentProjects.reduce(0) { $0 + $1.visualizations }
+        let dataPointsTotal = recentProjects.reduce(0) { $0 + $1.dataPoints }
+        let collaborators = recentProjects.reduce(0) { $0 + $1.collaborators }
+
+        let dataPointsString = Self.formatNumber(dataPointsTotal)
+
         stats = UserStats(
-            totalProjects: 12,
-            visualizations: 47,
-            dataPoints: "3.2K",
-            collaborators: 8
+            totalProjects: totalProjects,
+            visualizations: visualizations,
+            dataPoints: dataPointsString,
+            collaborators: collaborators
         )
+    }
+
+    // Utility to turn large numbers into 1.2K / 3.4M style strings
+    private static func formatNumber(_ number: Int) -> String {
+        switch number {
+        case 0..<1_000:
+            return "\(number)"
+        case 1_000..<1_000_000:
+            return String(format: "%.1fK", Double(number) / 1_000)
+        default:
+            return String(format: "%.1fM", Double(number) / 1_000_000)
+        }
     }
 }
 
@@ -93,6 +257,63 @@ enum HomeSection: String, CaseIterable {
         case .recent: return "Continue where you left off"
         case .settings: return "Customize your experience"
         }
+    }
+}
+
+// MARK: - Supporting Models
+struct UserInfo {
+    let name: String
+    let email: String
+}
+
+// MARK: - Keychain Helper
+class KeychainHelper {
+    static let shared = KeychainHelper()
+    private init() {}
+    
+    func store(key: String, value: String) {
+        let data = Data(value.utf8)
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data
+        ]
+        
+        // Delete any existing item
+        SecItemDelete(query as CFDictionary)
+        
+        // Add new item
+        SecItemAdd(query as CFDictionary, nil)
+    }
+    
+    func read(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let string = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        
+        return string
+    }
+    
+    func delete(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key
+        ]
+        
+        SecItemDelete(query as CFDictionary)
     }
 }
 
@@ -174,11 +395,10 @@ struct PultoHomeView: View {
                 .frame(width: 600, height: 500)
             }
             .sheet(isPresented: $showLogin) {
-                NavigationView {
-                    LoginView(
-                        isLoggedIn: $viewModel.isUserLoggedIn,
-                        userName: $viewModel.userName
-                    )
+                LoginView(
+                    isLoggedIn: $viewModel.isUserLoggedIn,
+                    userName: $viewModel.userName
+                )
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button("Close") {
@@ -186,8 +406,6 @@ struct PultoHomeView: View {
                             }
                         }
                     }
-                }
-                .frame(width: 500, height: 400)
             }
             .sheet(isPresented: $showAppleSignIn) {
                 AppleSignInView(isPresented: $showAppleSignIn)
@@ -217,6 +435,23 @@ struct PultoHomeView: View {
         showProjectBrowser = false
     }
 
+    private func openRecentProject(_ project: Project) {
+        Task {
+            // Update the project's last modified date
+            await viewModel.updateProjectLastModified(project.id)
+            
+            // Store the selected project in the window manager
+            windowManager.setSelectedProject(project)
+            
+            // Close all sheets
+            closeAllSheets()
+            
+            // Open the main spatial workspace with the selected project
+            // In a real app, you'd pass the project ID or data to the window
+            openWindow(id: "main")
+        }
+    }
+
     private var mainContent: some View {
         ScrollView {
             LazyVStack(spacing: 32) {
@@ -232,24 +467,31 @@ struct PultoHomeView: View {
                     closeAllSheets: closeAllSheets
                 )
 
-                if viewModel.isUserLoggedIn {
-                    if viewModel.isLoadingProjects {
-                        ProgressView("Loading projects...")
-                            .frame(height: 200)
-                    } else if !viewModel.recentProjects.isEmpty {
-                        RecentProjectsSection(
-                            projects: viewModel.recentProjects,
-                            isDarkMode: viewModel.isDarkMode
-                        )
-                    }
-
-                    if let stats = viewModel.stats {
-                        QuickStatsSection(
-                            stats: stats,
-                            isDarkMode: viewModel.isDarkMode
-                        )
-                    }
+                // Show recent projects regardless of login state
+                if viewModel.isLoadingProjects {
+                    ProgressView("Loading projects...")
+                        .frame(height: 200)
+                } else if !viewModel.recentProjects.isEmpty {
+                    RecentProjectsSection(
+                        projects: viewModel.recentProjects,
+                        isDarkMode: viewModel.isDarkMode,
+                        onProjectTap: openRecentProject,
+                        onViewAll: {
+                            closeAllSheets()
+                            showProjectBrowser = true
+                        }
+                    )
                 }
+
+                // User stats disabled for now
+                // if viewModel.isUserLoggedIn {
+                //     if let stats = viewModel.stats {
+                //         QuickStatsSection(
+                //             stats: stats,
+                //             isDarkMode: viewModel.isDarkMode
+                //         )
+                //     }
+                // }
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 20)
@@ -472,6 +714,8 @@ struct ActionCard: View {
 struct RecentProjectsSection: View {
     let projects: [Project]
     let isDarkMode: Bool
+    let onProjectTap: (Project) -> Void 
+    let onViewAll: () -> Void 
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -484,7 +728,7 @@ struct RecentProjectsSection: View {
                 Spacer()
 
                 Button("View All") {
-                    // Handle view all
+                    onViewAll() 
                 }
                 .buttonStyle(.borderless)
             }
@@ -492,9 +736,13 @@ struct RecentProjectsSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
                     ForEach(projects) { project in
-                        RecentProjectCard(project: project)
+                        RecentProjectCard(
+                            project: project,
+                            onTap: { onProjectTap(project) } 
+                        )
                     }
                 }
+                .padding(.horizontal, 20)
             }
         }
     }
@@ -503,12 +751,11 @@ struct RecentProjectsSection: View {
 // MARK: - Recent Project Card
 struct RecentProjectCard: View {
     let project: Project
+    let onTap: () -> Void
     @State private var isHovered = false
 
     var body: some View {
-        Button {
-            // Handle project tap
-        } label: {
+        Button(action: onTap) {
             VStack(alignment: .leading, spacing: 12) {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(project.color.opacity(0.3))
@@ -539,9 +786,7 @@ struct RecentProjectCard: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .scaleEffect(isHovered ? 1.05 : 1.0)
-            .padding(16)
-            .background(isHovered ? Color.gray.opacity(0.2) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .shadow(color: .black.opacity(isHovered ? 0.1 : 0.05), radius: isHovered ? 8 : 4)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
@@ -625,14 +870,42 @@ struct StatCard: View {
     }
 }
 
-// MARK: - Supporting Models
-struct Project: Identifiable {
-    let id = UUID()
+// MARK: - Project
+struct Project: Identifiable, Codable {
+    let id: UUID
     let name: String
     let type: String
     let icon: String
-    let color: Color
+    private let colorString: String  // Store color as string for Codable
     let lastModified: Date
+    let visualizations: Int
+    let dataPoints: Int
+    let collaborators: Int
+    
+    // Computed property to get Color from string
+    var color: Color {
+        Color.fromString(colorString)
+    }
+    
+    init(id: UUID = UUID(),
+         name: String,
+         type: String,
+         icon: String,
+         color: Color,
+         lastModified: Date,
+         visualizations: Int,
+         dataPoints: Int,
+         collaborators: Int) {
+        self.id = id
+        self.name = name
+        self.type = type
+        self.icon = icon
+        self.colorString = color.toString()
+        self.lastModified = lastModified
+        self.visualizations = visualizations
+        self.dataPoints = dataPoints
+        self.collaborators = collaborators
+    }
 
     static let sampleProjects = [
         Project(
@@ -640,30 +913,88 @@ struct Project: Identifiable {
             type: "2D Chart",
             icon: "chart.bar",
             color: .blue,
-            lastModified: Date().addingTimeInterval(-3600)
+            lastModified: Date().addingTimeInterval(-3600),
+            visualizations: 6,
+            dataPoints: 320,
+            collaborators: 2
         ),
         Project(
             name: "Climate Model",
             type: "3D Visualization",
             icon: "globe",
             color: .green,
-            lastModified: Date().addingTimeInterval(-7200)
+            lastModified: Date().addingTimeInterval(-7200),
+            visualizations: 15,
+            dataPoints: 580,
+            collaborators: 3
         ),
         Project(
             name: "Stock Analysis",
             type: "Time Series",
             icon: "chart.line.uptrend.xyaxis",
             color: .purple,
-            lastModified: Date().addingTimeInterval(-86400)
+            lastModified: Date().addingTimeInterval(-86400),
+            visualizations: 10,
+            dataPoints: 1400,
+            collaborators: 1
         ),
         Project(
             name: "Population Data",
             type: "Heatmap",
             icon: "map",
             color: .orange,
-            lastModified: Date().addingTimeInterval(-172800)
+            lastModified: Date().addingTimeInterval(-172800),
+            visualizations: 16,
+            dataPoints: 920,
+            collaborators: 2
         )
     ]
+}
+
+extension Color {
+    func toString() -> String {
+        switch self {
+        case .blue: return "blue"
+        case .green: return "green"
+        case .purple: return "purple"
+        case .orange: return "orange"
+        case .red: return "red"
+        case .yellow: return "yellow"
+        case .pink: return "pink"
+        case .cyan: return "cyan"
+        case .mint: return "mint"
+        case .indigo: return "indigo"
+        case .teal: return "teal"
+        case .brown: return "brown"
+        case .gray: return "gray"
+        case .black: return "black"
+        case .white: return "white"
+        case .clear: return "clear"
+        default: return "blue" // fallback
+        }
+    }
+    
+    static func fromString(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "blue": return .blue
+        case "green": return .green
+        case "purple": return .purple
+        case "orange": return .orange
+        case "red": return .red
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "mint": return .mint
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "brown": return .brown
+        case "gray": return .gray
+        case "black": return .black
+        case "white": return .white
+        case "clear": return .clear
+        default: return .blue // fallback
+        }
+    }
 }
 
 // MARK: - Login View

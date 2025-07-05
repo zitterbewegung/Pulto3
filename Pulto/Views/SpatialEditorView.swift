@@ -9,6 +9,14 @@
 import SwiftUI
 import Charts
 
+///
+//  SpatialEditorView.swift
+//  Pulto
+//
+//  Created by Joshua Herman on 6/19/25.
+//  Copyright 2025 Apple. All rights reserved.
+//
+
 // MARK: - Main View
 // Enhanced Spatial Editor View with Point Cloud and Chart Integration
 struct SpatialEditorView: View {
