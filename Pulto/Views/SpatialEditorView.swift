@@ -21,12 +21,12 @@ import Charts
 // Enhanced Spatial Editor View with Point Cloud and Chart Integration
 struct SpatialEditorView: View {
     // MARK: – Visualization Types
-    enum VisualizationType {
+    enum VisualizationType: Equatable {
         case pointCloud(PointCloudData)
         case chart(ChartVisualizationData)
     }
 
-    struct ChartVisualizationData {
+    struct ChartVisualizationData: Equatable {
         let csvData: CSVData
         var recommendation: ChartRecommendation
         let chartData: ChartData
@@ -70,6 +70,10 @@ struct SpatialEditorView: View {
     @State private var cubeSize: Double = 10.0
     @State private var cubePointsPerFace: Double = 500
 
+    // Code sidebar states
+    @State private var showCodeSidebar = false
+    @State private var generatedCode = ""
+
     private let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube"]
 
     // MARK: – Init
@@ -91,50 +95,68 @@ struct SpatialEditorView: View {
 
     // MARK: – Body
     var body: some View {
-        VStack(spacing: 12) {
-            headerView
+        HStack(spacing: 0) {
+            // Main Content
+            VStack(spacing: 12) {
+                headerView
 
-            if showControls {
-                VStack(spacing: 12) {
-                    // Toggle between point cloud and chart
-                    visualizationTypeSelector
+                if showControls {
+                    VStack(spacing: 12) {
+                        // Toggle between point cloud and chart
+                        visualizationTypeSelector
 
-                    switch currentVisualization {
-                    case .pointCloud:
-                        parameterControlsView
-                        demoSelectorView
-                    case .chart:
-                        chartControlsView
+                        switch currentVisualization {
+                        case .pointCloud:
+                            parameterControlsView
+                            demoSelectorView
+                        case .chart:
+                            chartControlsView
+                        }
                     }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.95))
+                    ))
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.95)),
-                    removal: .opacity.combined(with: .scale(scale: 0.95))
-                ))
-            }
 
-            // Main visualization
-            switch currentVisualization {
-            case .pointCloud:
-                pointCloudVisualizationView
-            case .chart(let chartData):
-                chartVisualizationView(chartData: chartData)
-            }
-
-            if showControls {
-                VStack(spacing: 12) {
-                    statisticsView
-                    exportControlsView
+                // Main visualization
+                switch currentVisualization {
+                case .pointCloud:
+                    pointCloudVisualizationView
+                case .chart(let chartData):
+                    chartVisualizationView(chartData: chartData)
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.95)),
-                    removal: .opacity.combined(with: .scale(scale: 0.95))
-                ))
-            }
 
-            Spacer()
+                if showControls {
+                    VStack(spacing: 12) {
+                        statisticsView
+                        exportControlsView
+                    }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .opacity.combined(with: .scale(scale: 0.95))
+                    ))
+                }
+
+                Spacer()
+            }
+            .padding(16)
+
+            // Code Sidebar
+            if showCodeSidebar {
+                CodeSidebarView(code: generatedCode)
+                    .frame(width: 400)
+                    .transition(.move(edge: .trailing))
+            }
         }
-        .padding(16)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showCodeSidebar.toggle() }) {
+                    Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
+                        .font(.title3)
+                }
+            }
+        }
         .onKeyPress(.init("h"), phases: .down) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
                 showControls.toggle()
@@ -143,6 +165,7 @@ struct SpatialEditorView: View {
         }
         .onAppear {
             loadVisualizationFromWindow()
+            generateSpatialCode()
             if case .pointCloud = currentVisualization {
                 startRotationAnimation()
             }
@@ -151,6 +174,75 @@ struct SpatialEditorView: View {
             if case .pointCloud = currentVisualization {
                 updatePointCloud()
             }
+            generateSpatialCode()
+        }
+        .onChange(of: currentVisualization) { _, _ in
+            generateSpatialCode()
+        }
+        .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
+    }
+
+    // Code Sidebar View
+    private struct CodeSidebarView: View {
+        let code: String
+        @State private var showingCopySuccess = false
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Label("Spatial Code", systemImage: "cube.transparent")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button(action: copyCode) {
+                        Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(showingCopySuccess ? .green : .blue)
+                    }
+                    .animation(.easeInOut, value: showingCopySuccess)
+                }
+                .padding()
+                .background(.regularMaterial)
+
+                Divider()
+
+                // Code content
+                ScrollView {
+                    Text(code)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.ultraThinMaterial)
+            }
+            .background(.regularMaterial)
+        }
+
+        private func copyCode() {
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #else
+            UIPasteboard.general.string = code
+            #endif
+
+            showingCopySuccess = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
+            }
+        }
+    }
+
+    // Generate spatial code function
+    private func generateSpatialCode() {
+        switch currentVisualization {
+        case .pointCloud(let pointCloud):
+            generatedCode = pointCloud.toPythonCode()
+        case .chart(let chartData):
+            generatedCode = generateChartPythonCode(chartData: chartData)
         }
     }
 
@@ -178,22 +270,37 @@ struct SpatialEditorView: View {
 
             Spacer()
 
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showControls.toggle()
+            HStack(spacing: 8) {
+                Button(action: { showCodeSidebar.toggle() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
+                        Text("Code")
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.indigo.opacity(0.1))
+                    .cornerRadius(6)
                 }
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: showControls ? "eye.slash" : "eye")
-                    Text(showControls ? "Hide Controls" : "Show Controls")
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showControls.toggle()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: showControls ? "eye.slash" : "eye")
+                        Text(showControls ? "Hide Controls" : "Show Controls")
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
                 }
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(6)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -596,13 +703,13 @@ struct SpatialEditorView: View {
         case .pointCloud(let pointCloud):
             windowManager.updateWindowPointCloud(windowID, pointCloud: pointCloud)
             windowManager.updateWindowContent(windowID, content: pointCloud.toPythonCode())
-            print("📍 Point cloud saved to window #\(windowID)")
+            print(" Point cloud saved to window #\(windowID)")
 
         case .chart(let chartData):
             windowManager.updateWindowChartData(windowID, chartData: chartData.chartData)
             let pythonCode = generateChartPythonCode(chartData: chartData)
             windowManager.updateWindowContent(windowID, content: pythonCode)
-            print("📊 Chart saved to window #\(windowID)")
+            print(" Chart saved to window #\(windowID)")
         }
     }
 
@@ -624,9 +731,9 @@ struct SpatialEditorView: View {
         let url = docs.appendingPathComponent(name)
         do {
             try code.write(to: url, atomically: true, encoding: .utf8)
-            print("📄 Exported to: \(url.path)")
+            print(" Exported to: \(url.path)")
         } catch {
-            print("❌ Error: \(error)")
+            print(" Error: \(error)")
         }
         saveToWindow()
     }
@@ -645,7 +752,7 @@ struct SpatialEditorView: View {
         #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(code, forType: .string)
-        print("📋 Python code copied to clipboard")
+        print(" Python code copied to clipboard")
         #endif
     }
 

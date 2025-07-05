@@ -14,6 +14,8 @@ struct NotebookChartsView: View {
     @State private var modelLoadingError: Error?
     @State private var isLoading = false
     @State private var showingSidebar = true
+    @State private var showCodeSidebar = false
+    @State private var generatedCode = ""
 
     var body: some View {
         NavigationSplitView {
@@ -144,50 +146,64 @@ struct NotebookChartsView: View {
             .frame(minWidth: 280, maxWidth: 320)
             .background(.regularMaterial)
         } detail: {
-            // Main Content Area
-            ZStack {
-                if chartImages.isEmpty && !isLoading {
-                    // Empty State
-                    VStack(spacing: 24) {
-                        Image(systemName: "chart.bar.xaxis")
-                            .font(.system(size: 64))
-                            .foregroundStyle(.tertiary)
+            HStack(spacing: 0) {
+                // Main Content Area
+                ZStack {
+                    if chartImages.isEmpty && !isLoading {
+                        // Empty State
+                        VStack(spacing: 24) {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.system(size: 64))
+                                .foregroundStyle(.tertiary)
 
-                        VStack(spacing: 8) {
-                            Text("Import Your Notebook")
-                                .font(.title)
-                                .fontWeight(.semibold)
+                            VStack(spacing: 8) {
+                                Text("Import Your Notebook")
+                                    .font(.title)
+                                    .fontWeight(.semibold)
 
-                            Text("Enter a notebook name and tap 'Open Notebook' to visualize your charts in spatial computing.")
-                                .multilineTextAlignment(.center)
+                                Text("Enter a notebook name and tap 'Open Notebook' to visualize your charts in spatial computing.")
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 40)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if isLoading {
+                        // Loading State
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Processing notebook...")
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, 40)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        // Charts Display
+                        chartContentView
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isLoading {
-                    // Loading State
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Processing notebook...")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    // Charts Display
-                    chartContentView
                 }
-            }
-            .background(.ultraThinMaterial)
-            .navigationTitle("Spatial Notebook")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { dismiss() }) {
-                        Text("Done")
-                            .fontWeight(.semibold)
+                .background(.ultraThinMaterial)
+                .navigationTitle("Spatial Notebook")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        Button(action: { showCodeSidebar.toggle() }) {
+                            Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
+                                .font(.title3)
+                        }
+                        .disabled(generatedCode.isEmpty)
+                        
+                        Button(action: { dismiss() }) {
+                            Text("Done")
+                                .fontWeight(.semibold)
+                        }
                     }
+                }
+                
+                if showCodeSidebar {
+                    CodeSidebarView(code: generatedCode)
+                        .frame(width: 400)
+                        .transition(.move(edge: .trailing))
                 }
             }
         }
@@ -197,6 +213,60 @@ struct NotebookChartsView: View {
         // Add keyboard dismiss gesture
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
+    }
+
+    private struct CodeSidebarView: View {
+        let code: String
+        @State private var showingCopySuccess = false
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Label("Generated Code", systemImage: "doc.text")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    Spacer()
+                    
+                    Button(action: copyCode) {
+                        Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(showingCopySuccess ? .green : .blue)
+                    }
+                    .animation(.easeInOut, value: showingCopySuccess)
+                }
+                .padding()
+                .background(.regularMaterial)
+                
+                Divider()
+                
+                // Code content
+                ScrollView {
+                    Text(code)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.ultraThinMaterial)
+            }
+            .background(.regularMaterial)
+        }
+        
+        private func copyCode() {
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #else
+            UIPasteboard.general.string = code
+            #endif
+            
+            showingCopySuccess = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
+            }
         }
     }
 
@@ -304,8 +374,74 @@ struct NotebookChartsView: View {
         Task {
             isLoading = true
             await sendNotebookJSON(named: notebookName)
+            generateCodeFromNotebook()
             isLoading = false
         }
+    }
+    
+    private func generateCodeFromNotebook() {
+        var code = """
+        # Jupyter Notebook: \(notebookName)
+        # Generated from Pulto Spatial Notebook Viewer
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        
+        """
+        
+        if !chartImages.isEmpty {
+            code += """
+            # Chart data from spatial positioning
+            chart_positions = {
+            """
+            
+            for (chartKey, offset) in chartOffsets {
+                code += """
+                    '\(chartKey)': {'x': \(offset.width), 'y': \(offset.height)},
+                """
+            }
+            
+            code += """
+            }
+            
+            # Recreate charts with spatial positioning
+            fig, axes = plt.subplots(\(chartImages.count), 1, figsize=(12, \(chartImages.count * 4)))
+            if \(chartImages.count) == 1:
+                axes = [axes]
+            
+            """
+            
+            for (index, chartKey) in chartImages.keys.sorted().enumerated() {
+                code += """
+                # Chart \(chartKey)
+                ax\(index) = axes[\(index)]
+                x_data = np.linspace(0, 10, 100)
+                y_data = np.sin(x_data + \(index))
+                ax\(index).plot(x_data, y_data, label='Chart \(chartKey)')
+                ax\(index).set_title('Chart \(chartKey)')
+                ax\(index).legend()
+                ax\(index).grid(True, alpha=0.3)
+                
+                """
+            }
+            
+            code += """
+            plt.tight_layout()
+            plt.show()
+            
+            print("Chart positioning summary:")
+            for chart_id, pos in chart_positions.items():
+                print(f"{chart_id}: x={pos['x']:.1f}, y={pos['y']:.1f}")
+            """
+        } else {
+            code += """
+            # No charts loaded yet
+            print("Load a notebook to generate chart code")
+            """
+        }
+        
+        generatedCode = code
     }
 
     private func loadModel() {
@@ -599,6 +735,7 @@ struct NotebookChartsView: View {
                         } else {
                             chartImages = decodedCharts
                             result = "Images decoded successfully"
+                            generateCodeFromNotebook()
                         }
                     }
                 }
@@ -680,21 +817,7 @@ extension Data {
         }
     }
 }
-/*
-// Usage example showing how to present it modally
-struct ContentView: View {
-    @State private var showingNotebook = false
 
-    var body: some View {
-        Button("Show Notebook Charts") {
-            showingNotebook = true
-        }
-        .sheet(isPresented: $showingNotebook) {
-            NotebookChartsView()
-        }
-    }
-}
-*/
 #Preview {
     NotebookChartsView()
 }

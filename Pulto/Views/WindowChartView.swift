@@ -14,6 +14,8 @@ struct WindowChartView: View {
     @StateObject private var viewModel = ChartViewModel()
     @State private var draggingOffsets: [UUID: CGSize] = [:]
     @State private var draggingOffsetControl: CGSize = .zero
+    @State private var showCodeSidebar = false 
+    @State private var generatedCode = "" 
     let windowID: Int?
 
     init(windowID: Int? = nil) {
@@ -21,59 +23,140 @@ struct WindowChartView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Windows
-            ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
-                if window.isVisible {
-                    DraggableWindow(
-                        window: window,
-                        index: index,
-                        viewModel: viewModel,
-                        draggingOffset: draggingOffsets[window.id] ?? .zero
-                    ) { newOffset in
-                        draggingOffsets[window.id] = newOffset
+        HStack(spacing: 0) {
+            // Main Chart Content
+            ZStack {
+                // Windows
+                ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
+                    if window.isVisible {
+                        DraggableWindow(
+                            window: window,
+                            index: index,
+                            viewModel: viewModel,
+                            draggingOffset: draggingOffsets[window.id] ?? .zero
+                        ) { newOffset in
+                            draggingOffsets[window.id] = newOffset
+                        }
+                        .zIndex(Double(index))
                     }
-                    .zIndex(Double(index))
+                }
+
+                // Control Window
+                ControlWindowView(viewModel: viewModel)
+                    .frame(width: 350, height: 500)
+                    .background(Color.gray.opacity(0.9))
+                    .cornerRadius(15)
+                    .shadow(radius: 10)
+                    .offset(
+                        x: viewModel.controlOffset.width + draggingOffsetControl.width,
+                        y: viewModel.controlOffset.height + draggingOffsetControl.height
+                    )
+                    .rotationEffect(viewModel.controlRotation)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { gesture in
+                                draggingOffsetControl = gesture.translation
+                            }
+                            .onEnded { gesture in
+                                viewModel.controlOffset.width += gesture.translation.width
+                                viewModel.controlOffset.height += gesture.translation.height
+                                draggingOffsetControl = .zero
+                                viewModel.saveWindowStates()
+                                generateChartCode() 
+                            }
+                    )
+                    .zIndex(1000) // Always on top
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.opacity(0.1))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showCodeSidebar.toggle() }) {
+                        Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
+                            .font(.title3)
+                    }
                 }
             }
-
-            // Control Window
-            ControlWindowView(viewModel: viewModel)
-                .frame(width: 350, height: 500)
-                .background(Color.gray.opacity(0.9))
-                .cornerRadius(15)
-                .shadow(radius: 10)
-                .offset(
-                    x: viewModel.controlOffset.width + draggingOffsetControl.width,
-                    y: viewModel.controlOffset.height + draggingOffsetControl.height
-                )
-                .rotationEffect(viewModel.controlRotation)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            draggingOffsetControl = gesture.translation
-                        }
-                        .onEnded { gesture in
-                            viewModel.controlOffset.width += gesture.translation.width
-                            viewModel.controlOffset.height += gesture.translation.height
-                            draggingOffsetControl = .zero
-                            viewModel.saveWindowStates()
-                        }
-                )
-                .zIndex(1000) // Always on top
+            
+            // Code Sidebar
+            if showCodeSidebar {
+                CodeSidebarView(code: generatedCode)
+                    .frame(width: 400)
+                    .transition(.move(edge: .trailing))
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.1))
         .onAppear {
             if let windowID = windowID {
                 saveChartDataToWindowManager()
             }
+            generateChartCode() 
         }
         .onDisappear {
             if let windowID = windowID {
                 saveChartDataToWindowManager()
             }
         }
+        .onChange(of: viewModel.windows.count) { _, _ in
+            generateChartCode() 
+        }
+        .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
+    }
+    
+    private struct CodeSidebarView: View {
+        let code: String
+        @State private var showingCopySuccess = false
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Label("Chart Code", systemImage: "chart.xyaxis.line")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    Spacer()
+                    
+                    Button(action: copyCode) {
+                        Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(showingCopySuccess ? .green : .blue)
+                    }
+                    .animation(.easeInOut, value: showingCopySuccess)
+                }
+                .padding()
+                .background(.regularMaterial)
+                
+                Divider()
+                
+                // Code content
+                ScrollView {
+                    Text(code)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.ultraThinMaterial)
+            }
+            .background(.regularMaterial)
+        }
+        
+        private func copyCode() {
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #else
+            UIPasteboard.general.string = code
+            #endif
+            
+            showingCopySuccess = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
+            }
+        }
+    }
+    
+    private func generateChartCode() {
+        generatedCode = generateChartContent()
     }
     
     private func saveChartDataToWindowManager() {

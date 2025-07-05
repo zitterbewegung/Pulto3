@@ -26,11 +26,6 @@ final class PultoHomeViewModel: ObservableObject {
         // Load projects regardless of login state
         await loadRecentProjects()
 
-        // Don't load user stats for now
-        // if isUserLoggedIn {
-        //     await loadUserStats()
-        // }
-
         isLoadingProjects = false
     }
 
@@ -241,6 +236,7 @@ final class PultoHomeViewModel: ObservableObject {
             let (visualizations, dataPoints, collaborators) = getNotebookStats(fileURL)
             
             let project = Project(
+                id: UUID(),
                 name: projectName,
                 type: projectType,
                 icon: icon,
@@ -507,7 +503,7 @@ final class PultoHomeViewModel: ObservableObject {
     }
 
     private func loadUserStats() async {
-        // Calculate stats from the user’s current projects
+        // Calculate stats from the user's current projects
         let totalProjects = recentProjects.count
         let visualizations = recentProjects.reduce(0) { $0 + $1.visualizations }
         let dataPointsTotal = recentProjects.reduce(0) { $0 + $1.dataPoints }
@@ -626,6 +622,175 @@ class KeychainHelper {
     }
 }
 
+// MARK: - visionOS Curved Window Components
+
+struct VisionOSWindow<Content: View>: View {
+    let content: Content
+    let depth: CGFloat
+    
+    init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
+        self.content = content()
+        self.depth = depth
+    }
+    
+    var body: some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .scaleEffect(depth > 0 ? 1.0 + (depth * 0.02) : 1.0)
+    }
+}
+
+struct SpatialBackground: View {
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Primary volumetric gradient
+                RadialGradient(
+                    colors: [
+                        Color(red: 0.1, green: 0.15, blue: 0.25).opacity(0.3),
+                        Color(red: 0.05, green: 0.08, blue: 0.15).opacity(0.5),
+                        Color.black.opacity(0.8)
+                    ],
+                    center: .center,
+                    startRadius: 100,
+                    endRadius: max(geometry.size.width, geometry.size.height)
+                )
+                
+                // Floating particles for depth
+                ForEach(0..<15, id: \.self) { index in
+                    FloatingElement(
+                        index: index,
+                        geometry: geometry
+                    )
+                }
+                
+                // Volumetric lighting effects
+                DynamicLighting()
+            }
+            .ignoresSafeArea()
+        }
+    }
+}
+
+struct FloatingElement: View {
+    let index: Int
+    let geometry: GeometryProxy
+    @State private var position: CGPoint = .zero
+    @State private var opacity: Double = 0
+    @State private var scale: CGFloat = 1
+    
+    var body: some View {
+        Circle()
+            .fill(.ultraThinMaterial)
+            .frame(width: CGFloat.random(in: 30...80))
+            .blur(radius: CGFloat.random(in: 15...40))
+            .opacity(opacity)
+            .scaleEffect(scale)
+            .position(position)
+            .onAppear {
+                position = CGPoint(
+                    x: CGFloat.random(in: 0...geometry.size.width),
+                    y: CGFloat.random(in: 0...geometry.size.height)
+                )
+                
+                withAnimation(
+                    .easeInOut(duration: Double.random(in: 8...20))
+                    .repeatForever(autoreverses: true)
+                ) {
+                    position = CGPoint(
+                        x: CGFloat.random(in: 0...geometry.size.width),
+                        y: CGFloat.random(in: 0...geometry.size.height)
+                    )
+                    opacity = Double.random(in: 0.1...0.4)
+                    scale = CGFloat.random(in: 0.8...1.3)
+                }
+            }
+    }
+}
+
+struct DynamicLighting: View {
+    @State private var lightPosition: CGPoint = CGPoint(x: 200, y: 200)
+    
+    var body: some View {
+        RadialGradient(
+            colors: [
+                Color.blue.opacity(0.15),
+                Color.purple.opacity(0.08),
+                Color.clear
+            ],
+            center: UnitPoint(x: lightPosition.x / 400, y: lightPosition.y / 400),
+            startRadius: 50,
+            endRadius: 300
+        )
+        .blur(radius: 20)
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 12)
+                .repeatForever(autoreverses: true)
+            ) {
+                lightPosition = CGPoint(x: 600, y: 300)
+            }
+        }
+    }
+}
+
+struct VisionOSButtonStyle: ButtonStyle {
+    enum Style {
+        case primary, secondary, tertiary
+        
+        var backgroundColor: AnyShapeStyle {
+            switch self {
+            case .primary: return AnyShapeStyle(.blue)
+            case .secondary: return AnyShapeStyle(.regularMaterial)
+            case .tertiary: return AnyShapeStyle(.ultraThinMaterial)
+            }
+        }
+        
+        var foregroundColor: Color {
+            switch self {
+            case .primary: return .white
+            case .secondary: return .primary
+            case .tertiary: return .secondary
+            }
+        }
+    }
+    
+    let style: Style
+    
+    init(_ style: Style = .primary) {
+        self.style = style
+    }
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.body, design: .rounded, weight: .medium))
+            .foregroundStyle(style.foregroundColor)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 20)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(style.backgroundColor)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.1), radius: 12, x: 0, y: 6)
+            }
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Main View
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
@@ -643,22 +808,57 @@ struct PultoHomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                backgroundGradient
+                SpatialBackground()
 
-                VStack(spacing: 40) {
-                    HeaderView(viewModel: viewModel) {
-                        closeAllSheets()
-                        showAppleSignIn = true
+                ScrollView {
+                    VStack(spacing: 24) {
+                        HeaderView(viewModel: viewModel, onLoginTap: {
+                            closeAllSheets()
+                            showAppleSignIn = true
+                        }, onSettingsTap: {
+                            closeAllSheets()
+                            showSettings = true
+                        })
+
+                        PrimaryActionsGrid(
+                            showCreateProject: $showCreateProject,
+                            showTemplates: $showTemplates,
+                            showProjectBrowser: $showProjectBrowser,
+                            onOpenProject: {
+                                closeAllSheets()
+                                openWindow(id: "main")
+                            },
+                            closeAllSheets: closeAllSheets
+                        )
+
+                        if viewModel.isLoadingProjects {
+                            VisionOSWindow {
+                                VStack(spacing: 12) {
+                                    ProgressView()
+                                        .scaleEffect(1.2)
+                                    Text("Loading projects...")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(24)
+                            }
+                        } else if !viewModel.recentProjects.isEmpty {
+                            RecentProjectsSection(
+                                projects: viewModel.recentProjects,
+                                onProjectTap: openRecentProject,
+                                onViewAll: {
+                                    closeAllSheets()
+                                    showProjectBrowser = true
+                                }
+                            )
+                        }
                     }
-
-                    mainContent
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 20)
                 }
             }
-            .preferredColorScheme(viewModel.isDarkMode ? .dark : .light)
+            .preferredColorScheme(.dark)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    toolbarButtons
-                }
             }
             .task {
                 await viewModel.loadInitialData()
@@ -669,7 +869,7 @@ struct PultoHomeView: View {
                         .navigationTitle("Create New Project")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
+                            ToolbarItem(placement: .topBarTrailing) {
                                 Button("Done") {
                                     showCreateProject = false
                                 }
@@ -694,7 +894,7 @@ struct PultoHomeView: View {
                     .navigationTitle("Settings")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") {
                                 showSettings = false
                             }
@@ -709,7 +909,7 @@ struct PultoHomeView: View {
                     userName: $viewModel.userName
                 )
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Close") {
                                 showLogin = false
                             }
@@ -728,9 +928,6 @@ struct PultoHomeView: View {
             }
             .sheet(isPresented: $showProjectBrowser) {
                 ProjectBrowserView(windowManager: windowManager)
-            }
-            .sheet(isPresented: .constant(false)) {
-                EmptyView()
             }
         }
     }
@@ -756,95 +953,7 @@ struct PultoHomeView: View {
             closeAllSheets()
             
             // Open the main spatial workspace with the selected project
-            // In a real app, you'd pass the project ID or data to the window
             openWindow(id: "main")
-        }
-    }
-
-    private var mainContent: some View {
-        ScrollView {
-            LazyVStack(spacing: 32) {
-                PrimaryActionsGrid(
-                    showCreateProject: $showCreateProject,
-                    showTemplates: $showTemplates,
-                    showProjectBrowser: $showProjectBrowser,
-                    onOpenProject: {
-                        closeAllSheets()
-                        openWindow(id: "main")  // Open the spatial workspace
-                    },
-                    isDarkMode: viewModel.isDarkMode,
-                    closeAllSheets: closeAllSheets
-                )
-
-                // Show recent projects regardless of login state
-                if viewModel.isLoadingProjects {
-                    ProgressView("Loading projects...")
-                        .frame(height: 200)
-                } else if !viewModel.recentProjects.isEmpty {
-                    RecentProjectsSection(
-                        projects: viewModel.recentProjects,
-                        isDarkMode: viewModel.isDarkMode,
-                        onProjectTap: openRecentProject,
-                        onViewAll: {
-                            closeAllSheets()
-                            showProjectBrowser = true
-                        }
-                    )
-                }
-
-                // User stats disabled for now
-                // if viewModel.isUserLoggedIn {
-                //     if let stats = viewModel.stats {
-                //         QuickStatsSection(
-                //             stats: stats,
-                //             isDarkMode: viewModel.isDarkMode
-                //         )
-                //     }
-                // }
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 20)
-        }
-    }
-
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: viewModel.isDarkMode ? [
-                Color(red: 0.07, green: 0.07, blue: 0.12),
-                Color(red: 0.05, green: 0.05, blue: 0.08)
-            ] : [
-                Color(red: 0.98, green: 0.98, blue: 1.0),
-                Color(red: 0.95, green: 0.95, blue: 0.98)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-
-    private var toolbarButtons: some View {
-        HStack(spacing: 16) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    viewModel.isDarkMode.toggle()
-                }
-            } label: {
-                Image(systemName: viewModel.isDarkMode ? "sun.max" : "moon")
-                    .symbolRenderingMode(.hierarchical)
-                    .font(.title2)
-                    .foregroundStyle(viewModel.isDarkMode ? .yellow : .indigo)
-            }
-            .buttonStyle(.borderless)
-
-            Button {
-                closeAllSheets()
-                showSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .symbolRenderingMode(.hierarchical)
-                    .font(.title2)
-            }
-            .buttonStyle(.borderless)
         }
     }
 }
@@ -853,36 +962,42 @@ struct PultoHomeView: View {
 struct HeaderView: View {
     @ObservedObject var viewModel: PultoHomeViewModel
     let onLoginTap: () -> Void
+    let onSettingsTap: () -> Void
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Pulto")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .leading,
-                            endPoint: .trailing
+        VisionOSWindow(depth: 1) {
+            HStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Pulto")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
+
+                    Text("Spatial Data Visualization Platform")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 16) {
+                    SettingsButton(onTap: onSettingsTap)
+
+                    UserProfileButton(
+                        userName: viewModel.userName,
+                        isLoggedIn: viewModel.isUserLoggedIn,
+                        onTap: onLoginTap
                     )
-
-                Text("Spatial Data Visualization Platform")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundColor(viewModel.isDarkMode ? .white : .black)
+                }
             }
-
-            Spacer()
-
-            UserProfileButton(
-                userName: viewModel.userName,
-                isLoggedIn: viewModel.isUserLoggedIn,
-                onTap: onLoginTap
-            )
+            .padding(24)
         }
-        .padding(.horizontal, 40)
-        .padding(.top, 40)
     }
 }
 
@@ -891,31 +1006,45 @@ struct UserProfileButton: View {
     let userName: String
     let isLoggedIn: Bool
     let onTap: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
                     .font(.title)
                     .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.blue)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(isLoggedIn ? userName : "Sign In")
                         .font(.headline)
+                        .foregroundStyle(.primary)
 
                     if isLoggedIn {
                         Text("View Profile")
-                            .font(.caption)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial)
-            .clipShape(Capsule())
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
         .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 
@@ -925,96 +1054,101 @@ struct PrimaryActionsGrid: View {
     @Binding var showTemplates: Bool
     @Binding var showProjectBrowser: Bool
     let onOpenProject: () -> Void
-    let isDarkMode: Bool
     let closeAllSheets: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Get Started")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(isDarkMode ? .white : .black)
+        VisionOSWindow(depth: 2) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Get Started")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
 
-            HStack(spacing: 20) {
-                ActionCard(
-                    title: "Create New",
-                    subtitle: "Start a visualization",
-                    icon: "plus.square.on.square",
-                    color: .blue,
-                    action: onOpenProject
-                )
+                HStack(spacing: 16) {
+                    HomeActionCard(
+                        title: "Create New",
+                        subtitle: "Start a visualization",
+                        icon: "plus.square.on.square",
+                        color: .blue,
+                        action: onOpenProject
+                    )
 
-                ActionCard(
-                    title: "Open Project", 
-                    subtitle: "Browse existing projects",
-                    icon: "square.and.arrow.down.on.square",
-                    color: .purple
-                ) {
-                    closeAllSheets()
-                    showProjectBrowser = true
-                }
+                    HomeActionCard(
+                        title: "Open Project", 
+                        subtitle: "Browse existing projects",
+                        icon: "square.and.arrow.down.on.square",
+                        color: .purple
+                    ) {
+                        closeAllSheets()
+                        showProjectBrowser = true
+                    }
 
-                ActionCard(
-                    title: "Import",
-                    subtitle: "Import juypter notebooks",
-                    icon: "folder.badge.gearshape",
-                    color: .green
-                ) {
-                    closeAllSheets()
-                    showTemplates = true
-
+                    HomeActionCard(
+                        title: "Import",
+                        subtitle: "Import jupyter notebooks",
+                        icon: "folder.badge.gearshape",
+                        color: .green
+                    ) {
+                        closeAllSheets()
+                        showTemplates = true
+                    }
                 }
             }
+            .padding(24)
         }
     }
 }
 
-// MARK: - Action Card
-struct ActionCard: View {
+// MARK: - Spatial Action Card
+struct HomeActionCard: View {
     let title: String
     let subtitle: String
     let icon: String
     let color: Color
     let action: () -> Void
-
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 16) {
                 Image(systemName: icon)
-                    .font(.system(size: 40))
+                    .font(.system(size: 48))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(color)
+                    .symbolEffect(.bounce, value: isHovered)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(title)
-                        .font(.headline)
+                        .font(.title)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.primary)
 
                     Text(subtitle)
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
 
                 Spacer()
             }
             .frame(maxWidth: .infinity)
             .frame(height: 160)
-            .padding(24)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(color.opacity(isHovered ? 0.5 : 0), lineWidth: 2)
-            )
-            .scaleEffect(isHovered ? 1.02 : 1.0)
+            .padding(32)
         }
         .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(color.opacity(isHovered ? 0.4 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.2 : 0.1), radius: isHovered ? 16 : 8, x: 0, y: isHovered ? 8 : 4)
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
+            isHovered = hovering
         }
     }
 }
@@ -1022,44 +1156,45 @@ struct ActionCard: View {
 // MARK: - Recent Projects Section
 struct RecentProjectsSection: View {
     let projects: [Project]
-    let isDarkMode: Bool
     let onProjectTap: (Project) -> Void 
     let onViewAll: () -> Void 
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("Recent Projects")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(isDarkMode ? .white : .black)
+        VisionOSWindow(depth: 1) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Recent Projects")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
 
-                Spacer()
+                    Spacer()
 
-                Button("View All") {
-                    onViewAll() 
-                }
-                .buttonStyle(.borderless)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 16) {
-                    // Only show the last 5 recent projects
-                    ForEach(Array(projects.prefix(5))) { project in
-                        RecentProjectCard(
-                            project: project,
-                            onTap: { onProjectTap(project) } 
-                        )
+                    Button("View All") {
+                        onViewAll() 
                     }
+                    .buttonStyle(VisionOSButtonStyle(.secondary))
                 }
-                .padding(.horizontal, 20)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 16) {
+                        ForEach(Array(projects.prefix(6))) { project in
+                            SpatialProjectCard(
+                                project: project,
+                                onTap: { onProjectTap(project) } 
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                }
             }
+            .padding(24)
         }
     }
 }
 
-// MARK: - Recent Project Card
-struct RecentProjectCard: View {
+// MARK: - Spatial Project Card
+struct SpatialProjectCard: View {
     let project: Project
     let onTap: () -> Void
     @State private var isHovered = false
@@ -1067,23 +1202,32 @@ struct RecentProjectCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 12) {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(project.color.opacity(0.3))
-                    .frame(width: 200, height: 120)
-                    .overlay(
-                        Image(systemName: project.icon)
-                            .font(.system(size: 40))
-                            .foregroundStyle(project.color)
+                // Project icon area with color
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [project.color.opacity(0.4), project.color.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
+                    .frame(width: 200, height: 100)
+                    .overlay {
+                        Image(systemName: project.icon)
+                            .font(.system(size: 32))
+                            .foregroundStyle(project.color)
+                            .symbolEffect(.bounce, value: isHovered)
+                    }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(project.filename)")  
-                        .font(.headline)
+                    Text(project.filename)  
+                        .font(.subheadline)
                         .lineLimit(1)
+                        .foregroundStyle(.primary)
 
                     Text(project.type)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(project.color)
 
                     Text(project.lastModified, style: .relative)
                         .font(.caption2)
@@ -1093,90 +1237,22 @@ struct RecentProjectCard: View {
                 .padding(.bottom, 12)
             }
             .frame(width: 200)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .scaleEffect(isHovered ? 1.05 : 1.0)
-            .shadow(color: .black.opacity(isHovered ? 0.1 : 0.05), radius: isHovered ? 8 : 4)
         }
         .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 12 : 6, x: 0, y: isHovered ? 6 : 3)
+        }
+        .scaleEffect(isHovered ? 1.03 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isHovered = hovering
-            }
+            isHovered = hovering
         }
-    }
-}
-
-// MARK: - Quick Stats Section
-struct QuickStatsSection: View {
-    let stats: UserStats
-    let isDarkMode: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Your Activity")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(isDarkMode ? .white : .black)
-
-            HStack(spacing: 20) {
-                StatCard(
-                    value: "\(stats.totalProjects)",
-                    label: "Total Projects",
-                    icon: "square.stack.3d.up",
-                    color: .blue
-                )
-
-                StatCard(
-                    value: "\(stats.visualizations)",
-                    label: "Visualizations",
-                    icon: "chart.bar.xaxis",
-                    color: .purple
-                )
-
-                StatCard(
-                    value: stats.dataPoints,
-                    label: "Data Points",
-                    icon: "circle.grid.3x3",
-                    color: .green
-                )
-
-                StatCard(
-                    value: "\(stats.collaborators)",
-                    label: "Collaborators",
-                    icon: "person.2",
-                    color: .orange
-                )
-            }
-        }
-    }
-}
-
-// MARK: - Stat Card
-struct StatCard: View {
-    let value: String
-    let label: String
-    let icon: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(color)
-                .symbolRenderingMode(.hierarchical)
-
-            Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -1272,43 +1348,38 @@ struct LoginView: View {
     @State private var showingAppleSignIn = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Sign In to Pulto")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.top)
+        VisionOSWindow {
+            VStack(spacing: 20) {
+                Text("Sign In to Pulto")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .padding(.top, 20)
 
-            VStack(spacing: 16) {
-                TextField("Username", text: $userName)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 300)
+                VStack(spacing: 16) {
+                    TextField("Username", text: $userName)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 280)
 
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 300)
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 280)
 
-                Button("Sign In") {
-                    showingAppleSignIn = true
+                    Button("Sign In") {
+                        showingAppleSignIn = true
+                    }
+                    .buttonStyle(VisionOSButtonStyle(.primary))
+                    .controlSize(.large)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .padding()
+                
+                Spacer()
             }
-            .padding()
-            
-            Spacer()
+            .padding(24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $showingAppleSignIn) {
             AppleSignInView()
                 .frame(width: 600, height: 700)
         }
-    }
-}
-
-// MARK: - Preview
-struct PultoHomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        PultoHomeView()
     }
 }
 
@@ -1355,6 +1426,45 @@ extension Color {
         case "white": return .white
         case "clear": return .clear
         default: return .blue // fallback
+        }
+    }
+}
+
+// MARK: - Preview
+struct PultoHomeView_Previews: PreviewProvider {
+    static var previews: some View {
+        PultoHomeView()
+    }
+}
+
+struct SettingsButton: View {
+    let onTap: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button {
+            onTap()
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.title)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }

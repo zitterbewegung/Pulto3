@@ -3,7 +3,7 @@
 //  Volumetric Window
 //
 //  Created by Joshua Herman on 5/26/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 
@@ -12,7 +12,7 @@
 //  SwiftChartsWWDC24
 //
 //  Created by Joshua Herman on 2/11/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -568,7 +568,7 @@ struct QuickActionsSection: View {
     }
 }
 
-struct SpatialActionCard: View {
+struct ActionCard: View {
     let title: String
     let subtitle: String
     let icon: String
@@ -613,6 +613,35 @@ struct SpatialActionCard: View {
         .onHover { hovering in
             isHovered = hovering
         }
+    }
+}
+
+struct ConfigurationSection<Content: View>: View {
+    let title: String
+    let icon: String
+    let color: Color
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(color)
+                    .symbolRenderingMode(.hierarchical)
+
+                Text(title)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Spacer()
+            }
+
+            content
+        }
+        .padding(24)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 }
 
@@ -852,35 +881,6 @@ struct ModernNotebookDetailView: View {
                 self.showAlert = true
             }
         }
-    }
-}
-
-struct ConfigurationSection<Content: View>: View {
-    let title: String
-    let icon: String
-    let color: Color
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundStyle(color)
-                    .symbolRenderingMode(.hierarchical)
-
-                Text(title)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Spacer()
-            }
-
-            content
-        }
-        .padding(24)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 }
 

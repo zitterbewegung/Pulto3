@@ -10,70 +10,401 @@ struct ChartsView: View {
     @State private var showSidebar = true
     @State private var selectedDataset: String? = nil
     @State private var visualizationSettings = VisualizationSettings()
+    @State private var showCodeSidebar = false
+    @State private var generatedCode = ""
 
     var body: some View {
-        NavigationSplitView(
-            columnVisibility: .constant(.all),
-            sidebar: {
-                if showSidebar {
-                    SidebarView(
-                        selectedDataset: $selectedDataset,
-                        visualizationType: $selectedVisualizationType
+        HStack(spacing: 0) {
+            NavigationSplitView(
+                columnVisibility: .constant(.all),
+                sidebar: {
+                    if showSidebar {
+                        SidebarView(
+                            selectedDataset: $selectedDataset,
+                            visualizationType: $selectedVisualizationType
+                        )
+                    }
+                },
+                content: {
+                    VisualizationView(
+                        type: selectedVisualizationType,
+                        settings: $visualizationSettings
+                    )
+                    .navigationTitle(selectedVisualizationType.rawValue)
+                    .navigationBarTitleDisplayMode(.inline)
+                },
+                detail: {
+                    ControlPanelView(
+                        visualizationType: selectedVisualizationType,
+                        settings: $visualizationSettings
                     )
                 }
-            },
-            content: {
-                VisualizationView(
-                    type: selectedVisualizationType,
-                    settings: $visualizationSettings
-                )
-                .navigationTitle(selectedVisualizationType.rawValue)
-                .navigationBarTitleDisplayMode(.inline)
-            },
-            detail: {
-                ControlPanelView(
-                    visualizationType: selectedVisualizationType,
-                    settings: $visualizationSettings
-                )
-            }
-        )
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button(action: { showSidebar.toggle() }) {
-                    Image(systemName: "sidebar.left")
-                }
-
-                Picker("Visualization Type", selection: $selectedVisualizationType) {
-                    ForEach(VisualizationType.allCases) { type in
-                        Label(type.rawValue, systemImage: type.iconName)
-                            .tag(type)
+            )
+            .toolbar {
+                ToolbarItemGroup(placement: .navigation) {
+                    Button(action: { showSidebar.toggle() }) {
+                        Image(systemName: "sidebar.left")
                     }
+
+                    Picker("Visualization Type", selection: $selectedVisualizationType) {
+                        ForEach(VisualizationType.allCases) { type in
+                            Label(type.rawValue, systemImage: type.iconName)
+                                .tag(type)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 300)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 300)
+
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button(action: { showCodeSidebar.toggle() }) {
+                        Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
+                    }
+                    .help("Toggle Code Sidebar")
+
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .help("Import Data")
+
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .help("Export View")
+
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                    }
+                    .help("Close Window")
+                    .buttonStyle(.plain)
+                    .keyboardShortcut("w", modifiers: .command)
+                }
             }
-
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button(action: {}) {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .help("Import Data")
-
-                Button(action: {}) {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .help("Export View")
-
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                }
-                .help("Close Window")
-                .buttonStyle(.plain)
-                .keyboardShortcut("w", modifiers: .command)
+            
+            // Code Sidebar
+            if showCodeSidebar {
+                CodeSidebarView(code: generatedCode)
+                    .frame(width: 400)
+                    .transition(.move(edge: .trailing))
             }
         }
+        .onAppear {
+            generateChartsCode()
+        }
+        .onChange(of: selectedVisualizationType) { _, _ in
+            generateChartsCode()
+        }
+        .onChange(of: visualizationSettings) { _, _ in
+            generateChartsCode()
+        }
+        .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
+    }
+    
+    // Code Sidebar View
+    private struct CodeSidebarView: View {
+        let code: String
+        @State private var showingCopySuccess = false
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Label("Charts Code", systemImage: "chart.bar")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    Spacer()
+                    
+                    Button(action: copyCode) {
+                        Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(showingCopySuccess ? .green : .blue)
+                    }
+                    .animation(.easeInOut, value: showingCopySuccess)
+                }
+                .padding()
+                .background(.regularMaterial)
+                
+                Divider()
+                
+                // Code content
+                ScrollView {
+                    Text(code)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.ultraThinMaterial)
+            }
+            .background(.regularMaterial)
+        }
+        
+        private func copyCode() {
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #else
+            UIPasteboard.general.string = code
+            #endif
+            
+            showingCopySuccess = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
+            }
+        }
+    }
+    
+    // Generate charts code function
+    private func generateChartsCode() {
+        var code = """
+        # Charts Visualization
+        # Generated from ChartsView
+        # Type: \(selectedVisualizationType.rawValue)
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from mpl_toolkits.mplot3d import Axes3D
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # Visualization Settings
+        settings = {
+            'show_grid': \(visualizationSettings.showGrid),
+            'show_axes': \(visualizationSettings.showAxes),
+            'enable_shadows': \(visualizationSettings.enableShadows),
+            'point_size': \(visualizationSettings.pointSize),
+            'color_mode': '\(visualizationSettings.colorMode)',
+            'quality': '\(visualizationSettings.quality)',
+            'progressive_loading': \(visualizationSettings.progressiveLoading)
+        }
+        
+        """
+        
+        switch selectedVisualizationType {
+        case .twoDimensional:
+            code += """
+            # 2D Data Visualization
+            
+            # Create sample heatmap data
+            x = np.linspace(-2, 2, 20)
+            y = np.linspace(-2, 2, 20)
+            X, Y = np.meshgrid(x, y)
+            Z = np.sin(X * 0.3) * np.cos(Y * 0.3)
+            
+            # Create heatmap
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+            
+            # Heatmap
+            im = ax1.imshow(Z, extent=[-2, 2, -2, 2], cmap='viridis', origin='lower')
+            ax1.set_title('Temperature Heatmap')
+            ax1.set_xlabel('X Position')
+            ax1.set_ylabel('Y Position')
+            if settings['show_grid']:
+                ax1.grid(True, alpha=0.3)
+            plt.colorbar(im, ax=ax1)
+            
+            # Scatter plot
+            n_points = 50
+            scatter_x = np.random.uniform(-2, 2, n_points)
+            scatter_y = np.random.uniform(-2, 2, n_points)
+            scatter_z = np.sin(scatter_x * 0.3) * np.cos(scatter_y * 0.3) + np.random.normal(0, 0.1, n_points)
+            
+            scatter = ax2.scatter(scatter_x, scatter_y, c=scatter_z, s=settings['point_size']*10, 
+                                cmap='viridis', alpha=0.7)
+            ax2.set_title('Scatter Analysis')
+            ax2.set_xlabel('X Position')
+            ax2.set_ylabel('Y Position')
+            if settings['show_grid']:
+                ax2.grid(True, alpha=0.3)
+            plt.colorbar(scatter, ax=ax2)
+            
+            plt.tight_layout()
+            plt.show()
+            """
+            
+        case .threeDimensional:
+            code += """
+            # 3D Model Visualization
+            
+            # Create sample 3D objects
+            fig = plt.figure(figsize=(12, 10))
+            ax = fig.add_subplot(111, projection='3d')
+            
+            # Central cube
+            def draw_cube(ax, center, size):
+                # Define the vertices of a cube
+                r = [-size/2, size/2]
+                X, Y = np.meshgrid(r, r)
+                for z in r:
+                    ax.plot_surface(X + center[0], Y + center[1], 
+                                  np.ones_like(X) * (z + center[2]), alpha=0.6)
+                for y in r:
+                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1]), 
+                                  Y + center[2], alpha=0.6)
+                for x in r:
+                    ax.plot_surface(np.ones_like(X) * (x + center[0]), X + center[1], 
+                                  Y + center[2], alpha=0.6)
+            
+            # Draw central cube
+            draw_cube(ax, [0, 0, 0], 1.0)
+            
+            # Surrounding spheres
+            for i in range(6):
+                angle = i * np.pi / 3
+                x = np.sin(angle) * 3
+                z = np.cos(angle) * 3
+                
+                # Create sphere
+                u = np.linspace(0, 2 * np.pi, 20)
+                v = np.linspace(0, np.pi, 20)
+                sphere_x = 0.4 * np.outer(np.cos(u), np.sin(v)) + x
+                sphere_y = 0.4 * np.outer(np.sin(u), np.sin(v))
+                sphere_z = 0.4 * np.outer(np.ones(np.size(u)), np.cos(v)) + z
+                
+                ax.plot_surface(sphere_x, sphere_y, sphere_z, alpha=0.7)
+            
+            # Add coordinate axes if enabled
+            if settings['show_axes']:
+                ax.plot([0, 3], [0, 0], [0, 0], 'r-', linewidth=3, label='X')
+                ax.plot([0, 0], [0, 3], [0, 0], 'g-', linewidth=3, label='Y') 
+                ax.plot([0, 0], [0, 0], [0, 3], 'b-', linewidth=3, label='Z')
+                ax.legend()
+            
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            ax.set_title('3D Model Visualization')
+            
+            plt.tight_layout()
+            plt.show()
+            """
+            
+        case .pointCloud:
+            code += """
+            # Point Cloud Visualization
+            
+            # Generate sample point cloud data (terrain-like)
+            x_range = np.arange(-2, 2, 0.1)
+            z_range = np.arange(-2, 2, 0.1)
+            
+            points = []
+            for x in x_range:
+                for z in z_range:
+                    # Create height variation
+                    height = (np.sin(x * 2) * np.cos(z * 2) * 0.5 + 
+                             np.sin(x * 5) * np.sin(z * 5) * 0.1 + 
+                             np.random.uniform(-0.05, 0.05))
+                    
+                    # Calculate intensity based on height
+                    intensity = (height + 1) / 2
+                    
+                    # Classification based on regions
+                    if np.sqrt(x*x + z*z) < 0.5:
+                        classification = 0  # Center region
+                    elif abs(x) > 1.5 or abs(z) > 1.5:
+                        classification = 2  # Outer region
+                    else:
+                        classification = 1  # Middle region
+                    
+                    points.append([x, height, z, intensity, classification])
+            
+            # Add scattered elevated points
+            for _ in range(100):
+                x = np.random.uniform(-2, 2)
+                z = np.random.uniform(-2, 2)
+                y = np.random.uniform(0.5, 1.5)
+                intensity = np.random.uniform(0.3, 1.0)
+                classification = 3
+                points.append([x, y, z, intensity, classification])
+            
+            points = np.array(points)
+            
+            # Create visualization
+            fig = plt.figure(figsize=(15, 10))
+            
+            # 3D scatter plot
+            ax1 = fig.add_subplot(221, projection='3d')
+            scatter = ax1.scatter(points[:, 0], points[:, 2], points[:, 1], 
+                                c=points[:, 1], s=settings['point_size'], cmap='terrain', alpha=0.6)
+            ax1.set_xlabel('X')
+            ax1.set_ylabel('Z') 
+            ax1.set_zlabel('Height')
+            ax1.set_title('3D Point Cloud (Height Colored)')
+            plt.colorbar(scatter, ax=ax1, shrink=0.5)
+            
+            # Intensity view
+            ax2 = fig.add_subplot(222, projection='3d')
+            scatter2 = ax2.scatter(points[:, 0], points[:, 2], points[:, 1], 
+                                 c=points[:, 3], s=settings['point_size'], cmap='viridis', alpha=0.6)
+            ax2.set_xlabel('X')
+            ax2.set_ylabel('Z')
+            ax2.set_zlabel('Height')
+            ax2.set_title('Point Cloud (Intensity Colored)')
+            plt.colorbar(scatter2, ax=ax2, shrink=0.5)
+            
+            # Classification view
+            ax3 = fig.add_subplot(223, projection='3d')
+            colors = ['blue', 'green', 'orange', 'purple']
+            for i in range(4):
+                mask = points[:, 4] == i
+                if np.any(mask):
+                    ax3.scatter(points[mask, 0], points[mask, 2], points[mask, 1], 
+                              c=colors[i], s=settings['point_size'], alpha=0.7, 
+                              label=f'Class {i}')
+            ax3.set_xlabel('X')
+            ax3.set_ylabel('Z')
+            ax3.set_zlabel('Height')
+            ax3.set_title('Point Cloud (Classification)')
+            ax3.legend()
+            
+            # Top view (height map)
+            ax4 = fig.add_subplot(224)
+            terrain_mask = points[:, 4] < 3  # Exclude scattered points
+            terrain_points = points[terrain_mask]
+            scatter4 = ax4.scatter(terrain_points[:, 0], terrain_points[:, 2], 
+                                 c=terrain_points[:, 1], s=settings['point_size']*2, 
+                                 cmap='terrain', alpha=0.8)
+            ax4.set_xlabel('X')
+            ax4.set_ylabel('Z')
+            ax4.set_title('Top View (Height Map)')
+            ax4.set_aspect('equal')
+            if settings['show_grid']:
+                ax4.grid(True, alpha=0.3)
+            plt.colorbar(scatter4, ax=ax4)
+            
+            plt.tight_layout()
+            plt.show()
+            
+            # Print statistics
+            print("Point Cloud Statistics:")
+            print(f"Total points: {len(points)}")
+            print(f"Height range: [{np.min(points[:, 1]):.2f}, {np.max(points[:, 1]):.2f}]")
+            print(f"X range: [{np.min(points[:, 0]):.2f}, {np.max(points[:, 0]):.2f}]")
+            print(f"Z range: [{np.min(points[:, 2]):.2f}, {np.max(points[:, 2]):.2f}]")
+            print(f"Intensity range: [{np.min(points[:, 3]):.2f}, {np.max(points[:, 3]):.2f}]")
+            
+            # Classification breakdown
+            for i in range(4):
+                count = np.sum(points[:, 4] == i)
+                print(f"Class {i}: {count} points ({count/len(points)*100:.1f}%)")
+            """
+        }
+        
+        code += """
+        
+        # Export options (uncomment to use)
+        # plt.savefig('\(selectedVisualizationType.rawValue.lowercased().replacingOccurrences(of: " ", with: "_"))_visualization.png', 
+        #             dpi=300, bbox_inches='tight')
+        # plt.savefig('\(selectedVisualizationType.rawValue.lowercased().replacingOccurrences(of: " ", with: "_"))_visualization.pdf', 
+        #             bbox_inches='tight')
+        
+        print("\\nVisualization complete!")
+        print("Settings used:", settings)
+        """
+        
+        generatedCode = code
     }
 }
 
@@ -854,7 +1185,7 @@ struct Dataset: Identifiable {
     }
 }
 
-struct VisualizationSettings {
+struct VisualizationSettings: Equatable {
     var showGrid = true
     var showAxes = true
     var enableShadows = true
@@ -865,11 +1196,11 @@ struct VisualizationSettings {
     var progressiveLoading = true
 }
 
-enum ColorMode {
+enum ColorMode: Equatable {
     case height, intensity, classification
 }
 
-enum Quality {
+enum Quality: Equatable {
     case low, medium, high
 }
 

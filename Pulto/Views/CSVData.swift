@@ -11,20 +11,20 @@ import Charts
 import UniformTypeIdentifiers
 
 // MARK: - Data Models
-struct CSVData {
+struct CSVData: Equatable {
     let headers: [String]
     let rows: [[String]]
     let columnTypes: [ColumnType]
 }
 
-enum ColumnType {
+enum ColumnType: Equatable {
     case numeric
     case categorical
     case date
     case unknown
 }
 
-enum ChartRecommendation: CaseIterable {
+enum ChartRecommendation: CaseIterable, Equatable {
     case lineChart
     case barChart
     case scatterPlot
@@ -66,7 +66,7 @@ enum ChartRecommendation: CaseIterable {
     }
 }
 
-struct ChartScore {
+struct ChartScore: Equatable {
     let recommendation: ChartRecommendation
     let score: Double
     let reasoning: String
