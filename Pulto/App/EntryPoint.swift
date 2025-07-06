@@ -35,12 +35,12 @@ struct EntryPoint: App {
         .defaultSize(width: 1400, height: 900)
 
         // Home window - PultoHomeView as secondary interface
-        WindowGroup(id: "home") {
-            PultoHomeView()
-                .environmentObject(windowManager)
-        }
-        .windowStyle(.plain)
-        .defaultSize(width: 1280, height: 850)
+        //WindowGroup(id: "home") {
+        //    PultoHomeView()
+        //        .environmentObject(windowManager)
+        //}
+        //.windowStyle(.plain)
+        //.defaultSize(width: 1280, height: 850)
         
 
         
