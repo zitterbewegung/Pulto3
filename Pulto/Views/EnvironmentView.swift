@@ -169,15 +169,15 @@ struct VisionOSWindow<Content: View>: View {
     }
 }
 
-// MARK: - Vertical Tab Bar
-struct VerticalTabBar: View {
+// MARK: - Horizontal Tab Bar
+struct HorizontalTabBar: View {
     @Binding var selectedTab: ProjectTab
     @State private var hoveredTab: ProjectTab? = nil
     
     var body: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 0) {
             ForEach(ProjectTab.allCases, id: \.self) { tab in
-                VerticalTabButton(
+                HorizontalTabButton(
                     tab: tab,
                     isSelected: selectedTab == tab,
                     isHovered: hoveredTab == tab
@@ -193,22 +193,22 @@ struct VerticalTabBar: View {
                 }
             }
         }
-        .padding(.vertical, 12)
         .padding(.horizontal, 8)
+        .padding(.vertical, 8)
         .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.regularMaterial)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
                 }
-                .shadow(color: .black.opacity(0.1), radius: 12, x: 6, y: 0)
-                .shadow(color: .black.opacity(0.05), radius: 4, x: 2, y: 0)
+                .shadow(color: .black.opacity(0.1), radius: 16, x: 0, y: 8)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
         }
     }
 }
 
-struct VerticalTabButton: View {
+struct HorizontalTabButton: View {
     let tab: ProjectTab
     let isSelected: Bool
     let isHovered: Bool
@@ -216,26 +216,26 @@ struct VerticalTabButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(isSelected ? .white : .primary)
                 
                 Text(tab.rawValue)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(isSelected ? .white : .secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(isSelected ? .white : .primary)
             }
-            .frame(width: 64, height: 64)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(.blue)
                         .transition(.scale.combined(with: .opacity))
                 } else if isHovered {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(.blue.opacity(0.1))
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -255,7 +255,6 @@ struct EnvironmentView: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
     @StateObject private var viewModel = PultoHomeViewModel()
     @State private var selectedTab: ProjectTab = .workspace
-    @State private var showingSidebar = true
 
     // Sheet States
     @State private var showWorkspaceDialog = false
@@ -266,32 +265,28 @@ struct EnvironmentView: View {
     @State private var showAppleSignIn = false
 
     var body: some View {
-        NavigationSplitView(
-            columnVisibility: .constant(.all),
-            sidebar: {
-                sidebarContent
-            },
-            content: {
-                VStack(spacing: 0) {
-                    HeaderView(viewModel: viewModel, onLoginTap: {
-                        closeAllSheets()
-                        showAppleSignIn = true
-                    }, onSettingsTap: {
-                        closeAllSheets()
-                        showSettings = true
-                    })
-                    .padding(.horizontal)
-                    .padding(.top)
-                    
-                    mainContent
-                }
-            },
-            detail: {
-                detailView
+        HStack(spacing: 0) {
+            // Main Content Area
+            VStack(spacing: 0) {
+                HeaderView(viewModel: viewModel, onLoginTap: {
+                    closeAllSheets()
+                    showAppleSignIn = true
+                }, onSettingsTap: {
+                    closeAllSheets()
+                    showSettings = true
+                })
+                .padding(.horizontal)
+                .padding(.top)
+                
+                mainContent
             }
-        )
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // Detail View
+            detailView
+                .frame(width: 300)
+        }
+        .background(.regularMaterial)
         .task {
             await viewModel.loadInitialData()
         }
@@ -349,60 +344,9 @@ struct EnvironmentView: View {
         }
     }
 
-    // MARK: - Sidebar Content
-    private var sidebarContent: some View {
-        List {
-            Section("Project") {
-                ForEach(ProjectTab.allCases, id: \.self) { tab in
-                    Button(action: { selectedTab = tab }) {
-                        Label(tab.rawValue, systemImage: tab.icon)
-                            .foregroundColor(selectedTab == tab ? .accentColor : .primary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            if let selectedProject = windowManager.selectedProject {
-                Section("Current Project") {
-                    HStack {
-                        Image(systemName: selectedProject.icon)
-                            .foregroundStyle(selectedProject.color)
-                        VStack(alignment: .leading) {
-                            Text(selectedProject.name)
-                                .font(.headline)
-                            Text("\(selectedProject.visualizations) views")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            
-            Section("Quick Actions") {
-                Button(action: quickSaveWorkspace) {
-                    Label("Quick Save", systemImage: "square.and.arrow.down")
-                }
-                .disabled(windowManager.getAllWindows().isEmpty)
-
-                Button(action: createSampleWorkspace) {
-                    Label("Create Demo", systemImage: "wand.and.stars")
-                }
-            }
-        }
-        .listStyle(.sidebar)
-        .frame(width: 240)
-    }
-
     // MARK: - Main Content Area
     private var mainContent: some View {
-        HStack(spacing: 0) {
-            // Left Side Tab Bar
-            VerticalTabBar(selectedTab: $selectedTab)
-                .padding(.leading, 8)
-                .padding(.vertical, 12)
-            
-            // Tab Content
+        VStack(spacing: 0) {
             Group {
                 switch selectedTab {
                 case .workspace:
@@ -430,29 +374,19 @@ struct EnvironmentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 20)
+            
+            HorizontalTabBar(selectedTab: $selectedTab)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
         }
     }
 
     // MARK: - Detail View
     private var detailView: some View {
         ActiveWindowsDetailView(windowManager: windowManager)
-            .frame(width: 300)
     }
 
     // MARK: - Computed Properties
-    private var workspaceSubtitle: String {
-        let windowCount = windowManager.getAllWindows().count
-        let projectCount = workspaceManager.getCustomWorkspaces().count
-
-        if windowCount > 0 {
-            return "\(windowCount) active view\(windowCount == 1 ? "" : "s")"
-        } else if projectCount > 0 {
-            return "\(projectCount) saved project\(projectCount == 1 ? "" : "s")"
-        } else {
-            return "Ready to create"
-        }
-    }
-
     private var supportedFileTypes: [UTType] {
         [
             .commaSeparatedText,
@@ -467,12 +401,6 @@ struct EnvironmentView: View {
     }
 
     // MARK: - Helper Methods
-    private func toggleSidebar() {
-        #if os(macOS)
-        NSApp.keyWindow?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
-        #endif
-    }
-
     private func closeAllSheets() {
         showWorkspaceDialog = false
         showTemplateGallery = false
@@ -498,36 +426,6 @@ struct EnvironmentView: View {
         nextWindowID += 1
     }
 
-    private func quickSaveWorkspace() {
-        let windows = windowManager.getAllWindows()
-        guard !windows.isEmpty else { return }
-
-        let timestamp = Date.now.formatted(date: .abbreviated, time: .shortened)
-        let workspaceName = "Quick Save - \(timestamp)"
-
-        Task {
-            do {
-                _ = try await workspaceManager.createNewWorkspace(
-                    name: workspaceName,
-                    description: "Quick save with \(windows.count) views",
-                    category: .custom,
-                    tags: ["quick-save"],
-                    windowManager: windowManager
-                )
-                
-                // Ensure UI updates happen on main thread
-                await MainActor.run {
-                    // Any UI updates would go here if needed
-                    print("Workspace saved successfully: \(workspaceName)")
-                }
-            } catch {
-                await MainActor.run {
-                    print("Failed to quick save: \(error)")
-                }
-            }
-        }
-    }
-
     private func loadWorkspace(_ workspace: WorkspaceMetadata) {
         Task {
             do {
@@ -547,32 +445,6 @@ struct EnvironmentView: View {
                     print("Failed to load workspace: \(error)")
                 }
             }
-        }
-    }
-
-    private func createSampleWorkspace() {
-        // Create a diverse set of sample windows
-        let sampleConfigs: [(WindowType, String)] = [
-            (.charts, "Sample Chart"),
-            (.column, "Sample Data"),
-            (.model3d, "3D Model"),
-            (.volume, "Metrics")
-        ]
-
-        for (index, (type, title)) in sampleConfigs.enumerated() {
-            let position = WindowPosition(
-                x: Double(100 + index * 30),
-                y: Double(100 + index * 30),
-                z: 0,
-                width: 700,
-                height: 500
-            )
-
-            _ = windowManager.createWindow(type, id: nextWindowID, position: position)
-            windowManager.addWindowTag(nextWindowID, tag: "demo")
-            openWindow(value: nextWindowID)
-            windowManager.markWindowAsOpened(nextWindowID)
-            nextWindowID += 1
         }
     }
 
@@ -1108,70 +980,6 @@ struct FormatCard: View {
     }
 }
 
-struct ProjectDetailView: View {
-    let project: Project
-    let onClose: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: project.icon)
-                    .font(.largeTitle)
-                    .foregroundStyle(project.color)
-
-                VStack(alignment: .leading) {
-                    Text(project.name)
-                        .font(.title)
-                        .fontWeight(.semibold)
-
-                    Text(project.type)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button("Close Project", action: onClose)
-                    .buttonStyle(.bordered)
-            }
-
-            Divider()
-
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                StatCard(
-                    title: "Visualizations",
-                    value: "\(project.visualizations)",
-                    icon: "chart.bar"
-                )
-
-                StatCard(
-                    title: "Data Points",
-                    value: "\(project.dataPoints)",
-                    icon: "circle.grid.3x3"
-                )
-
-                StatCard(
-                    title: "Collaborators",
-                    value: "\(project.collaborators)",
-                    icon: "person.2"
-                )
-
-                StatCard(
-                    title: "Last Modified",
-                    value: project.lastModified.formatted(.relative(presentation: .named)),
-                    icon: "clock"
-                )
-            }
-
-            Spacer()
-        }
-        .padding()
-    }
-}
-
 struct StatCard: View {
     let title: String
     let value: String
@@ -1353,11 +1161,5 @@ extension WindowType {
         case .pointcloud: return "circle.grid.3x3"
         case .model3d: return "cube"
         }
-    }
-}
-
-struct EnvironmentView_Previews: PreviewProvider {
-    static var previews: some View {
-        EnvironmentView()
     }
 }

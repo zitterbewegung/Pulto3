@@ -23,9 +23,9 @@ struct EntryPoint: App {
             }
     }*/
     var body: some Scene {
-        // Primary home window - main interface
-        WindowGroup(id: "home") {
-            PultoHomeView()
+        // Main interface - EnvironmentView as primary entry point
+        WindowGroup(id: "main") {
+            EnvironmentView()
                 .environmentObject(windowManager)
                 .onOpenURL { url in
                     handleSharedURL(url)
@@ -33,14 +33,16 @@ struct EntryPoint: App {
         }
         .windowStyle(.plain)
         .defaultSize(width: 1400, height: 900)
-        
-        // Spatial workspace window - for data visualization
-        WindowGroup(id: "main") {
-            EnvironmentView()
+
+        // Home window - PultoHomeView as secondary interface
+        WindowGroup(id: "home") {
+            PultoHomeView()
                 .environmentObject(windowManager)
         }
         .windowStyle(.plain)
         .defaultSize(width: 1280, height: 850)
+        
+
         
         // Grid launcher (original functionality)
         WindowGroup(id: "launcher") {
