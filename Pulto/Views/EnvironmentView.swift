@@ -389,41 +389,9 @@ struct EnvironmentView: View {
                     Label("Create Demo", systemImage: "wand.and.stars")
                 }
             }
-
-            Section("Create") {
-                ActionCard(
-                    title: "New Project",
-                    subtitle: "Create from scratch",
-                    icon: "plus.square.fill",
-                    color: .blue,
-                    action: {
-                        showWorkspaceDialog = true
-                    }
-                )
-
-                ActionCard(
-                    title: "Templates",
-                    subtitle: "Pre-built projects",
-                    icon: "doc.text.fill",
-                    color: .red,
-                    action: {
-                        showTemplateGallery = true
-                    }
-                )
-
-                ActionCard(
-                    title: "Import Notebook",
-                    subtitle: "Jupyter files",
-                    icon: "square.and.arrow.down.fill",
-                    color: .green,
-                    action: {
-                        showNotebookImport = true
-                    }
-                )
-            }
         }
         .listStyle(.sidebar)
-        .frame(minWidth: 240)
+        .frame(width: 240)
     }
 
     // MARK: - Main Content Area
@@ -468,6 +436,7 @@ struct EnvironmentView: View {
     // MARK: - Detail View
     private var detailView: some View {
         ActiveWindowsDetailView(windowManager: windowManager)
+            .frame(width: 300)
     }
 
     // MARK: - Computed Properties
