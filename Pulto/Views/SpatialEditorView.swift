@@ -151,9 +151,8 @@ struct SpatialEditorView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showCodeSidebar.toggle() }) {
-                    Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
-                        .font(.title3)
+                SpatialControlButton(icon: showCodeSidebar ? "chevron.right" : "chevron.left", text: "Code", color: .indigo) {
+                    showCodeSidebar.toggle()
                 }
             }
         }
@@ -271,35 +270,15 @@ struct SpatialEditorView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                Button(action: { showCodeSidebar.toggle() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
-                        Text("Code")
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.indigo.opacity(0.1))
-                    .cornerRadius(6)
+                SpatialControlButton(icon: showCodeSidebar ? "chevron.right" : "chevron.left", text: "Code", color: .indigo) {
+                    showCodeSidebar.toggle()
                 }
-                .buttonStyle(.plain)
 
-                Button(action: {
+                SpatialControlButton(icon: showControls ? "eye.slash" : "eye", text: showControls ? "Hide Controls" : "Show Controls", color: .blue) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         showControls.toggle()
                     }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: showControls ? "eye.slash" : "eye")
-                        Text(showControls ? "Hide Controls" : "Show Controls")
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(6)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -596,27 +575,15 @@ struct SpatialEditorView: View {
         VStack(spacing: 8) {
             Text("Export Options").font(.subheadline).bold()
             HStack(spacing: 8) {
-                Button(action: saveToWindow) {
-                    Label("Save to Window", systemImage: "square.and.arrow.down")
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                        .padding(8)
-                        .background(Color.blue.opacity(0.1)).cornerRadius(6)
+                ExportButton(title: "Save to Window", icon: "square.and.arrow.down", color: .blue) {
+                    saveToWindow()
                 }
-                Button(action: exportToJupyter) {
-                    Label("Export to Jupyter", systemImage: "doc.text")
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                        .padding(8)
-                        .background(Color.green.opacity(0.1)).cornerRadius(6)
+                ExportButton(title: "Export to Jupyter", icon: "doc.text", color: .green) {
+                    exportToJupyter()
                 }
             }
-            Button(action: copyPythonCode) {
-                Label("Copy Python Code", systemImage: "doc.on.doc")
-                    .font(.caption)
-                    .frame(maxWidth: .infinity)
-                    .padding(8)
-                    .background(Color.orange.opacity(0.1)).cornerRadius(6)
+            ExportButton(title: "Copy Python Code", icon: "doc.on.doc", color: .orange) {
+                copyPythonCode()
             }
         }
     }
@@ -849,6 +816,70 @@ struct SpatialEditorView: View {
 }
 
 // MARK: – Preview
+struct SpatialControlButton: View {
+    let icon: String
+    let text: String
+    let color: Color
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                Text(text)
+            }
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(color.opacity(isHovered ? 0.15 : 0.1))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(color.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+struct ExportButton: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .padding(8)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(color.opacity(isHovered ? 0.15 : 0.1))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(color.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
 #Preview {
     SpatialEditorView()
         .frame(width: 800, height: 600)

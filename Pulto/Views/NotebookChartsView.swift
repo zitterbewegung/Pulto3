@@ -98,25 +98,9 @@ struct NotebookChartsView: View {
                             .foregroundStyle(.secondary)
 
                         ForEach(["Analysis.ipynb", "DataViz.ipynb", "Research.ipynb"], id: \.self) { name in
-                            Button(action: { notebookName = name }) {
-                                HStack {
-                                    Image(systemName: "doc.text")
-                                        .foregroundStyle(.orange)
-                                    Text(name)
-                                        .font(.body)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(.quaternary.opacity(0.5))
-                                )
+                            RecentFileButton(name: name) {
+                                notebookName = name
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -306,6 +290,16 @@ struct NotebookChartsView: View {
                     Image(systemName: "arrow.clockwise")
                         .font(.title3)
                         .foregroundStyle(.blue)
+                        .padding(8)
+                        .background {
+                            Circle()
+                                .fill(.blue.opacity(0.1))
+                        }
+                        .scaleEffect(1.0)
+                        .onHover { hovering in
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
             }
@@ -459,7 +453,38 @@ struct NotebookChartsView: View {
         }
     }
 
-    // MARK: - Existing Functions (unchanged)
+    struct RecentFileButton: View {
+        let name: String
+        let action: () -> Void
+        @State private var isHovered = false
+        
+        var body: some View {
+            Button(action: action) {
+                HStack {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(.orange)
+                    Text(name)
+                        .font(.body)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.quaternary.opacity(isHovered ? 0.8 : 0.5))
+            }
+            .scaleEffect(isHovered ? 1.02 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .onHover { hovering in
+                isHovered = hovering
+            }
+        }
+    }
 
     func decodeBase64ToImage(base64String: String) -> UIImage? {
         debugLog("Decoding base64 string to UIImage")
@@ -809,7 +834,6 @@ struct NotebookChartsView: View {
     }
 }
 
-// Helper to append strings to Data body
 extension Data {
     mutating func append(_ string: String) {
         if let data = string.data(using: .utf8) {

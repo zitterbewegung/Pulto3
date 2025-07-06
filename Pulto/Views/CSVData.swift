@@ -470,10 +470,10 @@ struct CSVChartRecommenderView: View {
                                         .fontWeight(.bold)
 
                                     ForEach(recommendations, id: \.recommendation) { score in
-                                        RecommendationCard(
+                                        RecommendationCardView(
                                             score: score,
-                                            isSelected: selectedRecommendation == score.recommendation,
-                                            action: { selectedRecommendation = score.recommendation }
+                                            selectedRecommendation: selectedRecommendation,
+                                            onSelection: { selectedRecommendation = score.recommendation }
                                         )
                                     }
                                 }
@@ -564,6 +564,73 @@ struct CSVChartRecommenderView: View {
     }
 }
 
+struct RecommendationCardView: View {
+    let score: ChartScore
+    let selectedRecommendation: ChartRecommendation?
+    let onSelection: () -> Void
+    
+    private var isSelected: Bool {
+        selectedRecommendation == score.recommendation
+    }
+    
+    private var iconColor: Color {
+        isSelected ? .white : .blue
+    }
+    
+    private var titleColor: Color {
+        isSelected ? .white : .primary
+    }
+    
+    private var descriptionColor: Color {
+        isSelected ? .white.opacity(0.8) : .secondary
+    }
+    
+    private var scoreColor: Color {
+        isSelected ? .white : .green
+    }
+    
+    private var backgroundColor: Color {
+        isSelected ? Color.blue : Color.gray.opacity(0.1)
+    }
+    
+    var body: some View {
+        Button(action: onSelection) {
+            HStack {
+                Image(systemName: score.recommendation.icon)
+                    .font(.title2)
+                    .foregroundColor(iconColor)
+                    .frame(width: 40)
+                
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(score.recommendation.name)
+                        .font(.headline)
+                        .foregroundColor(titleColor)
+                    
+                    Text(score.reasoning)
+                        .font(.caption)
+                        .foregroundColor(descriptionColor)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+                
+                VStack {
+                    Text("\(Int(score.score * 100))%")
+                        .font(.headline)
+                        .foregroundColor(scoreColor)
+                    Text("match")
+                        .font(.caption2)
+                        .foregroundColor(descriptionColor)
+                }
+            }
+            .padding()
+            .background(backgroundColor)
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct DataSummaryItem: View {
     let icon: String
     let label: String
@@ -583,45 +650,6 @@ struct DataSummaryItem: View {
     }
 }
 
-struct RecommendationCard: View {
-    let score: ChartScore
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: score.recommendation.icon)
-                    .font(.title2)
-                    .foregroundColor(isSelected ? .white : .blue)
-                    .frame(width: 40)
-                
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(score.recommendation.name)
-                        .font(.headline)
-                        .foregroundColor(isSelected ? .white : .primary)
-                    
-                    Text(score.reasoning)
-                        .font(.caption)
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
-                        .lineLimit(2)
-                }
-                
-                Spacer()
-                
-                VStack {
-                    Text("\(Int(score.score * 100))%")
-                        .font(.headline)
-                        .foregroundColor(isSelected ? .white : .green)
-                    Text("match")
-                        .font(.caption2)
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
-                }
-            }
-            .padding()
-            .background(isSelected ? Color.blue : Color.gray.opacity(0.1))
-            .cornerRadius(12)
-        }
-        .buttonStyle(.plain)
-    }
+#Preview {
+    CSVChartRecommenderView()
 }

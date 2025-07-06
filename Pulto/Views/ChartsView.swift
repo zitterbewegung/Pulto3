@@ -647,14 +647,25 @@ struct DatasetRow: View {
 struct LayerRow: View {
     let name: String
     @State var isVisible: Bool
+    @State private var isHovered = false
 
     var body: some View {
         HStack {
             Button(action: { isVisible.toggle() }) {
                 Image(systemName: isVisible ? "eye" : "eye.slash")
                     .foregroundColor(.secondary)
+                    .frame(width: 24, height: 24)
             }
             .buttonStyle(.plain)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.secondary.opacity(isHovered ? 0.15 : 0.05))
+            }
+            .scaleEffect(isHovered ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .onHover { hovering in
+                isHovered = hovering
+            }
 
             Text(name)
             Spacer()
@@ -665,31 +676,63 @@ struct LayerRow: View {
 
 struct ViewControlsOverlay: View {
     @Binding var settings: VisualizationSettings
+    @State private var hoveredControl: String?
 
     var body: some View {
         HStack(spacing: 15) {
-            Button(action: {}) {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
+            ControlButton(icon: "arrow.up.left.and.arrow.down.right", id: "fit", hoveredControl: $hoveredControl) {
+                // Fit to view action
             }
-            .help("Fit to View")
-
-            Button(action: {}) {
-                Image(systemName: "camera")
+            
+            ControlButton(icon: "camera", id: "camera", hoveredControl: $hoveredControl) {
+                // Reset camera action
             }
-            .help("Reset Camera")
-
-            Button(action: {}) {
-                Image(systemName: "ruler")
+            
+            ControlButton(icon: "ruler", id: "ruler", hoveredControl: $hoveredControl) {
+                // Measure action
             }
-            .help("Measure")
-
-            Button(action: {}) {
-                Image(systemName: "slider.horizontal.3")
+            
+            ControlButton(icon: "slider.horizontal.3", id: "filters", hoveredControl: $hoveredControl) {
+                // Filters action
             }
-            .help("Filters")
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
+    }
+}
+
+struct ControlButton: View {
+    let icon: String
+    let id: String
+    @Binding var hoveredControl: String?
+    let action: () -> Void
+    
+    var isHovered: Bool {
+        hoveredControl == id
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 8 : 4, x: 0, y: isHovered ? 4 : 2)
+        }
+        .scaleEffect(isHovered ? 1.05 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            hoveredControl = hovering ? id : nil
+        }
     }
 }
 

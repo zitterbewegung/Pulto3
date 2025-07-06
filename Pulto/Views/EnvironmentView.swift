@@ -132,11 +132,16 @@ struct EnvironmentView: View {
                 .padding(DesignSystem.padding.xxl)
             }
             .frame(maxWidth: .infinity)
+            .roundedProjectManagerStyle()
+            .padding(DesignSystem.padding.xl)
 
             // Export sidebar
             if showExportSidebar {
                 ExportConfigurationSidebar()
                     .frame(width: 320)
+                    .roundedProjectManagerStyle()
+                    .padding(.trailing, DesignSystem.padding.xl)
+                    .padding(.vertical, DesignSystem.padding.xl)
                     .transition(
                         .asymmetric(
                             insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -147,7 +152,16 @@ struct EnvironmentView: View {
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
         .frame(minWidth: 800, minHeight: 600)
-        .background(Color(.gray))
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.gray.opacity(0.1),
+                    Color.gray.opacity(0.05)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .sheet(isPresented: $showWorkspaceDialog) {
             WorkspaceDialog(
                 isPresented: $showWorkspaceDialog,
@@ -431,7 +445,19 @@ struct EnvironmentView: View {
                 )
             }
         }
-        .padding(.bottom, DesignSystem.padding.md)
+        .padding(DesignSystem.padding.xl)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.xl))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.xl)
+                .stroke(.white.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(
+            color: .black.opacity(0.08),
+            radius: 12,
+            x: 0,
+            y: 4
+        )
     }
 
     private var workspaceManagementSection: some View {
@@ -1185,7 +1211,6 @@ struct QuickWorkspaceRowView: View {
     }
 }
 
-// MARK: - Data Import Action Card
 struct DataImportActionCard: View {
     let title: String
     let subtitle: String
@@ -1223,7 +1248,157 @@ struct DataImportActionCard: View {
     }
 }
 
-// MARK: - Reusable Components
+struct ExportConfigurationSidebar: View {
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @State private var selectedWindowID: Int? = nil
+    @State private var selectedTemplate: ExportTemplate = .plain
+    @State private var customImports = ""
+    @State private var newTag = ""
+    @State private var windowContent = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
+            headerView
+            windowSelectorSection
+            configurationSection
+            Spacer()
+            exportActionsSection
+        }
+        .padding()
+        .frame(width: 320)
+    }
+
+    private var headerView: some View {
+        Text("Export Configuration")
+            .font(.title2)
+            .bold()
+    }
+
+    private var windowSelectorSection: some View {
+        WindowSelectorView(
+            windowManager: windowManager,
+            selectedWindowID: $selectedWindowID,
+            onWindowSelected: loadWindowConfiguration
+        )
+    }
+
+    @ViewBuilder
+    private var configurationSection: some View {
+        if let windowID = selectedWindowID {
+            Divider()
+            WindowConfigurationView(
+                windowID: windowID,
+                windowManager: windowManager,
+                selectedTemplate: $selectedTemplate,
+                customImports: $customImports,
+                newTag: $newTag,
+                windowContent: $windowContent
+            )
+        }
+    }
+
+    private var exportActionsSection: some View {
+        ExportActionsView(windowManager: windowManager)
+    }
+
+    private func loadWindowConfiguration(_ window: NewWindowID) {
+        selectedTemplate = window.state.exportTemplate
+        customImports = window.state.customImports.joined(separator: "\n")
+        windowContent = window.state.content
+    }
+}
+
+extension View {
+    func roundedProjectManagerStyle() -> some View {
+        self
+            .background(Color.secondary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
+                    .stroke(.white.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(
+                color: .black.opacity(0.08),
+                radius: 12,
+                x: 0,
+                y: 4
+            )
+    }
+}
+
+struct StandardWindowTypeCard: View {
+    let windowType: StandardWindowType
+    let isSelected: Bool
+    let isHovered: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: DesignSystem.spacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(isSelected ? 0.2 : 0.15))
+                        .frame(width: DesignSystem.buttonHeight.lg, height: DesignSystem.buttonHeight.lg)
+
+                    Image(systemName: iconForStandardWindowType(windowType))
+                        .font(.system(size: DesignSystem.iconSize.lg, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                }
+                .scaleEffect(isHovered ? 1.05 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isHovered)
+
+                VStack(spacing: DesignSystem.spacing.xs) {
+                    Text(windowType.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+
+                    Text(descriptionForStandardWindowType(windowType))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: DesignSystem.cardHeight.md)
+            .padding(DesignSystem.padding.md)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
+                .fill(Color.secondary.opacity(isSelected ? 0.15 : 0.1))
+                .overlay {
+                    RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
+                        .stroke(isSelected ? Color.accentColor : (isHovered ? .white.opacity(0.3) : .clear), lineWidth: 2)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 12 : 6, x: 0, y: isHovered ? 6 : 3)
+        }
+        .scaleEffect(isSelected ? 0.98 : (isHovered ? 1.02 : 1.0))
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+    }
+
+    private func iconForStandardWindowType(_ type: StandardWindowType) -> String {
+        switch type {
+        case .charts: return "chart.line.uptrend.xyaxis"
+        case .dataFrame: return "tablecells"
+        case .metrics: return "gauge"
+        case .spatial: return "rectangle.3.group"
+        case .model3d: return "cube.transparent"
+        }
+    }
+
+    private func descriptionForStandardWindowType(_ type: StandardWindowType) -> String {
+        switch type {
+        case .charts: return "Visualize data with charts and graphs"
+        case .dataFrame: return "Browse and analyze tabular data"
+        case .metrics: return "Performance metrics and analytics"
+        case .spatial: return "Interactive spatial editor"
+        case .model3d: return "3D model rendering and interaction"
+        }
+    }
+}
 
 struct WindowCountIndicator: View {
     let count: Int
@@ -1362,76 +1537,6 @@ struct SecondaryActionButton: View {
     }
 }
 
-struct StandardWindowTypeCard: View {
-    let windowType: StandardWindowType
-    let isSelected: Bool
-    let isHovered: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(Color.accentColor.opacity(isSelected ? 0.2 : 0.15))
-                        .frame(width: DesignSystem.buttonHeight.lg, height: DesignSystem.buttonHeight.lg)
-
-                    Image(systemName: iconForStandardWindowType(windowType))
-                        .font(.system(size: DesignSystem.iconSize.lg, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
-                }
-                .scaleEffect(isHovered ? 1.05 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isHovered)
-
-                VStack(spacing: DesignSystem.spacing.xs) {
-                    Text(windowType.displayName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-
-                    Text(descriptionForStandardWindowType(windowType))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.cardHeight.md)
-            .padding(DesignSystem.padding.md)
-            .background(Color.secondary.opacity(isSelected ? 0.15 : 0.1))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(isSelected ? 0.98 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
-    }
-
-    private func iconForStandardWindowType(_ type: StandardWindowType) -> String {
-        switch type {
-        case .charts: return "chart.line.uptrend.xyaxis"
-        case .dataFrame: return "tablecells"
-        case .metrics: return "gauge"
-        case .spatial: return "rectangle.3.group"
-        case .model3d: return "cube.transparent"
-        }
-    }
-
-    private func descriptionForStandardWindowType(_ type: StandardWindowType) -> String {
-        switch type {
-        case .charts: return "Visualize data with charts and graphs"
-        case .dataFrame: return "Browse and analyze tabular data"
-        case .metrics: return "Performance metrics and analytics"
-        case .spatial: return "Interactive spatial editor"
-        case .model3d: return "3D model rendering and interaction"
-        }
-    }
-}
-
 struct WindowSizeBadge: View {
     let width: Double
     let height: Double
@@ -1467,66 +1572,6 @@ struct EmptyStateView: View {
         .frame(height: DesignSystem.cardHeight.md)
         .background(Color.secondary.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-    }
-}
-
-struct ExportConfigurationSidebar: View {
-    @StateObject private var windowManager = WindowTypeManager.shared
-    @State private var selectedWindowID: Int? = nil
-    @State private var selectedTemplate: ExportTemplate = .plain
-    @State private var customImports = ""
-    @State private var newTag = ""
-    @State private var windowContent = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
-            headerView
-            windowSelectorSection
-            configurationSection
-            Spacer()
-            exportActionsSection
-        }
-        .padding()
-        .frame(width: 320)
-    }
-
-    private var headerView: some View {
-        Text("Export Configuration")
-            .font(.title2)
-            .bold()
-    }
-
-    private var windowSelectorSection: some View {
-        WindowSelectorView(
-            windowManager: windowManager,
-            selectedWindowID: $selectedWindowID,
-            onWindowSelected: loadWindowConfiguration
-        )
-    }
-
-    @ViewBuilder
-    private var configurationSection: some View {
-        if let windowID = selectedWindowID {
-            Divider()
-            WindowConfigurationView(
-                windowID: windowID,
-                windowManager: windowManager,
-                selectedTemplate: $selectedTemplate,
-                customImports: $customImports,
-                newTag: $newTag,
-                windowContent: $windowContent
-            )
-        }
-    }
-
-    private var exportActionsSection: some View {
-        ExportActionsView(windowManager: windowManager)
-    }
-
-    private func loadWindowConfiguration(_ window: NewWindowID) {
-        selectedTemplate = window.state.exportTemplate
-        customImports = window.state.customImports.joined(separator: "\n")
-        windowContent = window.state.content
     }
 }
 

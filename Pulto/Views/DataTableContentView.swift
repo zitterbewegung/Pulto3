@@ -435,7 +435,7 @@ struct DataTableContentView: View {
     struct DataImportSheet: View {
         let onDataImported: (DataFrameData) -> Void
         @Environment(\.dismiss) private var dismiss
-        @State private var importMethod: DataImportSheet.ImportMethod = .file
+        @State private var importMethod: ImportMethod = .file
         @State private var showingFileImporter = false
         @State private var showingCSVRecommender = false
         @State private var sampleText = ""
@@ -557,6 +557,45 @@ struct DataTableContentView: View {
                     Button("OK") { importError = nil }
                 } message: {
                     Text(importError ?? "")
+                }
+            }
+        }
+
+        struct ImportMethodCard: View {
+            let method: ImportMethod
+            let isSelected: Bool
+            let action: () -> Void
+            @State private var isHovered = false
+
+            var body: some View {
+                Button(action: action) {
+                    VStack(spacing: 12) {
+                        Image(systemName: method.icon)
+                            .font(.system(size: 40))
+                            .foregroundColor(isSelected ? .white : .blue)
+
+                        Text(method.rawValue)
+                            .font(.headline)
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(height: 120)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .background {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(isSelected ? Color.blue : (isHovered ? Color.gray.opacity(0.5) : Color.gray.opacity(0.3)), lineWidth: isHovered ? 2 : 1)
+                        }
+                        .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 8 : 4, x: 0, y: isHovered ? 4 : 2)
+                }
+                .scaleEffect(isHovered ? 1.02 : 1.0)
+                .animation(.easeInOut(duration: 0.15), value: isHovered)
+                .onHover { hovering in
+                    isHovered = hovering
                 }
             }
         }
@@ -1070,7 +1109,24 @@ struct DataTableContentView: View {
             }
 
             let json = try JSONSerialization.jsonObject(with: data)
-            return try convertJSONToDataFrame(json: json)
+
+            if let array = json as? [[String: Any]] {
+                let columns = Array(Set(array.flatMap { $0.keys })).sorted()
+                let rows = array.map { object in
+                    columns.map { column in
+                        if let value = object[column] {
+                            return String(describing: value)
+                        } else {
+                            return ""
+                        }
+                    }
+                }
+
+                let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
+                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+            } else {
+                throw DataImportError.invalidFormat
+            }
         }
 
         private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
@@ -1120,38 +1176,6 @@ struct DataTableContentView: View {
                     return "Failed to parse the data"
                 }
             }
-        }
-    }
-
-    struct ImportMethodCard: View {
-        let method: DataImportSheet.ImportMethod
-        let isSelected: Bool
-        let action: () -> Void
-
-        var body: some View {
-            Button(action: action) {
-                VStack(spacing: 12) {
-                    Image(systemName: method.icon)
-                        .font(.system(size: 40))
-                        .foregroundColor(isSelected ? .white : .blue)
-
-                    Text(method.rawValue)
-                        .font(.headline)
-                        .foregroundColor(isSelected ? .white : .primary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(height: 120)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -1213,39 +1237,23 @@ struct DataTableContentView: View {
                 Button(action: { loadSampleData() }) {
                     Label("Sample Data", systemImage: "doc.text")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(6)
+                .buttonStyle(DataTableButtonStyle(color: .blue))
 
                 Button(action: { editingData.toggle() }) {
                     Label(editingData ? "Done" : "Edit", systemImage: editingData ? "checkmark.circle" : "pencil")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(6)
+                .buttonStyle(DataTableButtonStyle(color: .green))
 
                 // NEW: Visualize Chart Button
                 Button(action: { showingChartRecommender = true }) {
                     Label("Visualize Chart", systemImage: "chart.xyaxis.line")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.purple.opacity(0.1))
-                .cornerRadius(6)
+                .buttonStyle(DataTableButtonStyle(color: .purple))
 
                 Button(action: { saveDataToWindow() }) {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(6)
+                .buttonStyle(DataTableButtonStyle(color: .orange))
             }
         }
         .padding(.horizontal)
@@ -1900,6 +1908,81 @@ struct DataTableContentView: View {
             case .parsingFailed:
                 return "Failed to parse the data"
             }
+        }
+    }
+}
+
+struct DataTableButtonStyle: ButtonStyle {
+    let color: Color
+    @State private var isHovered = false
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(color.opacity(isHovered ? 0.15 : 0.1))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(color.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+                    }
+            }
+            .scaleEffect(configuration.isPressed ? 0.95 : (isHovered ? 1.02 : 1.0))
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .onHover { hovering in
+                isHovered = hovering
+            }
+    }
+}
+
+struct RecommendationCard: View {
+    let score: ChartScore
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: score.recommendation.icon)
+                    .font(.title)
+                    .foregroundStyle(isSelected ? .white : .blue)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(score.recommendation.name)
+                        .font(.headline)
+                        .foregroundStyle(isSelected ? .white : .primary)
+                    
+                    Text("Score: \(Int(score.score * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding()
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(isSelected ? .clear : (isHovered ? .blue.opacity(0.3) : .clear), lineWidth: 2)
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 8 : 4, x: 0, y: isHovered ? 4 : 2)
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
