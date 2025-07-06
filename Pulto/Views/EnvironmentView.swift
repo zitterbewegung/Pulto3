@@ -43,6 +43,7 @@ struct HeaderView: View {
                 Spacer()
 
                 HStack(spacing: 16) {
+                    //HelpButton(onTap: helpTap)
                     SettingsButton(onTap: onSettingsTap)
 
                     UserProfileButton(
@@ -137,6 +138,7 @@ struct SettingsButton: View {
     }
 }
 
+
 // MARK: - visionOS Window Component
 struct VisionOSWindow<Content: View>: View {
     let content: Content
@@ -166,77 +168,6 @@ struct VisionOSWindow<Content: View>: View {
     }
 }
 
-// MARK: - Horizontal Tab Bar
-struct HorizontalTabBar: View {
-    @Binding var selectedTab: ProjectTab
-    @State private var hoveredTab: ProjectTab? = nil
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(ProjectTab.allCases, id: \.self) { tab in
-                HorizontalTabButton(
-                    tab: tab,
-                    isSelected: selectedTab == tab,
-                    isHovered: hoveredTab == tab
-                ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = tab
-                    }
-                }
-                .onHover { hovering in
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        hoveredTab = hovering ? tab : nil
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.thinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(.white.opacity(0.05), lineWidth: 0.5)
-                }
-                .shadow(color: .black.opacity(0.3), radius: 16, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-        }
-    }
-}
-
-struct HorizontalTabButton: View {
-    let tab: ProjectTab
-    let isSelected: Bool
-    let isHovered: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? .white : .primary)
-
-                Text(tab.rawValue)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isSelected ? .white : .primary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(isSelected ? .gray.opacity(0.8) : (isHovered ? .gray.opacity(0.2) : .clear))
-                .animation(.easeInOut(duration: 0.2), value: isSelected)
-                .animation(.easeInOut(duration: 0.15), value: isHovered)
-        }
-    }
-}
-
 // MARK: - Main Environment View
 struct EnvironmentView: View {
     @State private var nextWindowID = 1
@@ -253,27 +184,53 @@ struct EnvironmentView: View {
     @State private var showFileImporter = false
     @State private var showSettings = false
     @State private var showAppleSignIn = false
+    @State private var showWelcome = false
 
     var body: some View {
         ZStack {
             // Main content with dark glass effect
-            HStack(spacing: 0) {
-                // Main Content Area
-                VStack(spacing: 0) {
-                    HeaderView(viewModel: viewModel, onLoginTap: {
-                        closeAllSheets()
-                        showAppleSignIn = true
-                    }, onSettingsTap: {
-                        closeAllSheets()
-                        showSettings = true
-                    })
-                    .padding(.horizontal)
-                    .padding(.top)
+            VStack(spacing: 0) {
+                HeaderView(viewModel: viewModel, onLoginTap: {
+                    closeAllSheets()
+                    showAppleSignIn = true
+                }, onSettingsTap: {
+                    closeAllSheets()
+                    showSettings = true
+                })
+                .padding(.horizontal)
+                .padding(.top)
 
-                    var mainContent = mainContentView
-                    mainContent
+                TabView(selection: $selectedTab) {
+                    Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
+                        WorkspaceTab(
+                            showWorkspaceDialog: $showWorkspaceDialog,
+                            showTemplateGallery: $showTemplateGallery,
+                            showNotebookImport: $showNotebookImport,
+                            loadWorkspace: loadWorkspace
+                        )
+                    }
+
+                    Tab("Create", systemImage: "plus.circle.fill", value: .create) {
+                        CreateTab(createWindow: createStandardWindow)
+                    }
+
+                    Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
+                        DataTab(
+                            showFileImporter: $showFileImporter,
+                            createBlankTable: createBlankDataTable
+                        )
+                    }
+
+                    Tab("Active", systemImage: "rectangle.stack.fill", value: .active) {
+                        ActiveWindowsTab(
+                            windowManager: windowManager,
+                            openWindow: { id in openWindow(value: id) },
+                            closeWindow: { id in windowManager.removeWindow(id) },
+                            closeAllWindows: clearAllWindowsWithConfirmation
+                        )
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .tabViewStyle(.sidebarAdaptable)
             }
             .background {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
@@ -298,6 +255,7 @@ struct EnvironmentView: View {
         .preferredColorScheme(.dark)
         .task {
             await viewModel.loadInitialData()
+            checkFirstLaunch()
         }
         .sheet(isPresented: $showWorkspaceDialog) {
             WorkspaceDialog(
@@ -314,6 +272,9 @@ struct EnvironmentView: View {
                 isPresented: $showNotebookImport,
                 windowManager: windowManager
             )
+        }
+        .sheet(isPresented: $showWelcome) {
+            WelcomeSheet(isPresented: $showWelcome)
         }
         .sheet(isPresented: $showSettings) {
             NavigationView {
@@ -432,57 +393,6 @@ struct EnvironmentView: View {
         }
     }
 
-    // MARK: - Main Content Area
-    private var mainContentView: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch selectedTab {
-                case .workspace:
-                    WorkspaceTab(
-                        showWorkspaceDialog: $showWorkspaceDialog,
-                        showTemplateGallery: $showTemplateGallery,
-                        showNotebookImport: $showNotebookImport,
-                        loadWorkspace: loadWorkspace
-                    )
-                case .create:
-                    CreateTab(createWindow: createStandardWindow)
-                case .data:
-                    DataTab(
-                        showFileImporter: $showFileImporter,
-                        createBlankTable: createBlankDataTable
-                    )
-                case .active:
-                    ActiveWindowsTab(
-                        windowManager: windowManager,
-                        openWindow: { id in openWindow(value: id) },
-                        closeWindow: { id in windowManager.removeWindow(id) },
-                        closeAllWindows: clearAllWindowsWithConfirmation
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-
-            HorizontalTabBar(selectedTab: $selectedTab)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-        }
-    }
-
-    // MARK: - Computed Properties
-    private var supportedFileTypes: [UTType] {
-        [
-            .commaSeparatedText,
-            .tabSeparatedText,
-            .json,
-            .plainText,
-            .image,
-            .usdz,
-            .threeDContent,
-            .data
-        ]
-    }
-
     // MARK: - Helper Methods
     @MainActor
     private func closeAllSheets() {
@@ -492,6 +402,15 @@ struct EnvironmentView: View {
         showFileImporter = false
         showSettings = false
         showAppleSignIn = false
+        showWelcome = false
+    }
+
+    private func checkFirstLaunch() {
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "HasLaunchedBefore")
+        if !hasLaunchedBefore {
+            showWelcome = true
+            UserDefaults.standard.set(true, forKey: "HasLaunchedBefore")
+        }
     }
 
     @MainActor
@@ -554,6 +473,19 @@ struct EnvironmentView: View {
             print("Import failed: \(error)")
         }
     }
+
+    private var supportedFileTypes: [UTType] {
+        [
+            .commaSeparatedText,
+            .tabSeparatedText,
+            .json,
+            .plainText,
+            .image,
+            .usdz,
+            .threeDContent,
+            .data
+        ]
+    }
 }
 
 // MARK: - Workspace Tab
@@ -614,22 +546,24 @@ struct WorkspaceTab: View {
                     .padding(.vertical, 8)
 
                 // Recent Projects Section
-                if !workspaceManager.getCustomWorkspaces().isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Recent Projects")
-                                .font(.title2)
-                                .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Recent Projects")
+                            .font(.title2)
+                            .fontWeight(.semibold)
 
-                            Spacer()
+                        Spacer()
 
+                        if !workspaceManager.getCustomWorkspaces().isEmpty {
                             Button("View All") {
                                 showWorkspaceDialog = true
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(.blue)
                         }
+                    }
 
+                    if !workspaceManager.getCustomWorkspaces().isEmpty {
                         LazyVStack(spacing: 8) {
                             ForEach(workspaceManager.getCustomWorkspaces().prefix(5)) { workspace in
                                 WorkspaceRow(workspace: workspace) {
@@ -637,6 +571,23 @@ struct WorkspaceTab: View {
                                 }
                             }
                         }
+                    } else {
+                        // Empty state when no projects exist
+                        VStack(spacing: 16) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+                            
+                            Text("No projects yet")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                            
+                            Text("Create your first project to get started")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
                     }
                 }
             }
@@ -786,6 +737,34 @@ struct ActiveWindowsTab: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        // Cleanup Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Window Management")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Button("Clean Up") {
+                                    windowManager.cleanupClosedWindows()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.blue)
+                            }
+                            
+                            HStack {
+                                Image(systemName: "info.circle")
+                                    .foregroundStyle(.blue)
+                                Text("Clean up removes windows that were created but never opened or were closed externally")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
                         // Statistics Section
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Window Overview")
@@ -797,6 +776,12 @@ struct ActiveWindowsTab: View {
                                     title: "Total Windows",
                                     value: "\(windowManager.getAllWindows().count)",
                                     icon: "rectangle.stack"
+                                )
+
+                                StatCard(
+                                    title: "Actually Open",
+                                    value: "\(windowManager.getAllWindows(onlyOpen: true).count)",
+                                    icon: "checkmark.circle"
                                 )
 
                                 StatCard(
@@ -819,6 +804,7 @@ struct ActiveWindowsTab: View {
                             ], spacing: 8) {
                                 ForEach(WindowType.allCases, id: \.self) { type in
                                     let count = windowManager.getAllWindows().filter { $0.windowType == type }.count
+                                    let openCount = windowManager.getAllWindows(onlyOpen: true).filter { $0.windowType == type }.count
                                     if count > 0 {
                                         HStack {
                                             Image(systemName: type.icon)
@@ -826,7 +812,7 @@ struct ActiveWindowsTab: View {
                                             Text(type.displayName)
                                                 .font(.subheadline)
                                             Spacer()
-                                            Text("\(count)")
+                                            Text("\(openCount)/\(count)")
                                                 .font(.subheadline)
                                                 .foregroundStyle(.secondary)
                                         }
@@ -860,6 +846,7 @@ struct ActiveWindowsTab: View {
                                 ForEach(windowManager.getAllWindows(), id: \.id) { window in
                                     WindowRow(
                                         window: window,
+                                        isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
                                         onOpen: { openWindow(window.id) },
                                         onClose: { closeWindow(window.id) }
                                     )
@@ -892,6 +879,16 @@ struct ActiveWindowsTab: View {
                                             }
 
                                             Spacer()
+
+                                            if windowManager.isWindowActuallyOpen(window.id) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(.green)
+                                                    .font(.caption)
+                                            } else {
+                                                Image(systemName: "questionmark.circle")
+                                                    .foregroundStyle(.orange)
+                                                    .font(.caption)
+                                            }
 
                                             Text(window.createdAt, style: .relative)
                                                 .font(.caption)
@@ -1121,6 +1118,7 @@ struct WorkspaceRow: View {
 
 struct WindowRow: View {
     let window: NewWindowID
+    let isActuallyOpen: Bool
     let onOpen: () -> Void
     let onClose: () -> Void
 
@@ -1132,8 +1130,16 @@ struct WindowRow: View {
                 .frame(width: 30)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(window.windowType.displayName)
-                    .font(.headline)
+                HStack {
+                    Text(window.windowType.displayName)
+                        .font(.headline)
+                    
+                    if !isActuallyOpen {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                    }
+                }
 
                 HStack {
                     Label("ID: #\(window.id)", systemImage: "number")
@@ -1141,6 +1147,11 @@ struct WindowRow: View {
                         .foregroundStyle(.tertiary)
                     Text("\(Int(window.position.width))×\(Int(window.position.height))")
                         .fontDesign(.monospaced)
+                    
+                    if !isActuallyOpen {
+                        Text("• Not Open")
+                            .foregroundStyle(.orange)
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1150,14 +1161,15 @@ struct WindowRow: View {
 
             HStack(spacing: 8) {
                 Button(action: onOpen) {
-                    Label("Open", systemImage: "arrow.up.forward")
+                    Label(isActuallyOpen ? "Focus" : "Open", systemImage: isActuallyOpen ? "arrow.up.forward" : "plus.circle")
                         .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .tint(isActuallyOpen ? .blue : .green)
 
                 Button(action: onClose) {
-                    Label("Close", systemImage: "xmark")
+                    Label("Remove", systemImage: "xmark")
                         .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
@@ -1166,8 +1178,14 @@ struct WindowRow: View {
             }
         }
         .padding()
-        .background(Color.white.opacity(0.05))
+        .background(Color.white.opacity(isActuallyOpen ? 0.05 : 0.03))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            if !isActuallyOpen {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(.orange.opacity(0.3), lineWidth: 1)
+            }
+        }
     }
 }
 
@@ -1230,5 +1248,185 @@ extension WindowType {
         case .pointcloud: return "circle.grid.3x3"
         case .model3d: return "cube"
         }
+    }
+}
+
+// MARK: - Welcome Sheet
+struct WelcomeSheet: View {
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .font(.largeTitle)
+                                .foregroundStyle(.blue)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Welcome to Pulto")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                
+                                Text("Your spatial data visualization workspace")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        Text("Get started with spatial computing and data visualization in visionOS")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    // Getting Started Steps
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Getting Started")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        VStack(alignment: .leading, spacing: 16) {
+                            WelcomeStep(
+                                icon: "1.circle.fill",
+                                title: "Create Your First Project",
+                                description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                            )
+                            
+                            WelcomeStep(
+                                icon: "2.circle.fill",
+                                title: "Import Your Data",
+                                description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
+                            )
+                            
+                            WelcomeStep(
+                                icon: "3.circle.fill",
+                                title: "Build Visualizations",
+                                description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                            )
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Pro Tips
+                    VStack(alignment: .leading, spacing: 20) {
+                        HStack {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundStyle(.yellow)
+                            Text("Pro Tips")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 16) {
+                            ProTip(
+                                icon: "person.circle.fill",
+                                color: .green,
+                                title: "Sign in to sync your projects",
+                                description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
+                            )
+                            
+                            ProTip(
+                                icon: "gearshape.fill",
+                                color: .orange,
+                                title: "Configure your workspace",
+                                description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
+                            )
+                            
+                            ProTip(
+                                icon: "cube.fill",
+                                color: .purple,
+                                title: "Explore spatial views",
+                                description: "Use the 3D spatial editor and point cloud viewer to visualize your data in three dimensions"
+                            )
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Get Started") {
+                        isPresented = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .frame(width: 1600, height: 700)
+        .background(Color.black.opacity(0.05))
+        .preferredColorScheme(.dark)
+    }
+}
+
+struct ProTip: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let description: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.title2)
+                .frame(width: 32)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - Welcome Step
+struct WelcomeStep: View {
+    let icon: String
+    let title: String
+    let description: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Preview
+struct EnvironmentView_Previews: PreviewProvider {
+    static var previews: some View {
+        EnvironmentView()
+            .preferredColorScheme(.dark)
     }
 }
