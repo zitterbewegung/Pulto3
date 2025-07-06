@@ -1,167 +1,300 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Foundation
 
-// MARK: - Design System Constants 
-struct DesignSystem {
-    // Spacing
-    static let spacing = (
-        xs: CGFloat(2),
-        sm: CGFloat(4),
-        md: CGFloat(8),
-        lg: CGFloat(12),
-        xl: CGFloat(16),
-        xxl: CGFloat(20),
-        xxxl: CGFloat(24)
-    )
+// MARK: - Project Tab Enum
+enum ProjectTab: String, CaseIterable {
+    case workspace = "Workspace"
+    case create = "Create"
+    case data = "Data"
+    case active = "Active"
 
-    // Padding
-    static let padding = (
-        xs: CGFloat(2),
-        sm: CGFloat(4),
-        md: CGFloat(8),
-        lg: CGFloat(12),
-        xl: CGFloat(16),
-        xxl: CGFloat(20)
-    )
-
-    // Corner Radius
-    static let cornerRadius = (
-        sm: CGFloat(4),
-        md: CGFloat(6),
-        lg: CGFloat(8),
-        xl: CGFloat(12)
-    )
-
-    // Shadows
-    static let shadow = (
-        sm: (radius: CGFloat(2), opacity: 0.05),
-        md: (radius: CGFloat(4), opacity: 0.08),
-        lg: (radius: CGFloat(6), opacity: 0.10)
-    )
-
-    // Icon Sizes
-    static let iconSize = (
-        sm: CGFloat(12),
-        md: CGFloat(16),
-        lg: CGFloat(20),
-        xl: CGFloat(24),
-        xxl: CGFloat(32)
-    )
-
-    // Button Heights
-    static let buttonHeight = (
-        sm: CGFloat(28),
-        md: CGFloat(36),
-        lg: CGFloat(48),
-        xl: CGFloat(60)
-    )
-
-    // Card Heights
-    static let cardHeight = (
-        sm: CGFloat(60),
-        md: CGFloat(90),
-        lg: CGFloat(100),
-        xl: CGFloat(120)
-    )
+    var icon: String {
+        switch self {
+        case .workspace: return "folder.fill"
+        case .create: return "plus.circle.fill"
+        case .data: return "square.and.arrow.down.fill"
+        case .active: return "rectangle.stack.fill"
+        }
+    }
 }
 
-// MARK: - Custom View Modifiers
-struct CardStyle: ViewModifier {
-    var isSelected: Bool = false
-    var isHovering: Bool = false
+// MARK: - Header View
+struct HeaderView: View {
+    @ObservedObject var viewModel: PultoHomeViewModel
+    let onLoginTap: () -> Void
+    let onSettingsTap: () -> Void
 
-    func body(content: Content) -> some View {
+    var body: some View {
+        VisionOSWindow(depth: 1) {
+            HStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Pulto")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("Project Manager")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 16) {
+                    SettingsButton(onTap: onSettingsTap)
+
+                    UserProfileButton(
+                        userName: viewModel.userName,
+                        isLoggedIn: viewModel.isUserLoggedIn,
+                        onTap: onLoginTap
+                    )
+                }
+            }
+            .padding(20)
+        }
+    }
+}
+
+// MARK: - User Profile Button
+struct UserProfileButton: View {
+    let userName: String
+    let isLoggedIn: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.blue)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isLoggedIn ? userName : "Sign In")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    if isLoggedIn {
+                        Text("View Profile")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+struct SettingsButton: View {
+    let onTap: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button {
+            onTap()
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+// MARK: - visionOS Window Component
+struct VisionOSWindow<Content: View>: View {
+    let content: Content
+    let depth: CGFloat
+    
+    init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
+        self.content = content()
+        self.depth = depth
+    }
+    
+    var body: some View {
         content
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-            )
-            .shadow(
-                color: .black.opacity(DesignSystem.shadow.md.opacity),
-                radius: DesignSystem.shadow.md.radius,
-                x: 0,
-                y: 4
-            )
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.1), radius: 16, x: 0, y: 8)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .scaleEffect(depth > 0 ? 1.0 + (depth * 0.01) : 1.0)
     }
 }
 
-extension View {
-    func cardStyle(isSelected: Bool = false) -> some View {
-        self.modifier(CardStyle(isSelected: isSelected))
+// MARK: - Vertical Tab Bar
+struct VerticalTabBar: View {
+    @Binding var selectedTab: ProjectTab
+    @State private var hoveredTab: ProjectTab? = nil
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(ProjectTab.allCases, id: \.self) { tab in
+                VerticalTabButton(
+                    tab: tab,
+                    isSelected: selectedTab == tab,
+                    isHovered: hoveredTab == tab
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        hoveredTab = hovering ? tab : nil
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.1), radius: 12, x: 6, y: 0)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 2, y: 0)
+        }
     }
 }
 
-// MARK: - EnvironmentView (Standard Window Management)
+struct VerticalTabButton: View {
+    let tab: ProjectTab
+    let isSelected: Bool
+    let isHovered: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(isSelected ? .white : .primary)
+                
+                Text(tab.rawValue)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(isSelected ? .white : .secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 64, height: 64)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.blue)
+                        .transition(.scale.combined(with: .opacity))
+                } else if isHovered {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.blue.opacity(0.1))
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+    }
+}
+
+// MARK: - Main Environment View
 struct EnvironmentView: View {
-    @State var nextWindowID = 1
+    @State private var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @State private var showExportSidebar = false
-    @State private var showImportDialog = false
+    @StateObject private var viewModel = PultoHomeViewModel()
+    @State private var selectedTab: ProjectTab = .workspace
+    @State private var showingSidebar = true
+
+    // Sheet States
+    @State private var showWorkspaceDialog = false
     @State private var showTemplateGallery = false
     @State private var showNotebookImport = false
-    @State private var showWorkspaceDialog = false
-    @State private var showFileImport = false
-    @State private var selectedWindowType: StandardWindowType?
-    @State private var hoveredWindowType: StandardWindowType?
+    @State private var showFileImporter = false
+    @State private var showSettings = false
+    @State private var showAppleSignIn = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Main content
-            ScrollView {
-                LazyVStack(spacing: DesignSystem.spacing.xxl) {
-                    headerSection
+        NavigationSplitView(
+            columnVisibility: .constant(.all),
+            sidebar: {
+                sidebarContent
+            },
+            content: {
+                VStack(spacing: 0) {
+                    HeaderView(viewModel: viewModel, onLoginTap: {
+                        closeAllSheets()
+                        showAppleSignIn = true
+                    }, onSettingsTap: {
+                        closeAllSheets()
+                        showSettings = true
+                    })
+                    .padding(.horizontal)
+                    .padding(.top)
                     
-                    if let selectedProject = windowManager.selectedProject {
-                        selectedProjectSection(selectedProject)
-                    }
-                    
-                    VStack(spacing: DesignSystem.spacing.xxl) {
-                        workspaceManagementSection
-                        windowTypeSection
-                        dataImportSection
-
-                        if !windowManager.getAllWindows().isEmpty {
-                            activeWindowsSection
-                        }
-                    }
+                    mainContent
                 }
-                .padding(DesignSystem.padding.xxl)
+            },
+            detail: {
+                detailView
             }
-            .frame(maxWidth: .infinity)
-            .roundedProjectManagerStyle()
-            .padding(DesignSystem.padding.xl)
-
-            // Export sidebar
-            if showExportSidebar {
-                ExportConfigurationSidebar()
-                    .frame(width: 320)
-                    .roundedProjectManagerStyle()
-                    .padding(.trailing, DesignSystem.padding.xl)
-                    .padding(.vertical, DesignSystem.padding.xl)
-                    .transition(
-                        .asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        )
-                    )
-            }
-        }
-        .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2), value: showExportSidebar)
-        .frame(minWidth: 800, minHeight: 600)
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.gray.opacity(0.1),
-                    Color.gray.opacity(0.05)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
         )
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await viewModel.loadInitialData()
+        }
         .sheet(isPresented: $showWorkspaceDialog) {
             WorkspaceDialog(
                 isPresented: $showWorkspaceDialog,
@@ -172,582 +305,236 @@ struct EnvironmentView: View {
             TemplateView()
                 .frame(minWidth: 800, minHeight: 600)
         }
-        .fullScreenCover(isPresented: $showNotebookImport) {
+        .sheet(isPresented: $showNotebookImport) {
             NotebookImportDialog(
                 isPresented: $showNotebookImport,
                 windowManager: windowManager
             )
         }
+        .sheet(isPresented: $showSettings) {
+            NavigationView {
+                VStack {
+                    Text("Settings")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Settings panel coming soon...")
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            showSettings = false
+                        }
+                    }
+                }
+            }
+            .frame(width: 600, height: 500)
+        }
+        .sheet(isPresented: $showAppleSignIn) {
+            AppleSignInView(isPresented: $showAppleSignIn)
+                .frame(width: 700, height: 800)
+        }
         .fileImporter(
-            isPresented: $showFileImport,
-            allowedContentTypes: [
-                UTType.commaSeparatedText,    // CSV files
-                UTType.tabSeparatedText,      // TSV files  
-                UTType.json,                     // JSON files
-                UTType.plainText,             // TXT files
-                UTType.image,                 // Images
-                UTType.usdz,                  // 3D models
-                UTType.threeDContent,     // 3D content
-                UTType.data                 // Other data files
-            ],
+            isPresented: $showFileImporter,
+            allowedContentTypes: supportedFileTypes,
             allowsMultipleSelection: false
         ) { result in
             handleFileImport(result)
         }
-        .onAppear {
-            // Load the selected project's data when the view appears
-            if let selectedProject = windowManager.selectedProject {
-                loadProjectData(selectedProject)
-            }
-        }
     }
 
-    // MARK: - Selected Project Section
-    private func selectedProjectSection(_ project: Project) -> some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            SectionHeader(
-                title: "Current Project",
-                subtitle: "Working on: \(project.name)",
-                icon: "folder.fill"
-            )
-            
-            HStack(spacing: DesignSystem.spacing.lg) {
-                // Project info card
-                VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
+    // MARK: - Sidebar Content
+    private var sidebarContent: some View {
+        List {
+            Section("Project") {
+                ForEach(ProjectTab.allCases, id: \.self) { tab in
+                    Button(action: { selectedTab = tab }) {
+                        Label(tab.rawValue, systemImage: tab.icon)
+                            .foregroundColor(selectedTab == tab ? .accentColor : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if let selectedProject = windowManager.selectedProject {
+                Section("Current Project") {
                     HStack {
-                        Image(systemName: project.icon)
-                            .font(.system(size: DesignSystem.iconSize.xl))
-                            .foregroundStyle(project.color)
-                        
-                        VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
-                            Text(project.name)
+                        Image(systemName: selectedProject.icon)
+                            .foregroundStyle(selectedProject.color)
+                        VStack(alignment: .leading) {
+                            Text(selectedProject.name)
                                 .font(.headline)
-                                .fontWeight(.semibold)
-                            
-                            Text(project.type)
+                            Text("\(selectedProject.visualizations) views")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        
-                        Spacer()
-                        
-                        Button("Close Project") {
-                            windowManager.clearSelectedProject()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
                     }
-                    
-                    HStack(spacing: DesignSystem.spacing.lg) {
-                        Label("\(project.visualizations)", systemImage: "chart.bar")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Label("\(project.dataPoints)", systemImage: "circle.grid.3x3")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Label("\(project.collaborators)", systemImage: "person.2")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Spacer()
-                        
-                        Text("Last opened: \(project.lastModified, style: .relative)")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
+                    .padding(.vertical, 4)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(DesignSystem.padding.xl)
-                .background(project.color.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                        .stroke(project.color.opacity(0.3), lineWidth: 1)
-                )
             }
-        }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
-    }
+            
+            Section("Quick Actions") {
+                Button(action: quickSaveWorkspace) {
+                    Label("Quick Save", systemImage: "square.and.arrow.down")
+                }
+                .disabled(windowManager.getAllWindows().isEmpty)
 
-    // MARK: - Project Data Loading
-    private func loadProjectData(_ project: Project) {
-        // Create initial windows based on the project type
-        switch project.type {
-        case "2D Chart":
-            createChartWindow(for: project)
-        case "3D Visualization":
-            create3DWindow(for: project)
-        case "Time Series":
-            createTimeSeriesWindow(for: project)
-        case "Heatmap":
-            createHeatmapWindow(for: project)
-        default:
-            createGenericWindow(for: project)
-        }
-    }
-    
-    private func createChartWindow(for project: Project) {
-        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
-        _ = windowManager.createWindow(.charts, id: nextWindowID, position: position)
-        
-        windowManager.updateWindowContent(
-            nextWindowID,
-            content: """
-            # \(project.name) - \(project.type)
-            # Project loaded from recent projects
-            
-            import matplotlib.pyplot as plt
-            import numpy as np
-            
-            # Sample data for \(project.name)
-            x = np.linspace(0, 10, 100)
-            y = np.sin(x) * np.exp(-x/5)
-            
-            plt.figure(figsize=(10, 6))
-            plt.plot(x, y, label='\(project.name)', color='\(project.color.toString())')
-            plt.title('\(project.name) - \(project.type)')
-            plt.xlabel('Time')
-            plt.ylabel('Value')
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.show()
-            """
-        )
-        
-        windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
-    }
-    
-    private func create3DWindow(for project: Project) {
-        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
-        _ = windowManager.createWindow(.model3d, id: nextWindowID, position: position)
-        
-        let model3D = Model3DData.generateSphere(radius: 2.0, segments: 16)
-        windowManager.updateWindowModel3DData(nextWindowID, model3DData: model3D)
-        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
-    }
-    
-    private func createTimeSeriesWindow(for project: Project) {
-        let position = WindowPosition(x: 200, y: 200, z: 0, width: 1000, height: 700)
-        _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
-        
-        let timeSeriesData = DataFrameData(
-            columns: ["Date", "Value", "Category"],
-            rows: [
-                ["2024-01-01", "100", "A"],
-                ["2024-01-02", "120", "B"],
-                ["2024-01-03", "95", "A"],
-                ["2024-01-04", "140", "C"],
-                ["2024-01-05", "110", "B"]
-            ],
-            dtypes: ["Date": "string", "Value": "int", "Category": "string"]
-        )
-        
-        windowManager.updateWindowDataFrame(nextWindowID, dataFrame: timeSeriesData)
-        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
-    }
-    
-    private func createHeatmapWindow(for project: Project) {
-        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
-        _ = windowManager.createWindow(.charts, id: nextWindowID, position: position)
-        
-        windowManager.updateWindowContent(
-            nextWindowID,
-            content: """
-            # \(project.name) - Heatmap Visualization
-            
-            import matplotlib.pyplot as plt
-            import numpy as np
-            import seaborn as sns
-            
-            # Generate sample heatmap data for \(project.name)
-            data = np.random.rand(10, 12)
-            
-            plt.figure(figsize=(10, 8))
-            sns.heatmap(data, annot=True, cmap='viridis', 
-                       cbar_kws={'label': 'Value'})
-            plt.title('\(project.name) - Heatmap Analysis')
-            plt.xlabel('X Axis')
-            plt.ylabel('Y Axis')
-            plt.show()
-            """
-        )
-        
-        windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
-    }
-    
-    private func createGenericWindow(for project: Project) {
-        let position = WindowPosition(x: 200, y: 200, z: 0, width: 800, height: 600)
-        _ = windowManager.createWindow(.spatial, id: nextWindowID, position: position)
-        
-        windowManager.updateWindowContent(
-            nextWindowID,
-            content: """
-            # \(project.name) - \(project.type)
-            
-            This project contains \(project.visualizations) visualizations and \(project.dataPoints) data points.
-            
-            **Project Details:**
-            - Name: \(project.name)
-            - Type: \(project.type)
-            - Collaborators: \(project.collaborators)
-            - Last Modified: \(project.lastModified)
-            
-            Use the tools above to create charts, import data, and build your analysis.
-            """
-        )
-        
-        windowManager.addWindowTag(nextWindowID, tag: "project:\(project.name)")
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
-    }
-
-    private var headerSection: some View {
-        HStack(alignment: .center, spacing: DesignSystem.spacing.lg) {
-            VStack(alignment: .leading, spacing: DesignSystem.spacing.sm) {
-                Text("Project Manager")
-                    .font(.system(.title, design: .rounded, weight: .bold))
-                    .foregroundStyle(.primary)
-                if !workspaceManager.getCustomWorkspaces().isEmpty {
-                    Text("\(workspaceManager.getCustomWorkspaces().count) saved project\(workspaceManager.getCustomWorkspaces().count == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Button(action: createSampleWorkspace) {
+                    Label("Create Demo", systemImage: "wand.and.stars")
                 }
             }
 
-            Spacer()
-
-            HStack(spacing: DesignSystem.spacing.md) {
-                WindowCountIndicator(
-                    count: windowManager.getAllWindows().count
+            Section("Create") {
+                ActionCard(
+                    title: "New Project",
+                    subtitle: "Create from scratch",
+                    icon: "plus.square.fill",
+                    color: .blue,
+                    action: {
+                        showWorkspaceDialog = true
+                    }
                 )
 
-                CircularButton(
-                    icon: showExportSidebar ? "sidebar.trailing" : "gearshape",
-                    action: { showExportSidebar.toggle() }
-                )
-            }
-        }
-        .padding(DesignSystem.padding.xl)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.xl))
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.xl)
-                .stroke(.white.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(
-            color: .black.opacity(0.08),
-            radius: 12,
-            x: 0,
-            y: 4
-        )
-    }
-
-    private var workspaceManagementSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            SectionHeader(
-                title: "Project Management",
-                subtitle: "Create, save, and manage your data analysis projects",
-                icon: "folder.badge.gearshape"
-            )
-
-            HStack(spacing: DesignSystem.spacing.md) {
-                PrimaryActionCard(
-                    title: "Project Manager",
-                    subtitle: "Create, load, and manage projects",
-                    icon: "folder.fill.badge.plus",
-                    action: { showWorkspaceDialog = true },
-                    style: .prominent
+                ActionCard(
+                    title: "Templates",
+                    subtitle: "Pre-built projects",
+                    icon: "doc.text.fill",
+                    color: .red,
+                    action: {
+                        showTemplateGallery = true
+                    }
                 )
 
-                PrimaryActionCard(
-                    title: "Template Gallery",
-                    subtitle: "Browse pre-built projects",
-                    icon: "doc.badge.gearshape",
-                    action: { showTemplateGallery = true },
-                    style: .secondary
-                )
-
-                PrimaryActionCard(
+                ActionCard(
                     title: "Import Notebook",
-                    subtitle: "Import Jupyter notebooks",
-                    icon: "square.and.arrow.down.on.square",
-                    action: { showNotebookImport = true },
-                    style: .secondary
-                )
-            }
-
-            if !workspaceManager.getCustomWorkspaces().isEmpty {
-                quickWorkspacesSection
-            }
-
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: DesignSystem.spacing.md), count: 3),
-                spacing: DesignSystem.spacing.md
-            ) {
-                SecondaryActionButton(
-                    title: "Quick Save",
-                    icon: "square.and.arrow.up",
-                    action: quickSaveWorkspace
-                )
-
-                SecondaryActionButton(
-                    title: "Demo",
-                    icon: "doc.badge.plus",
-                    action: createSampleWorkspace
-                )
-
-                SecondaryActionButton(
-                    title: "Clear All",
-                    icon: "trash",
-                    action: clearAllWindowsWithConfirmation,
-                    isDestructive: true
+                    subtitle: "Jupyter files",
+                    icon: "square.and.arrow.down.fill",
+                    color: .green,
+                    action: {
+                        showNotebookImport = true
+                    }
                 )
             }
         }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
+        .listStyle(.sidebar)
+        .frame(minWidth: 240)
     }
 
-    private var windowTypeSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            SectionHeader(
-                title: "Create New View",
-                subtitle: "Choose a view type to add to your project",
-                icon: "plus.rectangle.on.folder"
-            )
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: DesignSystem.spacing.md),
-                    GridItem(.flexible(), spacing: DesignSystem.spacing.md)
-                ],
-                spacing: DesignSystem.spacing.md
-            ) {
-                ForEach(StandardWindowType.allCases, id: \.self) { windowType in
-                    StandardWindowTypeCard(
-                        windowType: windowType,
-                        isSelected: selectedWindowType == windowType,
-                        isHovered: hoveredWindowType == windowType,
-                        action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedWindowType = windowType
-                                createStandardWindow(type: windowType)
-                            }
-                        }
+    // MARK: - Main Content Area
+    private var mainContent: some View {
+        HStack(spacing: 0) {
+            // Left Side Tab Bar
+            VerticalTabBar(selectedTab: $selectedTab)
+                .padding(.leading, 8)
+                .padding(.vertical, 12)
+            
+            // Tab Content
+            Group {
+                switch selectedTab {
+                case .workspace:
+                    WorkspaceTab(
+                        showWorkspaceDialog: $showWorkspaceDialog,
+                        showTemplateGallery: $showTemplateGallery,
+                        showNotebookImport: $showNotebookImport,
+                        loadWorkspace: loadWorkspace
                     )
-                    .onHover { hovering in
-                        hoveredWindowType = hovering ? windowType : nil
-                    }
-                }
-            }
-        }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
-    }
-
-    private var activeWindowsSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            HStack {
-                SectionHeader(
-                    title: "Active Views",
-                    subtitle: "\(windowManager.getAllWindows().count) view\(windowManager.getAllWindows().count == 1 ? "" : "s") currently open",
-                    icon: "rectangle.3.group"
-                )
-
-                Spacer()
-
-                Button("Close All") {
-                    clearAllWindowsWithConfirmation()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .foregroundStyle(.red)
-                .fontWeight(.medium)
-            }
-
-            if windowManager.getAllWindows().isEmpty {
-                EmptyStateView()
-            } else {
-                activeWindowsList
-            }
-        }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
-    }
-
-    private var activeWindowsList: some View {
-        ScrollView {
-            LazyVStack(spacing: DesignSystem.spacing.sm) {
-                ForEach(windowManager.getAllWindows(), id: \.id) { window in
-                    HStack(spacing: DesignSystem.spacing.lg) {
-                        IconBadge(icon: iconForWindowType(window.windowType))
-                            .scaleEffect(0.8)
-
-                        VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
-                            Text(window.windowType.displayName)
-                                .font(.headline)
-                                .fontWeight(.medium)
-
-                            HStack(spacing: DesignSystem.spacing.md) {
-                                Label("ID: #\(window.id)", systemImage: "number")
-                                    .font(.caption2)
-
-                                Label("\(window.state.exportTemplate.rawValue)", systemImage: "doc.text")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        WindowSizeBadge(width: window.position.width, height: window.position.height)
-
-                        HStack(spacing: DesignSystem.spacing.sm) {
-                            CircularButton(
-                                icon: "arrow.up.left.and.arrow.down.right",
-                                action: { openWindow(value: window.id) }
-                            )
-                            .scaleEffect(0.8)
-
-                            CircularButton(
-                                icon: "xmark.circle.fill",
-                                action: { windowManager.removeWindow(window.id) }
-                            )
-                            .scaleEffect(0.8)
-                            .foregroundStyle(.red)
-                        }
-                    }
-                    .padding(DesignSystem.padding.md)
-                    .background(Color.secondary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+                case .create:
+                    CreateTab(createWindow: createStandardWindow)
+                case .data:
+                    DataTab(
+                        showFileImporter: $showFileImporter,
+                        createBlankTable: createBlankDataTable
+                    )
+                case .active:
+                    ActiveWindowsTab(
+                        windowManager: windowManager,
+                        openWindow: { id in openWindow(value: id) },
+                        closeWindow: { id in windowManager.removeWindow(id) },
+                        closeAllWindows: clearAllWindowsWithConfirmation
                     )
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
         }
-        .frame(maxHeight: 250)
     }
 
-    private var quickWorkspacesSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
-            HStack {
-                Text("Recent Projects")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                Spacer()
-
-                Button("View All") {
-                    showWorkspaceDialog = true
-                }
-                .font(.caption)
-                .foregroundStyle(.blue)
-            }
-
-            let recentWorkspaces = Array(workspaceManager.getCustomWorkspaces().prefix(3))
-
-            if recentWorkspaces.isEmpty {
-                Text("No saved projects yet")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .italic()
-            } else {
-                VStack(spacing: DesignSystem.spacing.sm) {
-                    ForEach(recentWorkspaces) { workspace in
-                        QuickWorkspaceRowView(
-                            workspace: workspace,
-                            onLoad: { loadWorkspace(workspace) }
-                        )
-                    }
-                }
-            }
-        }
-        .padding(DesignSystem.padding.md)
-        .background(Color.secondary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
+    // MARK: - Detail View
+    private var detailView: some View {
+        ActiveWindowsDetailView(windowManager: windowManager)
     }
 
-    private var dataImportSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.lg) {
-            SectionHeader(
-                title: "File Import",
-                subtitle: "Import files and automatically create appropriate views",
-                icon: "square.and.arrow.down"
-            )
+    // MARK: - Computed Properties
+    private var workspaceSubtitle: String {
+        let windowCount = windowManager.getAllWindows().count
+        let projectCount = workspaceManager.getCustomWorkspaces().count
 
-            HStack(spacing: DesignSystem.spacing.md) {
-                DataImportActionCard(
-                    title: "Import Any File",
-                    subtitle: "CSV, JSON, Images, 3D Models",
-                    icon: "doc.badge.plus",
-                    action: { showFileImport = true },
-                    style: .prominent
-                )
-
-                DataImportActionCard(
-                    title: "Create Blank Table",
-                    subtitle: "Start with sample data",
-                    icon: "plus.rectangle.on.rectangle",
-                    action: { createBlankDataTable() },
-                    style: .secondary
-                )
-            }
-
-            Text("Import any file type to automatically create the most appropriate view for analysis and visualization")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, DesignSystem.padding.sm)
+        if windowCount > 0 {
+            return "\(windowCount) active view\(windowCount == 1 ? "" : "s")"
+        } else if projectCount > 0 {
+            return "\(projectCount) saved project\(projectCount == 1 ? "" : "s")"
+        } else {
+            return "Ready to create"
         }
-        .padding(DesignSystem.padding.xl)
-        .cardStyle()
     }
 
-    private func createStandardWindow(type: StandardWindowType) {
-        let standardPosition = WindowPosition(
-            x: 100,
-            y: 100,
+    private var supportedFileTypes: [UTType] {
+        [
+            .commaSeparatedText,
+            .tabSeparatedText,
+            .json,
+            .plainText,
+            .image,
+            .usdz,
+            .threeDContent,
+            .data
+        ]
+    }
+
+    // MARK: - Helper Methods
+    private func toggleSidebar() {
+        #if os(macOS)
+        NSApp.keyWindow?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+        #endif
+    }
+
+    private func closeAllSheets() {
+        showWorkspaceDialog = false
+        showTemplateGallery = false
+        showNotebookImport = false
+        showFileImporter = false
+        showSettings = false
+        showAppleSignIn = false
+    }
+
+    private func createStandardWindow(_ type: StandardWindowType) {
+        let position = WindowPosition(
+            x: 100 + Double(nextWindowID * 20),
+            y: 100 + Double(nextWindowID * 20),
             z: 0,
             width: 800,
             height: 600
         )
-        
+
         let windowType = type.toWindowType()
-        _ = windowManager.createWindow(windowType, id: nextWindowID, position: standardPosition)
+        _ = windowManager.createWindow(windowType, id: nextWindowID, position: position)
         openWindow(value: nextWindowID)
         windowManager.markWindowAsOpened(nextWindowID)
         nextWindowID += 1
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            selectedWindowType = nil
-        }
     }
 
     private func quickSaveWorkspace() {
         let windows = windowManager.getAllWindows()
         guard !windows.isEmpty else { return }
 
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
-        let workspaceName = "Project \(timestamp)"
+        let timestamp = Date.now.formatted(date: .abbreviated, time: .shortened)
+        let workspaceName = "Quick Save - \(timestamp)"
 
         Task {
             do {
@@ -758,10 +545,16 @@ struct EnvironmentView: View {
                     tags: ["quick-save"],
                     windowManager: windowManager
                 )
-
-                print("Quick project saved: \(workspaceName)")
+                
+                // Ensure UI updates happen on main thread
+                await MainActor.run {
+                    // Any UI updates would go here if needed
+                    print("Workspace saved successfully: \(workspaceName)")
+                }
             } catch {
-                print("Failed to quick save project: \(error)")
+                await MainActor.run {
+                    print("Failed to quick save: \(error)")
+                }
             }
         }
     }
@@ -774,86 +567,39 @@ struct EnvironmentView: View {
                     into: windowManager,
                     clearExisting: true
                 ) { windowID in
-                    openWindow(value: windowID)
-                    windowManager.markWindowAsOpened(windowID)
+                    // Ensure window operations happen on main thread
+                    Task { @MainActor in
+                        openWindow(value: windowID)
+                        windowManager.markWindowAsOpened(windowID)
+                    }
                 }
-
-                print("Workspace loaded: \(workspace.name)")
             } catch {
-                print("Failed to load project: \(error)")
+                await MainActor.run {
+                    print("Failed to load workspace: \(error)")
+                }
             }
         }
     }
 
     private func createSampleWorkspace() {
-        let windowTypes: [WindowType] = [.charts, .column, .volume, .model3d]
+        // Create a diverse set of sample windows
+        let sampleConfigs: [(WindowType, String)] = [
+            (.charts, "Sample Chart"),
+            (.column, "Sample Data"),
+            (.model3d, "3D Model"),
+            (.volume, "Metrics")
+        ]
 
-        for (index, type) in windowTypes.enumerated() {
+        for (index, (type, title)) in sampleConfigs.enumerated() {
             let position = WindowPosition(
-                x: Double(100 + index * 50),
-                y: Double(100 + index * 50),
+                x: Double(100 + index * 30),
+                y: Double(100 + index * 30),
                 z: 0,
-                width: 600,
-                height: 450
+                width: 700,
+                height: 500
             )
+
             _ = windowManager.createWindow(type, id: nextWindowID, position: position)
-
-            switch type {
-            case .charts:
-                windowManager.updateWindowContent(
-                    nextWindowID,
-                    content: """
-                    # Sample Chart
-                    plt.figure(figsize=(10, 6))
-                    x = np.linspace(0, 10, 100)
-                    y = np.sin(x)
-                    plt.plot(x, y)
-                    plt.title('Sample Sine Wave')
-                    plt.show()
-                    """
-                )
-                windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-            case .column:
-                let sampleDataFrame = DataFrameData(
-                    columns: ["Name", "Value", "Category"],
-                    rows: [
-                        ["Sample A", "100", "Type 1"],
-                        ["Sample B", "200", "Type 2"],
-                        ["Sample C", "150", "Type 1"]
-                    ],
-                    dtypes: ["Name": "string", "Value": "int", "Category": "string"]
-                )
-                windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
-                windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
-            case .volume:
-                windowManager.updateWindowContent(
-                    nextWindowID,
-                    content: """
-                    # Model Performance Metrics
-                    import numpy as np
-                    import matplotlib.pyplot as plt
-
-                    metrics = {
-                        'accuracy': 0.95,
-                        'precision': 0.92,
-                        'recall': 0.89,
-                        'f1_score': 0.90
-                    }
-
-                    print("Model Performance Metrics:")
-                    for key, value in metrics.items():
-                        print(f"{key}: {value}")
-                    """
-                )
-                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
-            case .model3d:
-                let sampleCube = Model3DData.generateCube(size: 3.0)
-                windowManager.updateWindowModel3DData(nextWindowID, model3DData: sampleCube)
-                windowManager.updateWindowTemplate(nextWindowID, template: .custom)
-            default:
-                break
-            }
-
             windowManager.addWindowTag(nextWindowID, tag: "demo")
             openWindow(value: nextWindowID)
             windowManager.markWindowAsOpened(nextWindowID)
@@ -862,732 +608,787 @@ struct EnvironmentView: View {
     }
 
     private func clearAllWindowsWithConfirmation() {
-        let allWindows = windowManager.getAllWindows()
-        for window in allWindows {
+        // In a real app, you'd show a confirmation dialog
+        windowManager.getAllWindows().forEach { window in
             windowManager.removeWindow(window.id)
         }
     }
 
-    private func createDataTableWithImport() {
-        showFileImport = true
-    }
-    
     private func createBlankDataTable() {
-        let position = WindowPosition(
-            x: 100,
-            y: 100,
-            z: 0,
-            width: 1000,
-            height: 700
-        )
-        
-        _ = windowManager.createWindow(.column, id: nextWindowID, position: position)
-        
-        let sampleDataFrame = DataFrameData(
-            columns: ["Name", "Value", "Category", "Date"],
-            rows: [
-                ["Sample A", "100", "Type 1", "2024-01-01"],
-                ["Sample B", "200", "Type 2", "2024-01-02"],
-                ["Sample C", "150", "Type 1", "2024-01-03"]
-            ],
-            dtypes: ["Name": "string", "Value": "int", "Category": "string", "Date": "string"]
-        )
-        windowManager.updateWindowDataFrame(nextWindowID, dataFrame: sampleDataFrame)
-        
-        openWindow(value: nextWindowID)
-        windowManager.markWindowAsOpened(nextWindowID)
-        nextWindowID += 1
+        createStandardWindow(.dataFrame)
     }
-    
+
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            
-            do {
-                guard url.startAccessingSecurityScopedResource() else {
-                    print("Cannot access the selected file")
-                    return
-                }
-                defer { url.stopAccessingSecurityScopedResource() }
-                
-                let fileExtension = url.pathExtension.lowercased()
-                let fileName = url.lastPathComponent
-                
-                // Determine the appropriate view type based on file extension
-                let viewType = determineViewType(for: fileExtension)
-                
-                let position = WindowPosition(
-                    x: 100,
-                    y: 100,
-                    z: 0,
-                    width: viewType == .model3d ? 800 : 1000,
-                    height: viewType == .model3d ? 600 : 700
-                )
-                
-                _ = windowManager.createWindow(viewType, id: nextWindowID, position: position)
-                
-                // Handle different file types
-                switch viewType {
-                case .column:
-                    // Data files (CSV, JSON, TSV)
-                    let content = try String(contentsOf: url)
-                    let importedData: DataFrameData
-                    
-                    switch fileExtension {
-                    case "csv":
-                        importedData = try parseCSVForDataTable(content)
-                    case "tsv", "txt":
-                        importedData = try parseTSVForDataTable(content)
-                    case "json":
-                        importedData = try parseJSONForDataTable(content)
-                    default:
-                        importedData = try parseCSVForDataTable(content)
-                    }
-                    
-                    windowManager.updateWindowDataFrame(nextWindowID, dataFrame: importedData)
-                    windowManager.updateWindowTemplate(nextWindowID, template: .pandas)
-                    
-                case .model3d:
-                    // 3D model files (USDZ, USD, etc.)
-                    windowManager.updateWindowContent(
-                        nextWindowID,
-                        content: """
-                        # 3D Model: \(fileName)
-                        # File: \(url.path)
-                        
-                        # 3D model loaded from: \(fileName)
-                        # Use the model viewer to interact with the 3D content
-                        """
-                    )
-                    windowManager.updateWindowTemplate(nextWindowID, template: .custom)
-                    
-                case .charts:
-                    // Image files or other files that might be suitable for chart analysis
-                    let content = try? String(contentsOf: url)
-                    windowManager.updateWindowContent(
-                        nextWindowID,
-                        content: """
-                        # File Analysis: \(fileName)
-                        # File path: \(url.path)
-                        # File type: \(fileExtension.uppercased())
-                        
-                        import matplotlib.pyplot as plt
-                        import numpy as np
-                        
-                        # File imported: \(fileName)
-                        # Add your analysis code here
-                        
-                        plt.figure(figsize=(10, 6))
-                        plt.title('Analysis of \(fileName)')
-                        plt.text(0.5, 0.5, 'File: \(fileName)\\nType: \(fileExtension.uppercased())', 
-                                ha='center', va='center', fontsize=12)
-                        plt.axis('off')
-                        plt.show()
-                        """
-                    )
-                    windowManager.updateWindowTemplate(nextWindowID, template: .matplotlib)
-                    
-                default:
-                    // Generic content view for other file types
-                    let content = try? String(contentsOf: url)
-                    windowManager.updateWindowContent(
-                        nextWindowID,
-                        content: """
-                        # File: \(fileName)
-                        # Type: \(fileExtension.uppercased())
-                        # Path: \(url.path)
-                        
-                        \(content?.prefix(1000) ?? "Binary file content not displayable")
-                        """
-                    )
-                    windowManager.updateWindowTemplate(nextWindowID, template: .plain)
-                }
-                
-                // Add tags to identify the imported file
-                windowManager.addWindowTag(nextWindowID, tag: "imported")
-                windowManager.addWindowTag(nextWindowID, tag: fileExtension)
-                windowManager.addWindowTag(nextWindowID, tag: "file:\(fileName)")
-                
-                openWindow(value: nextWindowID)
-                windowManager.markWindowAsOpened(nextWindowID)
-                nextWindowID += 1
-                
-                print("File imported: \(fileName) -> \(viewType.displayName) view")
-                
-            } catch {
-                print("Error importing file: \(error.localizedDescription)")
-            }
-            
-        case .failure(let error):
-            print("Import failed: \(error.localizedDescription)")
-        }
-    }
-    
-    private func determineViewType(for fileExtension: String) -> WindowType {
-        switch fileExtension.lowercased() {
-        case "csv", "tsv", "json", "txt":
-            return .column  // Data table view
-        case "usdz", "usd", "usda", "usdc", "obj", "dae", "3ds":
-            return .model3d  // 3D model view
-        case "jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp":
-            return .charts  // Image analysis view
-        case "py", "ipynb", "r", "m", "scala":
-            return .volume  // Code/notebook view
-        case "md", "txt", "rtf":
-            return .spatial  // Text/document view
-        default:
-            return .charts  // Default to charts for analysis
-        }
-    }
-    
-    private func parseCSVForDataTable(_ content: String) throws -> DataFrameData {
-        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        guard !lines.isEmpty else {
-            throw FileImportError.noData
-        }
-        
-        let rows = lines.map { line in
-            line.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        }
-        
-        let columns = rows.first ?? []
-        let dataRows = Array(rows.dropFirst())
-        
-        let dtypes = autoDetectDataTypesForTable(columns: columns, rows: dataRows)
-        
-        return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
-    }
-    
-    private func parseTSVForDataTable(_ content: String) throws -> DataFrameData {
-        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        guard !lines.isEmpty else {
-            throw FileImportError.noData
-        }
-        
-        let rows = lines.map { line in
-            line.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespaces) }
-        }
-        
-        let columns = rows.first ?? []
-        let dataRows = Array(rows.dropFirst())
-        
-        let dtypes = autoDetectDataTypesForTable(columns: columns, rows: dataRows)
-        
-        return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
-    }
-    
-    private func parseJSONForDataTable(_ content: String) throws -> DataFrameData {
-        guard let data = content.data(using: .utf8) else {
-            throw FileImportError.invalidFormat
-        }
-        
-        let json = try JSONSerialization.jsonObject(with: data)
-        
-        if let array = json as? [[String: Any]] {
-            let allKeys = Set(array.flatMap { $0.keys })
-            let columns = Array(allKeys).sorted()
-            
-            let rows = array.map { object in
-                columns.map { column in
-                    if let value = object[column] {
-                        return String(describing: value)
-                    } else {
-                        return ""
-                    }
-                }
-            }
-            
-            let dtypes = autoDetectDataTypesForTable(columns: columns, rows: rows)
-            return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
-            
-        } else if let object = json as? [String: Any] {
-            let columns = ["Key", "Value"]
-            let rows = object.map { [String($0.key), String(describing: $0.value)] }
-            let dtypes = autoDetectDataTypesForTable(columns: columns, rows: rows)
-            return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
-        } else {
-            throw FileImportError.invalidFormat
-        }
-    }
-    
-    private func autoDetectDataTypesForTable(columns: [String], rows: [[String]]) -> [String: String] {
-        var dtypes: [String: String] = [:]
-        
-        for (index, column) in columns.enumerated() {
-            let columnValues = rows.compactMap { row in
-                index < row.count ? row[index] : nil
-            }.filter { !$0.isEmpty }
-            
-            if columnValues.isEmpty {
-                dtypes[column] = "string"
-                continue
-            }
-            
-            let numericCount = columnValues.compactMap { Double($0) }.count
-            
-            if Double(numericCount) / Double(columnValues.count) > 0.8 {
-                if columnValues.allSatisfy({ $0.contains(".") || Int($0) == nil }) {
-                    dtypes[column] = "float"
-                } else {
-                    dtypes[column] = "int"
-                }
-            } else {
-                dtypes[column] = "string"
-            }
-        }
-        
-        return dtypes
-    }
+            // Implementation for file import
+            print("Importing file: \(url.lastPathComponent)")
 
-    private func iconForWindowType(_ type: WindowType) -> String {
-        switch type {
-        case .charts: return "chart.line.uptrend.xyaxis"
-        case .spatial: return "rectangle.3.group"
-        case .column: return "tablecells"
-        case .volume: return "gauge"
-        case .pointcloud: return "circle.grid.3x3"
-        case .model3d: return "cube.transparent"
+        case .failure(let error):
+            print("Import failed: \(error)")
         }
     }
 }
 
-// MARK: - Standard Window Types (Non-Volumetric)
+// MARK: - Workspace Tab
+struct WorkspaceTab: View {
+    @StateObject private var workspaceManager = WorkspaceManager.shared
+    @Binding var showWorkspaceDialog: Bool
+    @Binding var showTemplateGallery: Bool
+    @Binding var showNotebookImport: Bool
+    let loadWorkspace: (WorkspaceMetadata) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Quick Actions Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Get Started")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        ActionCard(
+                            title: "New Project",
+                            subtitle: "Create from scratch",
+                            icon: "plus.square.fill",
+                            color: .blue,
+                            action: {
+                                showWorkspaceDialog = true
+                            }
+                        )
+                        
+                        ActionCard(
+                            title: "Templates",
+                            subtitle: "Pre-built projects",
+                            icon: "doc.text.fill",
+                            color: .red,
+                            action: {
+                                showTemplateGallery = true
+                            }
+                        )
+                        
+                        ActionCard(
+                            title: "Import Notebook",
+                            subtitle: "Jupyter files",
+                            icon: "square.and.arrow.down.fill",
+                            color: .green,
+                            action: {
+                                showNotebookImport = true
+                            }
+                        )
+                    }
+                }
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                // Recent Projects Section
+                if !workspaceManager.getCustomWorkspaces().isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Recent Projects")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            Spacer()
+
+                            Button("View All") {
+                                showWorkspaceDialog = true
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.blue)
+                        }
+
+                        LazyVStack(spacing: 8) {
+                            ForEach(workspaceManager.getCustomWorkspaces().prefix(5)) { workspace in
+                                WorkspaceRow(workspace: workspace) {
+                                    loadWorkspace(workspace)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Create Tab
+struct CreateTab: View {
+    let createWindow: (StandardWindowType) -> Void
+    @State private var selectedType: StandardWindowType? = nil
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Create New View")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("Choose a visualization type for your data")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 16) {
+                    ForEach(StandardWindowType.allCases, id: \.self) { type in
+                        WindowTypeCard(
+                            type: type,
+                            isSelected: selectedType == type
+                        ) {
+                            selectedType = type
+                            createWindow(type)
+
+                            // Reset selection after a delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                selectedType = nil
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Data Tab
+struct DataTab: View {
+    @Binding var showFileImporter: Bool
+    let createBlankTable: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Import Data")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                // Import Actions
+                HStack(spacing: 16) {
+                    ActionCard(
+                        title: "Import File",
+                        subtitle: "CSV, JSON, Images, 3D",
+                        icon: "doc.badge.plus",
+                        color: .blue,
+                        action: {
+                            showFileImporter = true
+                        }
+                    )
+
+                    ActionCard(
+                        title: "Blank Table",
+                        subtitle: "Start with sample data",
+                        icon: "tablecells",
+                        color: .yellow,
+                        action: {
+                            createBlankTable()
+                        }
+                    )
+                }
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                // Supported Formats
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Supported Formats")
+                        .font(.headline)
+
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        FormatCard(
+                            title: "Data Files",
+                            formats: ["CSV", "TSV", "JSON"],
+                            icon: "tablecells",
+                            color: .blue
+                        )
+
+                        FormatCard(
+                            title: "3D Models",
+                            formats: ["USDZ", "USD", "OBJ"],
+                            icon: "cube",
+                            color: .purple
+                        )
+
+                        FormatCard(
+                            title: "Images",
+                            formats: ["PNG", "JPG", "HEIC"],
+                            icon: "photo",
+                            color: .green
+                        )
+
+                        FormatCard(
+                            title: "Code Files",
+                            formats: ["PY", "IPYNB", "R"],
+                            icon: "chevron.left.forwardslash.chevron.right",
+                            color: .orange
+                        )
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Active Windows Tab
+struct ActiveWindowsTab: View {
+    let windowManager: WindowTypeManager
+    let openWindow: (Int) -> Void
+    let closeWindow: (Int) -> Void
+    let closeAllWindows: () -> Void
+
+    var body: some View {
+        Group {
+            if windowManager.getAllWindows().isEmpty {
+                ContentUnavailableView(
+                    "No Active Views",
+                    systemImage: "rectangle.dashed",
+                    description: Text("Create a new view to get started")
+                )
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Statistics Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Overview")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            HStack(spacing: 16) {
+                                StatCard(
+                                    title: "Total Windows",
+                                    value: "\(windowManager.getAllWindows().count)",
+                                    icon: "rectangle.stack"
+                                )
+                                
+                                StatCard(
+                                    title: "Window Types",
+                                    value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
+                                    icon: "square.grid.2x2"
+                                )
+                            }
+                        }
+                        
+                        // Window Distribution
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Distribution")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 8) {
+                                ForEach(WindowType.allCases, id: \.self) { type in
+                                    let count = windowManager.getAllWindows().filter { $0.windowType == type }.count
+                                    if count > 0 {
+                                        HStack {
+                                            Image(systemName: type.icon)
+                                                .foregroundStyle(.blue)
+                                            Text(type.displayName)
+                                                .font(.subheadline)
+                                            Spacer()
+                                            Text("\(count)")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.tertiarySystemFill))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            }
+                        }
+
+                        // Active Windows List
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Active Views")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Button(action: closeAllWindows) {
+                                    Label("Close All", systemImage: "xmark.circle")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.red)
+                            }
+
+                            LazyVStack(spacing: 8) {
+                                ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                    WindowRow(
+                                        window: window,
+                                        onOpen: { openWindow(window.id) },
+                                        onClose: { closeWindow(window.id) }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // Recent Activity
+                        if windowManager.getAllWindows().count > 1 {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Recent Activity")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                LazyVStack(spacing: 8) {
+                                    ForEach(windowManager.getAllWindows().prefix(5), id: \.id) { window in
+                                        HStack {
+                                            Image(systemName: window.windowType.icon)
+                                                .foregroundStyle(.blue)
+                                                .frame(width: 24)
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text("Window #\(window.id)")
+                                                    .font(.subheadline)
+                                                    .fontWeight(.medium)
+                                                
+                                                Text(window.windowType.displayName)
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Text(window.createdAt, style: .relative)
+                                                .font(.caption)
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.tertiarySystemFill))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Supporting Views
+struct WindowTypeCard: View {
+    let type: StandardWindowType
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 16) {
+                Image(systemName: type.icon)
+                    .font(.system(size: 32))
+                    .foregroundStyle(.blue)
+
+                Text(type.displayName)
+                    .font(.headline)
+
+                Text(type.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .padding()
+            .background(isSelected ? Color.blue.opacity(0.1) : Color(.secondarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isSelected ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: isSelected)
+    }
+}
+
+struct WorkspaceRow: View {
+    let workspace: WorkspaceMetadata
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workspace.name)
+                        .font(.headline)
+
+                    HStack {
+                        Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
+                        Text("•")
+                            .foregroundStyle(.tertiary)
+                        Text(workspace.formattedModifiedDate)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .background(Color(.secondarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct WindowRow: View {
+    let window: NewWindowID
+    let onOpen: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack {
+            Image(systemName: window.windowType.icon)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(window.windowType.displayName)
+                    .font(.headline)
+
+                HStack {
+                    Label("ID: #\(window.id)", systemImage: "number")
+                    Text("•")
+                        .foregroundStyle(.tertiary)
+                    Text("\(Int(window.position.width))×\(Int(window.position.height))")
+                        .fontDesign(.monospaced)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button(action: onOpen) {
+                    Label("Open", systemImage: "arrow.up.forward")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Button(action: onClose) {
+                    Label("Close", systemImage: "xmark")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(.red)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct FormatCard: View {
+    let title: String
+    let formats: [String]
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(.headline)
+            }
+
+            Text(formats.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.tertiarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct ProjectDetailView: View {
+    let project: Project
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Image(systemName: project.icon)
+                    .font(.largeTitle)
+                    .foregroundStyle(project.color)
+
+                VStack(alignment: .leading) {
+                    Text(project.name)
+                        .font(.title)
+                        .fontWeight(.semibold)
+
+                    Text(project.type)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button("Close Project", action: onClose)
+                    .buttonStyle(.bordered)
+            }
+
+            Divider()
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                StatCard(
+                    title: "Visualizations",
+                    value: "\(project.visualizations)",
+                    icon: "chart.bar"
+                )
+
+                StatCard(
+                    title: "Data Points",
+                    value: "\(project.dataPoints)",
+                    icon: "circle.grid.3x3"
+                )
+
+                StatCard(
+                    title: "Collaborators",
+                    value: "\(project.collaborators)",
+                    icon: "person.2"
+                )
+
+                StatCard(
+                    title: "Last Modified",
+                    value: project.lastModified.formatted(.relative(presentation: .named)),
+                    icon: "clock"
+                )
+            }
+
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.quaternarySystemFill))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// MARK: - Active Windows Detail View
+struct ActiveWindowsDetailView: View {
+    let windowManager: WindowTypeManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Active Windows")
+                .font(.title)
+                .fontWeight(.semibold)
+            
+            if windowManager.getAllWindows().isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "rectangle.dashed")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    
+                    Text("No active windows")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Create a new view to see it here")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(alignment: .leading, spacing: 16) {
+                    StatCard(
+                        title: "Total Windows",
+                        value: "\(windowManager.getAllWindows().count)",
+                        icon: "rectangle.stack"
+                    )
+                    
+                    StatCard(
+                        title: "Window Types",
+                        value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
+                        icon: "square.grid.2x2"
+                    )
+                    
+                    Text("Window Distribution")
+                        .font(.headline)
+                        .padding(.top)
+                    
+                    ForEach(WindowType.allCases, id: \.self) { type in
+                        let count = windowManager.getAllWindows().filter { $0.windowType == type }.count
+                        if count > 0 {
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 24)
+                                
+                                Text(type.displayName)
+                                    .font(.subheadline)
+                                
+                                Spacer()
+                                
+                                Text("\(count)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("Recent Activity")
+                        .font(.headline)
+                    
+                    ForEach(windowManager.getAllWindows().prefix(5), id: \.id) { window in
+                        HStack {
+                            Image(systemName: window.windowType.icon)
+                                .foregroundStyle(.blue)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Window #\(window.id)")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                
+                                Text(window.windowType.displayName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(window.createdAt, style: .relative)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+// MARK: - Standard Window Types
 enum StandardWindowType: String, CaseIterable {
     case charts = "Charts"
-    case dataFrame = "DataFrame Viewer"
-    case metrics = "Model Metric Viewer"
-    case spatial = "Spatial Editor"
-    case model3d = "3D Model Viewer"
-    
-    var displayName: String {
-        return self.rawValue
+    case dataFrame = "Data Table"
+    case metrics = "Metrics"
+    case spatial = "Spatial"
+    case pointCloud = "Point Cloud"
+    case model3d = "3D Model"
+
+    var displayName: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .charts: return "chart.line.uptrend.xyaxis"
+        case .dataFrame: return "tablecells"
+        case .metrics: return "gauge"
+        case .spatial: return "rectangle.3.group"
+        case .pointCloud: return "circle.grid.3x3"
+        case .model3d: return "cube"
+        }
     }
-    
+
+    var description: String {
+        switch self {
+        case .charts: return "Charts and graphs"
+        case .dataFrame: return "Tabular data viewer"
+        case .metrics: return "Performance metrics"
+        case .spatial: return "Spatial editor"
+        case .pointCloud: return "3D point clouds"
+        case .model3d: return "3D model viewer"
+        }
+    }
+
     func toWindowType() -> WindowType {
         switch self {
         case .charts: return .charts
         case .dataFrame: return .column
         case .metrics: return .volume
         case .spatial: return .spatial
+        case .pointCloud: return .pointcloud
         case .model3d: return .model3d
         }
     }
 }
 
-struct QuickWorkspaceRowView: View {
-    let workspace: WorkspaceMetadata
-    let onLoad: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(workspace.name)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-
-                Text("\(workspace.totalWindows) views • \(workspace.formattedModifiedDate)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            Button("Load") {
-                onLoad()
-            }
-            .font(.caption2)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.blue.opacity(0.1))
-            .foregroundStyle(.blue)
-            .clipShape(Capsule())
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(Color.secondary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-}
-
-struct DataImportActionCard: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let action: () -> Void
-    var style: ActionCardStyle = .secondary
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: DesignSystem.iconSize.xl, weight: .medium))
-                    .foregroundStyle(style == .prominent ? .white : Color.accentColor)
-
-                VStack(spacing: DesignSystem.spacing.xs) {
-                    Text(title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(style == .prominent ? .white : .primary)
-
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(style == .prominent ? .white.opacity(0.8) : .secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.cardHeight.md)
-            .padding(DesignSystem.padding.md)
-            .background(style == .prominent ? Color.orange : Color.secondary.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-        }
-        .buttonStyle(.plain)
-        .hoverEffect()
-    }
-}
-
-struct ExportConfigurationSidebar: View {
-    @StateObject private var windowManager = WindowTypeManager.shared
-    @State private var selectedWindowID: Int? = nil
-    @State private var selectedTemplate: ExportTemplate = .plain
-    @State private var customImports = ""
-    @State private var newTag = ""
-    @State private var windowContent = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.spacing.md) {
-            headerView
-            windowSelectorSection
-            configurationSection
-            Spacer()
-            exportActionsSection
-        }
-        .padding()
-        .frame(width: 320)
-    }
-
-    private var headerView: some View {
-        Text("Export Configuration")
-            .font(.title2)
-            .bold()
-    }
-
-    private var windowSelectorSection: some View {
-        WindowSelectorView(
-            windowManager: windowManager,
-            selectedWindowID: $selectedWindowID,
-            onWindowSelected: loadWindowConfiguration
-        )
-    }
-
-    @ViewBuilder
-    private var configurationSection: some View {
-        if let windowID = selectedWindowID {
-            Divider()
-            WindowConfigurationView(
-                windowID: windowID,
-                windowManager: windowManager,
-                selectedTemplate: $selectedTemplate,
-                customImports: $customImports,
-                newTag: $newTag,
-                windowContent: $windowContent
-            )
-        }
-    }
-
-    private var exportActionsSection: some View {
-        ExportActionsView(windowManager: windowManager)
-    }
-
-    private func loadWindowConfiguration(_ window: NewWindowID) {
-        selectedTemplate = window.state.exportTemplate
-        customImports = window.state.customImports.joined(separator: "\n")
-        windowContent = window.state.content
-    }
-}
-
-extension View {
-    func roundedProjectManagerStyle() -> some View {
-        self
-            .background(Color.secondary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                    .stroke(.white.opacity(0.2), lineWidth: 1)
-            )
-            .shadow(
-                color: .black.opacity(0.08),
-                radius: 12,
-                x: 0,
-                y: 4
-            )
-    }
-}
-
-struct StandardWindowTypeCard: View {
-    let windowType: StandardWindowType
-    let isSelected: Bool
-    let isHovered: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(Color.accentColor.opacity(isSelected ? 0.2 : 0.15))
-                        .frame(width: DesignSystem.buttonHeight.lg, height: DesignSystem.buttonHeight.lg)
-
-                    Image(systemName: iconForStandardWindowType(windowType))
-                        .font(.system(size: DesignSystem.iconSize.lg, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
-                }
-                .scaleEffect(isHovered ? 1.05 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isHovered)
-
-                VStack(spacing: DesignSystem.spacing.xs) {
-                    Text(windowType.displayName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-
-                    Text(descriptionForStandardWindowType(windowType))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.cardHeight.md)
-            .padding(DesignSystem.padding.md)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                .fill(Color.secondary.opacity(isSelected ? 0.15 : 0.1))
-                .overlay {
-                    RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg)
-                        .stroke(isSelected ? Color.accentColor : (isHovered ? .white.opacity(0.3) : .clear), lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 12 : 6, x: 0, y: isHovered ? 6 : 3)
-        }
-        .scaleEffect(isSelected ? 0.98 : (isHovered ? 1.02 : 1.0))
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-    }
-
-    private func iconForStandardWindowType(_ type: StandardWindowType) -> String {
-        switch type {
-        case .charts: return "chart.line.uptrend.xyaxis"
-        case .dataFrame: return "tablecells"
-        case .metrics: return "gauge"
-        case .spatial: return "rectangle.3.group"
-        case .model3d: return "cube.transparent"
-        }
-    }
-
-    private func descriptionForStandardWindowType(_ type: StandardWindowType) -> String {
-        switch type {
-        case .charts: return "Visualize data with charts and graphs"
-        case .dataFrame: return "Browse and analyze tabular data"
-        case .metrics: return "Performance metrics and analytics"
-        case .spatial: return "Interactive spatial editor"
-        case .model3d: return "3D model rendering and interaction"
-        }
-    }
-}
-
-struct WindowCountIndicator: View {
-    let count: Int
-
-    var body: some View {
-        Label("\(count)", systemImage: "rectangle.3.group")
-            .font(.headline)
-            .padding(.horizontal, DesignSystem.padding.md)
-            .padding(.vertical, DesignSystem.padding.xs)
-            .background(Color.accentColor.opacity(0.15))
-            .foregroundStyle(Color.accentColor)
-            .clipShape(Capsule())
-    }
-}
-
-struct CircularButton: View {
-    let icon: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: DesignSystem.iconSize.md))
-                .foregroundStyle(.secondary)
-                .frame(width: DesignSystem.buttonHeight.md, height: DesignSystem.buttonHeight.md)
-                .background(Color.secondary.opacity(0.1))
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .hoverEffect()
-    }
-}
-
-struct SectionHeader: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: DesignSystem.spacing.xl) {
-            IconBadge(icon: icon)
-
-            VStack(alignment: .leading, spacing: DesignSystem.spacing.xs) {
-                Text(title)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        }
-    }
-}
-
-struct IconBadge: View {
-    let icon: String
-
-    var body: some View {
-        Image(systemName: icon)
-            .font(.system(size: DesignSystem.iconSize.lg))
-            .foregroundStyle(Color.accentColor)
-            .frame(width: DesignSystem.iconSize.xl, height: DesignSystem.iconSize.xl)
-    }
-}
-
-enum ActionCardStyle {
-    case prominent
-    case secondary
-}
-
-struct PrimaryActionCard: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let action: () -> Void
-    var style: ActionCardStyle = .secondary
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: DesignSystem.iconSize.xl, weight: .medium))
-                    .foregroundStyle(style == .prominent ? .white : Color.accentColor)
-
-                VStack(spacing: DesignSystem.spacing.xs) {
-                    Text(title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(style == .prominent ? .white : .primary)
-
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(style == .prominent ? .white.opacity(0.8) : .secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.cardHeight.md)
-            .padding(DesignSystem.padding.md)
-            .background(style == .prominent ? Color.accentColor : Color.secondary.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-        }
-        .buttonStyle(.plain)
-        .hoverEffect()
-    }
-}
-
-struct SecondaryActionButton: View {
-    let title: String
-    let icon: String
-    let action: () -> Void
-    var isDestructive: Bool = false
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: DesignSystem.spacing.sm) {
-                Image(systemName: icon)
-                    .font(.system(size: DesignSystem.iconSize.md))
-                    .foregroundStyle(isDestructive ? .red : .secondary)
-
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(isDestructive ? .red : .primary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: DesignSystem.buttonHeight.lg)
-            .background(Color.secondary.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.md))
-        }
-        .buttonStyle(.plain)
-        .hoverEffect()
-    }
-}
-
-struct WindowSizeBadge: View {
-    let width: Double
-    let height: Double
-
-    var body: some View {
-        Text("\(Int(width))×\(Int(height))")
-            .font(.caption2)
-            .fontDesign(.monospaced)
-            .padding(.horizontal, DesignSystem.padding.sm)
-            .padding(.vertical, DesignSystem.padding.xs)
-            .background(Color.secondary.opacity(0.2))
-            .clipShape(Capsule())
-            .foregroundStyle(.secondary)
-    }
-}
-
-struct EmptyStateView: View {
-    var body: some View {
-        VStack(spacing: DesignSystem.spacing.md) {
-            Image(systemName: "rectangle.dashed")
-                .font(.system(size: DesignSystem.iconSize.xl))
-                .foregroundStyle(.secondary)
-
-            Text("No Active Views")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Text("Create a new view to get started")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: DesignSystem.cardHeight.md)
-        .background(Color.secondary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.cornerRadius.lg))
-    }
-}
-
-enum FileImportError: LocalizedError {
-    case noData
-    case invalidFormat
-    case parsingFailed
-    
-    var errorDescription: String? {
+// MARK: - Window Type Extension
+extension WindowType {
+    var icon: String {
         switch self {
-        case .noData:
-            return "No data found in the file"
-        case .invalidFormat:
-            return "Invalid file format"
-        case .parsingFailed:
-            return "Failed to parse the data"
+        case .charts: return "chart.line.uptrend.xyaxis"
+        case .spatial: return "rectangle.3.group"
+        case .column: return "tablecells"
+        case .volume: return "gauge"
+        case .pointcloud: return "circle.grid.3x3"
+        case .model3d: return "cube"
         }
+    }
+}
+
+struct EnvironmentView_Previews: PreviewProvider {
+    static var previews: some View {
+        EnvironmentView()
     }
 }

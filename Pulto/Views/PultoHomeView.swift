@@ -621,7 +621,7 @@ class KeychainHelper {
         SecItemDelete(query as CFDictionary)
     }
 }
-
+/*
 // MARK: - visionOS Curved Window Components
 
 struct VisionOSWindow<Content: View>: View {
@@ -649,7 +649,7 @@ struct VisionOSWindow<Content: View>: View {
             .scaleEffect(depth > 0 ? 1.0 + (depth * 0.02) : 1.0)
     }
 }
-
+*/
 struct SpatialBackground: View {
     var body: some View {
         GeometryReader { geometry in
@@ -957,7 +957,7 @@ struct PultoHomeView: View {
         }
     }
 }
-
+/*
 // MARK: - Header View
 struct HeaderView: View {
     @ObservedObject var viewModel: PultoHomeViewModel
@@ -1047,7 +1047,7 @@ struct UserProfileButton: View {
         }
     }
 }
-
+*/
 // MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
@@ -1436,7 +1436,7 @@ struct PultoHomeView_Previews: PreviewProvider {
         PultoHomeView()
     }
 }
-
+/*
 struct SettingsButton: View {
     let onTap: () -> Void
     @State private var isHovered = false
@@ -1468,3 +1468,4 @@ struct SettingsButton: View {
         }
     }
 }
+*/

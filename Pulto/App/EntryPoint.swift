@@ -61,6 +61,13 @@ struct EntryPoint: App {
             }
             .windowStyle(.plain)
             .defaultSize(width: 1000, height: 700)
+
+            // TODO: Re-enable when TestFeaturesView compilation is fixed
+            // WindowGroup("Test Features", id: "test-features") {
+            //     TestFeaturesView()
+            // }
+            // .windowStyle(.plain)
+            // .defaultSize(width: 1000, height: 700)
         }
     }
     

@@ -260,29 +260,38 @@ class WorkspaceManager: ObservableObject {
     ) async throws -> EnvironmentRestoreResult {
         
         guard let fileURL = metadata.fileURL else {
+            print("❌ WorkspaceManager: File URL not found for workspace: \(metadata.name)")
             throw WorkspaceError.fileNotFound
         }
+        
+        print("🔄 WorkspaceManager: Loading workspace '\(metadata.name)' from \(fileURL.lastPathComponent)")
         
         if clearExisting {
             await MainActor.run {
                 windowManager.clearAllWindows()
+                print("🗑️ WorkspaceManager: Cleared existing windows")
             }
         }
         
         let importResult = try windowManager.importFromGenericNotebook(fileURL: fileURL)
+        print("📥 WorkspaceManager: Imported \(importResult.restoredWindows.count) windows from notebook")
         
         // Open windows with visual feedback
         var openedWindows: [NewWindowID] = []
         
         for window in importResult.restoredWindows {
             await MainActor.run {
+                print("🪟 WorkspaceManager: Opening window #\(window.id) (\(window.windowType.displayName))")
                 openWindow(window.id)
+                windowManager.markWindowAsOpened(window.id)
                 openedWindows.append(window)
             }
             
             // Small delay for smooth animation
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
+        
+        print("✅ WorkspaceManager: Successfully opened \(openedWindows.count) windows")
         
         return EnvironmentRestoreResult(
             importResult: importResult,
