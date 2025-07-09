@@ -69,12 +69,22 @@ struct SpatialEditorView: View {
     @State private var galaxyPoints: Double = 5000
     @State private var cubeSize: Double = 10.0
     @State private var cubePointsPerFace: Double = 500
+    
+    // New realistic demo parameters
+    @State private var buildingWidth: Double = 30.0
+    @State private var buildingHeight: Double = 15.0
+    @State private var buildingDensity: Double = 2000
+    @State private var terrainSize: Double = 50.0
+    @State private var terrainElevation: Double = 8.0
+    @State private var terrainVegetation: Double = 0.3
+    @State private var intersectionSize: Double = 40.0
+    @State private var intersectionPoints: Double = 6000
 
     // Code sidebar states
     @State private var showCodeSidebar = false
     @State private var generatedCode = ""
 
-    private let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube"]
+    private let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube", "Building Scan", "Terrain Survey", "Traffic Intersection"]
 
     // MARK: – Init
     init(windowID: Int? = nil, initialPointCloud: PointCloudData? = nil, initialChart: ChartVisualizationData? = nil) {
@@ -87,9 +97,11 @@ struct SpatialEditorView: View {
             self.initialVisualization = .pointCloud(pointCloud)
             _currentVisualization = State(initialValue: .pointCloud(pointCloud))
         } else {
-            let defaultPointCloud = PointCloudDemo.generateSpherePointCloudData()
+            // Default to the impressive building scan instead of simple sphere
+            let defaultPointCloud = PointCloudDemo.generateBuildingScanData()
             self.initialVisualization = .pointCloud(defaultPointCloud)
             _currentVisualization = State(initialValue: .pointCloud(defaultPointCloud))
+            _selectedDemo = State(initialValue: 5) // Building scan is index 5
         }
     }
 
@@ -438,6 +450,31 @@ struct SpatialEditorView: View {
                     Text("Points per Face: \(Int(cubePointsPerFace))").font(.caption)
                     Slider(value: $cubePointsPerFace, in: 100...1000, step: 50) { _ in updatePointCloud() }
                 }
+            case 5: // Building Scan
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Building Width: \(buildingWidth, specifier: "%.1f")m").font(.caption)
+                    Slider(value: $buildingWidth, in: 15...50) { _ in updatePointCloud() }
+                    Text("Building Height: \(buildingHeight, specifier: "%.1f")m").font(.caption)
+                    Slider(value: $buildingHeight, in: 10...25) { _ in updatePointCloud() }
+                    Text("Density: \(Int(buildingDensity))").font(.caption)
+                    Slider(value: $buildingDensity, in: 1000...5000, step: 200) { _ in updatePointCloud() }
+                }
+            case 6: // Terrain Survey
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Area Size: \(terrainSize, specifier: "%.1f")m").font(.caption)
+                    Slider(value: $terrainSize, in: 30...80) { _ in updatePointCloud() }
+                    Text("Elevation Variation: \(terrainElevation, specifier: "%.1f")m").font(.caption)
+                    Slider(value: $terrainElevation, in: 3...15) { _ in updatePointCloud() }
+                    Text("Vegetation Density: \(terrainVegetation, specifier: "%.2f")").font(.caption)
+                    Slider(value: $terrainVegetation, in: 0.1...0.8) { _ in updatePointCloud() }
+                }
+            case 7: // Traffic Intersection
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Intersection Size: \(intersectionSize, specifier: "%.1f")m").font(.caption)
+                    Slider(value: $intersectionSize, in: 30...60) { _ in updatePointCloud() }
+                    Text("Points: \(Int(intersectionPoints))").font(.caption)
+                    Slider(value: $intersectionPoints, in: 4000...10000, step: 500) { _ in updatePointCloud() }
+                }
             default:
                 EmptyView()
             }
@@ -653,6 +690,22 @@ struct SpatialEditorView: View {
             currentVisualization = .pointCloud(PointCloudDemo.generateNoisyCubeData(
                 size: cubeSize,
                 pointsPerFace: Int(cubePointsPerFace)))
+        case 5:
+            currentVisualization = .pointCloud(PointCloudDemo.generateBuildingScanData(
+                buildingWidth: buildingWidth,
+                buildingDepth: buildingWidth * 0.7,
+                buildingHeight: buildingHeight,
+                density: Int(buildingDensity)))
+        case 6:
+            currentVisualization = .pointCloud(PointCloudDemo.generateTerrainWithVegetationData(
+                size: terrainSize,
+                elevationVariation: terrainElevation,
+                vegetationDensity: terrainVegetation,
+                points: 8000))
+        case 7:
+            currentVisualization = .pointCloud(PointCloudDemo.generateTrafficIntersectionData(
+                intersectionSize: intersectionSize,
+                points: Int(intersectionPoints)))
         default: break
         }
     }

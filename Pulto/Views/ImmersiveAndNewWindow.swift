@@ -1,107 +1,13 @@
-/*
-See the LICENSE.txt file for this sample's licensing information.
-
-Abstract:
-The app's main entry point
-*/
+//
+//  ImmersiveSpaceView.swift
+//  Pulto
+//
+//  Created by Assistant on 12/29/2024.
+//
 
 import SwiftUI
 import RealityKit
 
-@main
-struct EntryPoint: SwiftUI.App {
-    @StateObject private var windowManager = WindowTypeManager.shared
-    @StateObject private var spatialManager = SpatialWindowManager.shared
-    
-    var body: some SwiftUI.Scene {
-        // Main interface - EnvironmentView as primary entry point
-        WindowGroup(id: "main") {
-            EnvironmentView()
-                .environmentObject(windowManager)
-                .environmentObject(spatialManager)
-                .onOpenURL { url in
-                    handleSharedURL(url)
-                }
-        }
-        .windowStyle(.plain)
-        .defaultSize(width: 1400, height: 900)
-        
-        // Immersive Space for 3D window management
-        ImmersiveSpace(id: "immersive-workspace") {
-            ImmersiveSpaceView()
-                .environmentObject(windowManager)
-                .environmentObject(spatialManager)
-        }
-        .immersionStyle(selection: .constant(.mixed), in: .mixed)
-        
-        // Grid launcher (original functionality)
-        WindowGroup(id: "launcher") {
-            LauncherView()
-        }
-        .windowStyle(.plain)
-        .defaultSize(width: 800, height: 600)
-        
-        // Secondary windows - loaded on demand
-        Group {
-            WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
-                NewWindow(id: id ?? 1)
-                    .environmentObject(windowManager)
-                    .environmentObject(spatialManager)
-            }
-
-            WindowGroup(id: "open-project-window") {
-                ProjectBrowserView(windowManager: windowManager)
-                    .environmentObject(windowManager)
-                    .environmentObject(spatialManager)
-            }
-            .windowStyle(.plain)
-            .defaultSize(width: 1000, height: 700)
-        }
-    }
-    
-    private func handleSharedURL(_ url: URL) {
-        // Handle CSV files shared from Safari or other apps
-        if url.pathExtension.lowercased() == "csv" {
-            Task {
-                do {
-                    let content = try String(contentsOf: url)
-                    if let csvData = CSVParser.parse(content) {
-                        // Convert CSVData to DataFrameData
-                        let dataFrame = DataFrameData(
-                            columns: csvData.headers,
-                            rows: csvData.rows,
-                            dtypes: csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
-                                let (index, type) = item
-                                if index < csvData.headers.count {
-                                    switch type {
-                                    case .numeric:
-                                        result[csvData.headers[index]] = "float"
-                                    case .categorical:
-                                        result[csvData.headers[index]] = "string"
-                                    case .date:
-                                        result[csvData.headers[index]] = "string"
-                                    case .unknown:
-                                        result[csvData.headers[index]] = "string"
-                                    }
-                                }
-                            }
-                        )
-                        
-                        // Create a new DataFrame window with the imported data
-                        let windowId = windowManager.getNextWindowID()
-                        let newWindow = windowManager.createWindow(.column, id: windowId)
-                        windowManager.updateWindowDataFrame(newWindow.id, dataFrame: dataFrame)
-                        windowManager.markWindowAsOpened(newWindow.id)
-                    }
-                } catch {
-                    print("Error importing shared CSV: \(error)")
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Missing Views Implementation
 struct ImmersiveSpaceView: View {
     @EnvironmentObject var windowManager: WindowTypeManager
     @EnvironmentObject var spatialManager: SpatialWindowManager
@@ -120,10 +26,10 @@ struct ImmersiveSpaceView: View {
                 }
         )
         .onAppear {
-            print("🌌 ImmersiveSpace appeared")
+            print("🌐 ImmersiveSpace appeared")
         }
         .onDisappear {
-            print("🌌 ImmersiveSpace disappeared")
+            print("🌐 ImmersiveSpace disappeared")
         }
     }
     
@@ -136,6 +42,11 @@ struct ImmersiveSpaceView: View {
             axis: [1, 0, 0]
         )
         content.add(directionalLight)
+        
+        // Add ambient light
+        let ambientLight = AmbientLight()
+        ambientLight.light.intensity = 300
+        content.add(ambientLight)
         
         // Position windows in 3D space
         positionWindowsIn3DSpace(content: content)
@@ -195,7 +106,7 @@ struct ImmersiveSpaceView: View {
         let mesh = MeshResource.generatePlane(width: 0.4, depth: 0.3)
         
         var material = SimpleMaterial()
-        material.color = .init(tint: .white)
+        material.color = SimpleMaterial.Color.white
         material.metallic = 0.1
         material.roughness = 0.8
         
@@ -216,15 +127,15 @@ struct ImmersiveSpaceView: View {
     }
     
     private func handleDragGesture(_ value: EntityTargetValue<DragGesture.Value>) {
-        let entity = value.entity
-        let components = entity.name.components(separatedBy: "_")
-        
-        if let windowIDString = components.last,
+        // Handle window dragging in 3D space
+        if let entity = value.entity,
+           let windowIDString = entity.name?.components(separatedBy: "_").last,
            let windowID = Int(windowIDString) {
             
             let translation = value.convert(value.translation3D, from: .local, to: .scene)
             entity.transform.translation += translation
             
+            // Update the spatial manager state
             let newTransform = ImmersiveWindowState.Transform3D(
                 translation: entity.transform.translation
             )
@@ -236,6 +147,19 @@ struct ImmersiveSpaceView: View {
     }
 }
 
+#Preview {
+    ImmersiveSpaceView()
+        .environmentObject(WindowTypeManager.shared)
+        .environmentObject(SpatialWindowManager.shared)
+}//
+//  NewWindow.swift
+//  Pulto
+//
+//  Created by Assistant on 12/29/2024.
+//
+
+import SwiftUI
+
 struct NewWindow: View {
     let id: Int
     @EnvironmentObject var windowManager: WindowTypeManager
@@ -244,8 +168,9 @@ struct NewWindow: View {
     var body: some View {
         Group {
             if let window = windowManager.getWindowSafely(for: id) {
-                NewWindowContentView(window: window)
+                WindowContentView(window: window)
             } else {
+                // Fallback view when window is not found
                 VStack(spacing: 20) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 60))
@@ -261,6 +186,7 @@ struct NewWindow: View {
                         .multilineTextAlignment(.center)
                     
                     Button("Close Window") {
+                        // Close this window since it's invalid
                         windowManager.markWindowAsClosed(id)
                     }
                     .buttonStyle(.borderedProminent)
@@ -281,16 +207,20 @@ struct NewWindow: View {
     }
 }
 
-struct NewWindowContentView: View {
+struct WindowContentView: View {
     let window: NewWindowID
     @EnvironmentObject var windowManager: WindowTypeManager
     @EnvironmentObject var spatialManager: SpatialWindowManager
     
     var body: some View {
-        VStack {
+        Group {
             switch window.windowType {
             case .charts:
-                ChartsView()
+                if let chartData = window.state.chartData {
+                    ChartsView(windowID: window.id, chartData: chartData)
+                } else {
+                    ChartsView(windowID: window.id)
+                }
                 
             case .spatial:
                 if let pointCloudData = window.state.pointCloudData {
@@ -301,7 +231,7 @@ struct NewWindowContentView: View {
                 
             case .column:
                 if let dataFrameData = window.state.dataFrameData {
-                    DataTableContentView(windowID: window.id)
+                    DataTableContentView(windowID: window.id, dataFrame: dataFrameData)
                 } else {
                     DataTableContentView(windowID: window.id)
                 }
@@ -315,9 +245,9 @@ struct NewWindowContentView: View {
                 
             case .pointcloud:
                 if let pointCloudData = window.state.pointCloudData {
-                    PointCloudEditorView(windowID: window.id, pointCloudData: pointCloudData)
+                    PointCloudView(windowID: window.id, pointCloudData: pointCloudData)
                 } else {
-                    PointCloudEditorView(windowID: window.id)
+                    PointCloudView(windowID: window.id)
                 }
                 
             case .model3d:
@@ -329,14 +259,17 @@ struct NewWindowContentView: View {
             }
         }
         .navigationTitle(window.windowType.displayName)
+        .navigationSubtitle("Window #\(window.id)")
         .toolbar {
-            ToolbarItem(placement: .bottomBar) {
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button("Save to Notebook") {
+                        // Save window content to notebook
                         saveWindowToNotebook()
                     }
                     
                     Button("Export Python Code") {
+                        // Export window content as Python code
                         exportPythonCode()
                     }
                     
@@ -346,20 +279,48 @@ struct NewWindowContentView: View {
                         windowManager.markWindowAsClosed(window.id)
                     }
                 } label: {
-                    Label("Window Actions", systemImage: "ellipsis.circle")
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
     }
     
     private func saveWindowToNotebook() {
-        // Implement save window to notebook functionality
+        // Implementation for saving to notebook
+        print("📝 Saving window #\(window.id) to notebook")
     }
     
     private func exportPythonCode() {
-        // Implement export python code functionality
+        // Implementation for exporting Python code
+        print("🐍 Exporting Python code for window #\(window.id)")
+        
+        let code = generatePythonCode()
+        
+        // Copy to clipboard (simplified)
+        #if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code, forType: .string)
+        print("Code copied to clipboard")
+        #endif
+    }
+    
+    private func generatePythonCode() -> String {
+        switch window.windowType {
+        case .charts:
+            return window.state.chartData?.toEnhancedPythonCode() ?? "# No chart data available"
+        case .spatial, .pointcloud:
+            return window.state.pointCloudData?.toPythonCode() ?? "# No point cloud data available"
+        case .column:
+            return window.state.dataFrameData?.toEnhancedPandasCode() ?? "# No DataFrame data available"
+        case .volume:
+            return window.state.volumeData?.toPythonCode() ?? "# No volume data available"
+        case .model3d:
+            return window.state.model3DData?.toPythonCode() ?? "# No 3D model data available"
+        }
     }
 }
+
+// MARK: - Placeholder Views for Missing Components
 
 struct VolumeMetricsView: View {
     let windowID: Int
@@ -400,7 +361,7 @@ struct VolumeMetricsView: View {
     }
 }
 
-struct PointCloudEditorView: View {
+struct PointCloudView: View {
     let windowID: Int
     let pointCloudData: PointCloudData?
     
@@ -418,4 +379,50 @@ struct PointCloudEditorView: View {
             }
         }
     }
+}
+
+struct ModelViewerView: View {
+    let windowID: Int
+    let model3DData: Model3DData?
+    
+    init(windowID: Int, model3DData: Model3DData? = nil) {
+        self.windowID = windowID
+        self.model3DData = model3DData
+    }
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "cube.transparent")
+                .font(.system(size: 60))
+                .foregroundColor(.blue)
+            
+            Text("3D Model Viewer")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            if let model3DData = model3DData {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Title: \(model3DData.title)")
+                    Text("Type: \(model3DData.modelType)")
+                    Text("Vertices: \(model3DData.vertices.count)")
+                    Text("Faces: \(model3DData.faces.count)")
+                }
+                .font(.body)
+                .foregroundColor(.secondary)
+            } else {
+                Text("No 3D model data available")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+}
+
+#Preview {
+    NewWindow(id: 1)
+        .environmentObject(WindowTypeManager.shared)
+        .environmentObject(SpatialWindowManager.shared)
 }
