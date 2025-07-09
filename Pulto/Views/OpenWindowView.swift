@@ -1,12 +1,7 @@
-//  Enhanced NewWindowID.swift with Point Cloud Integration
-//  UnderstandingVisionos
-//
-//  Created by Joshua Herman on 5/25/25.
-//
-
 import SwiftUI
 import Foundation
 import Charts
+import RealityKit
 
 enum WindowType: String, CaseIterable, Codable, Hashable {
     case charts = "Charts"
@@ -728,7 +723,7 @@ struct Model3DData: Codable, Hashable {
         print(f"- Vertices: {len(vertices)}")
         print(f"- Faces: {len(faces)}")
         print(f"- Scale: {scale}")
-        print(f"- Position: [{position[0]:.2f}, {position[1]:.2f}, {position[2]:.2f}]")
+        print(f"- Position: [{np.min(scaled_vertices[:, 0]):.2f}, {np.min(scaled_vertices[:, 1]):.2f}, {np.min(scaled_vertices[:, 2]):.2f}]")
         print(f"- Bounding Box:")
         print(f"  X: [{np.min(scaled_vertices[:, 0]):.2f}, {np.max(scaled_vertices[:, 0]):.2f}]")
         print(f"  Y: [{np.min(scaled_vertices[:, 1]):.2f}, {np.max(scaled_vertices[:, 1]):.2f}]")
@@ -1036,389 +1031,258 @@ struct NewWindowID: Identifiable, Codable, Hashable {
     }
 }
 
-// Point Cloud Demo Integration
-class PointCloudDemo {
-
-    // MARK: - Demo Functions
-
-    /// Generate a simple sphere point cloud
-    static func generateSpherePointCloud(radius: Double = 10.0, points: Int = 1000) -> [(x: Double, y: Double, z: Double)] {
-        var pointCloud: [(x: Double, y: Double, z: Double)] = []
-
-        for _ in 0..<points {
-            // Random angles
-            let theta = Double.random(in: 0...(2 * .pi))
-            let phi = Double.random(in: 0...(.pi))
-
-            // Convert spherical to Cartesian coordinates
-            let x = radius * sin(phi) * cos(theta)
-            let y = radius * sin(phi) * sin(theta)
-            let z = radius * cos(phi)
-
-            pointCloud.append((x: x, y: y, z: z))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a torus (donut) point cloud
-    static func generateTorusPointCloud(majorRadius: Double = 10.0, minorRadius: Double = 3.0, points: Int = 2000) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        for _ in 0..<points {
-            let u = Double.random(in: 0...(2 * .pi))
-            let v = Double.random(in: 0...(2 * .pi))
-
-            let x = (majorRadius + minorRadius * cos(v)) * cos(u)
-            let y = (majorRadius + minorRadius * cos(v)) * sin(u)
-            let z = minorRadius * sin(v)
-
-            // Calculate intensity based on height (z-coordinate)
-            let intensity = (z + minorRadius) / (2 * minorRadius)
-
-            pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a wave surface point cloud
-    static func generateWaveSurface(size: Double = 20.0, resolution: Int = 50) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        let step = size / Double(resolution)
-
-        for i in 0..<resolution {
-            for j in 0..<resolution {
-                let x = -size/2 + Double(i) * step
-                let y = -size/2 + Double(j) * step
-
-                // Wave equation: z = A * sin(kx * x) * sin(ky * y)
-                let z = 3.0 * sin(0.3 * x) * sin(0.3 * y)
-
-                // Intensity based on height
-                let intensity = (z + 3.0) / 6.0
-
-                pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-            }
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a spiral galaxy point cloud
-    static func generateSpiralGalaxy(arms: Int = 3, points: Int = 5000) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        for i in 0..<points {
-            let armIndex = i % arms
-            let armAngle = (2.0 * .pi * Double(armIndex)) / Double(arms)
-
-            // Distance from center
-            let r = Double.random(in: 1...20)
-
-            // Spiral angle
-            let theta = armAngle + (r * 0.3)
-
-            // Add some randomness
-            let spread = 2.0 / (1.0 + r * 0.1)
-            let xOffset = Double.random(in: -spread...spread)
-            let yOffset = Double.random(in: -spread...spread)
-
-            let x = r * cos(theta) + xOffset
-            let y = r * sin(theta) + yOffset
-            let z = Double.random(in: -1...1) * (1.0 / (1.0 + r * 0.1))
-
-            // Intensity decreases with distance from center
-            let intensity = 1.0 / (1.0 + r * 0.05)
-
-            pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a cube with noise
-    static func generateNoisyCube(size: Double = 10.0, pointsPerFace: Int = 500) -> [(x: Double, y: Double, z: Double)] {
-        var pointCloud: [(x: Double, y: Double, z: Double)] = []
-        let halfSize = size / 2.0
-        let noiseLevel = 0.5
-
-        // Generate points for each face
-        for _ in 0..<pointsPerFace {
-            // Top face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: halfSize + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Bottom face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: -halfSize + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Front face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Back face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: -halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Right face
-            pointCloud.append((
-                x: halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Left face
-            pointCloud.append((
-                x: -halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-        }
-
-        return pointCloud
-    }
-
-    // Enhanced generation methods that return PointCloudData
-    static func generateSpherePointCloudData(radius: Double = 10.0, points: Int = 1000) -> PointCloudData {
-        let spherePoints = generateSpherePointCloud(radius: radius, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Sphere Point Cloud (\(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "sphere",
-            parameters: ["radius": radius, "points": Double(points)]
-        )
-
-        pointCloudData.points = spherePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: nil, color: nil)
-        }
-        pointCloudData.totalPoints = spherePoints.count
-
-        return pointCloudData
-    }
-
-    static func generateTorusPointCloudData(majorRadius: Double = 10.0, minorRadius: Double = 3.0, points: Int = 2000) -> PointCloudData {
-        let torusPoints = generateTorusPointCloud(majorRadius: majorRadius, minorRadius: minorRadius, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Torus Point Cloud (\(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "torus",
-            parameters: ["majorRadius": majorRadius, "minorRadius": minorRadius, "points": Double(points)]
-        )
-
-        pointCloudData.points = torusPoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = torusPoints.count
-
-        return pointCloudData
-    }
-
-    static func generateWaveSurfaceData(size: Double = 20.0, resolution: Int = 50) -> PointCloudData {
-        let wavePoints = generateWaveSurface(size: size, resolution: resolution)
-
-        var pointCloudData = PointCloudData(
-            title: "Wave Surface (\(resolution)×\(resolution) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Height",
-            demoType: "wave",
-            parameters: ["size": size, "resolution": Double(resolution)]
-        )
-
-        pointCloudData.points = wavePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = wavePoints.count
-
-        return pointCloudData
-    }
-
-    static func generateSpiralGalaxyData(arms: Int = 3, points: Int = 5000) -> PointCloudData {
-        let galaxyPoints = generateSpiralGalaxy(arms: arms, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Spiral Galaxy (\(arms) arms, \(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "galaxy",
-            parameters: ["arms": Double(arms), "points": Double(points)]
-        )
-
-        pointCloudData.points = galaxyPoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = galaxyPoints.count
-
-        return pointCloudData
-    }
-
-    static func generateNoisyCubeData(size: Double = 10.0, pointsPerFace: Int = 500) -> PointCloudData {
-        let cubePoints = generateNoisyCube(size: size, pointsPerFace: pointsPerFace)
-
-        var pointCloudData = PointCloudData(
-            title: "Noisy Cube (\(pointsPerFace * 6) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "cube",
-            parameters: ["size": size, "pointsPerFace": Double(pointsPerFace)]
-        )
-
-        pointCloudData.points = cubePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: nil, color: nil)
-        }
-        pointCloudData.totalPoints = cubePoints.count
-
-        return pointCloudData
-    }
-
-    // MARK: - Demo Execution
-
-    static func runAllDemos() {
-        print("🎯 Point Cloud Demo Starting...\n")
-
-        // Demo 1: Simple Sphere
-        print("1️⃣ Generating Sphere Point Cloud...")
-        let sphereData = generateSpherePointCloudData(radius: 10.0, points: 1000)
-        let sphereCode = sphereData.toPythonCode()
-        saveJupyterCode(sphereCode, to: "sphere_pointcloud.py")
-        print("✅ Sphere point cloud saved to sphere_pointcloud.py\n")
-
-        // Demo 2: Torus with Intensity
-        print("2️⃣ Generating Torus Point Cloud with Intensity...")
-        let torusData = generateTorusPointCloudData(majorRadius: 10.0, minorRadius: 3.0, points: 2000)
-        let torusCode = torusData.toPythonCode()
-        saveJupyterCode(torusCode, to: "torus_pointcloud.py")
-        print("✅ Torus point cloud saved to torus_pointcloud.py\n")
-
-        // Demo 3: Wave Surface
-        print("3️⃣ Generating Wave Surface...")
-        let waveData = generateWaveSurfaceData(size: 20.0, resolution: 50)
-        let waveCode = waveData.toPythonCode()
-        saveJupyterCode(waveCode, to: "wave_pointcloud.py")
-        print("✅ Wave surface saved to wave_pointcloud.py\n")
-
-        // Demo 4: Spiral Galaxy
-        print("4️⃣ Generating Spiral Galaxy...")
-        let galaxyData = generateSpiralGalaxyData(arms: 3, points: 5000)
-        let galaxyCode = galaxyData.toPythonCode()
-        saveJupyterCode(galaxyCode, to: "galaxy_pointcloud.py")
-        print("✅ Galaxy point cloud saved\n")
-
-        // Demo 5: Noisy Cube
-        print("5️⃣ Generating Noisy Cube...")
-        let cubeData = generateNoisyCubeData(size: 10.0, pointsPerFace: 500)
-        let cubeCode = cubeData.toPythonCode()
-        saveJupyterCode(cubeCode, to: "cube_pointcloud.py")
-        print("✅ Noisy cube saved to cube_pointcloud.py\n")
-
-        // Generate a combined demo notebook
-        print("📓 Generating Jupyter Notebook with all demos...")
-        generateCombinedNotebook()
-
-        print("🎉 Demo Complete! Generated files:")
-        print("   - sphere_pointcloud.py")
-        print("   - torus_pointcloud.py")
-        print("   - wave_pointcloud.py")
-        print("   - galaxy_pointcloud.py")
-        print("   - cube_pointcloud.py")
-        print("   - pointcloud_demo_notebook.py")
-        print("\n💡 Tip: Run these .py files in Jupyter Notebook to see the visualizations!")
-    }
-
-    static func generateCombinedNotebook() {
-        let notebookCode = """
-        # Point Cloud Visualization Demo
-        # Generated by Swift ChartDataExtractor
+// MARK: - Immersive Space Management
+
+struct ImmersiveWindowState: Codable, Hashable {
+    var isVisible: Bool = true
+    var transform: Transform3D = Transform3D()
+    var scale: Float = 1.0
+    var opacity: Float = 1.0
+    var lastInteractionTime: Date = Date()
+    var isLocked: Bool = false
+    
+    struct Transform3D: Codable, Hashable {
+        var translation: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
+        var rotation: QuaternionData = QuaternionData()
+        var scale: SIMD3<Float> = SIMD3<Float>(1, 1, 1)
         
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-        import plotly.express as px
+        init() {}
         
-        # Create a figure with multiple subplots
-        fig = plt.figure(figsize=(20, 16))
-        
-        # You can run each demo separately by copying the generated Python files
-        # This is a combined view showing the variety of point clouds you can create
-        
-        print("Point Cloud Visualization Demo")
-        print("==============================")
-        print("This notebook demonstrates various types of point clouds:")
-        print("1. Sphere - Basic 3D shape")
-        print("2. Torus - Shape with intensity mapping")
-        print("3. Wave Surface - Mathematical function visualization")
-        print("4. Spiral Galaxy - Complex pattern with intensity")
-        print("5. Noisy Cube - Shape with added noise")
-        print("")
-        print("Run each individual .py file for detailed visualizations!")
-        
-        # Quick stats summary
-        datasets = [
-            ("Sphere", 1000, "Basic geometric shape"),
-            ("Torus", 2000, "Donut shape with height-based coloring"),
-            ("Wave Surface", 2500, "Mathematical sin wave surface"),
-            ("Spiral Galaxy", 5000, "3-arm spiral with distance-based intensity"),
-            ("Noisy Cube", 3000, "Cube faces with random noise")
-        ]
-        
-        print("\\nDataset Summary:")
-        print("-" * 60)
-        for name, points, description in datasets:
-            print(f"{name:15} | {points:6} points | {description}")
-        
-        # Create DataFrame for further analysis
-        df = pd.DataFrame({
-            'Dataset': [name for name, _, _ in datasets],
-            'Points': [points for _, points, _ in datasets],
-            'Description': [description for _, _, description in datasets]
-        })
-        
-        print("\\nDataFrame Preview:")
-        print(df.head())
-        """
-        
-        saveJupyterCode(notebookCode, to: "pointcloud_demo_notebook.py")
-    }
-
-    static func saveJupyterCode(_ code: String, to filename: String) {
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("❌ Could not access documents directory")
-            return
+        init(translation: SIMD3<Float>, rotation: simd_quatf = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1), scale: SIMD3<Float> = SIMD3<Float>(1, 1, 1)) {
+            self.translation = translation
+            self.rotation = QuaternionData(from: rotation)
+            self.scale = scale
         }
+        
+        var simdRotation: simd_quatf {
+            return simd_quatf(ix: rotation.x, iy: rotation.y, iz: rotation.z, r: rotation.w)
+        }
+        
+        mutating func setRotation(_ quat: simd_quatf) {
+            rotation = QuaternionData(from: quat)
+        }
+    }
+    
+    struct QuaternionData: Codable, Hashable {
+        var x: Float = 0
+        var y: Float = 0
+        var z: Float = 0
+        var w: Float = 1
+        
+        init() {}
+        
+        init(from quaternion: simd_quatf) {
+            self.x = quaternion.vector.x
+            self.y = quaternion.vector.y
+            self.z = quaternion.vector.z
+            self.w = quaternion.vector.w
+        }
+    }
+}
 
-        let fileURL = documentsDirectory.appendingPathComponent(filename)
-
+class SpatialWindowManager: ObservableObject {
+    static let shared = SpatialWindowManager()
+    
+    @Published private var immersiveWindowStates: [Int: ImmersiveWindowState] = [:]
+    @Published var isImmersiveSpaceActive: Bool = false
+    @Published var immersiveSpaceLayout: SpatialLayout = .grid
+    
+    private let persistenceKey = "SpatialWindowManager.ImmersiveStates"
+    
+    enum SpatialLayout: String, CaseIterable {
+        case grid = "Grid"
+        case circle = "Circle"
+        case line = "Line"
+        case free = "Free Form"
+    }
+    
+    private init() {
+        loadImmersiveStates()
+    }
+    
+    // MARK: - Immersive Space Control
+    
+    func enterImmersiveSpace() {
+        isImmersiveSpaceActive = true
+        print(" Entering immersive space")
+    }
+    
+    func exitImmersiveSpace() {
+        isImmersiveSpaceActive = false
+        print(" Exiting immersive space")
+    }
+    
+    func toggleImmersiveSpace() {
+        if isImmersiveSpaceActive {
+            exitImmersiveSpace()
+        } else {
+            enterImmersiveSpace()
+        }
+    }
+    
+    // MARK: - Window State Management
+    
+    func getImmersiveState(for windowID: Int) -> ImmersiveWindowState {
+        return immersiveWindowStates[windowID] ?? ImmersiveWindowState()
+    }
+    
+    func updateImmersiveState(for windowID: Int, state: ImmersiveWindowState) {
+        immersiveWindowStates[windowID] = state
+        saveImmersiveStates()
+        objectWillChange.send()
+    }
+    
+    func setWindowVisibility(windowID: Int, isVisible: Bool) {
+        var state = getImmersiveState(for: windowID)
+        state.isVisible = isVisible
+        state.lastInteractionTime = Date()
+        updateImmersiveState(for: windowID, state: state)
+    }
+    
+    func setWindowTransform(windowID: Int, transform: ImmersiveWindowState.Transform3D) {
+        var state = getImmersiveState(for: windowID)
+        state.transform = transform
+        state.lastInteractionTime = Date()
+        updateImmersiveState(for: windowID, state: state)
+    }
+    
+    func setWindowScale(windowID: Int, scale: Float) {
+        var state = getImmersiveState(for: windowID)
+        state.scale = scale
+        state.lastInteractionTime = Date()
+        updateImmersiveState(for: windowID, state: state)
+    }
+    
+    func setWindowOpacity(windowID: Int, opacity: Float) {
+        var state = getImmersiveState(for: windowID)
+        state.opacity = opacity
+        state.lastInteractionTime = Date()
+        updateImmersiveState(for: windowID, state: state)
+    }
+    
+    func toggleWindowLock(windowID: Int) {
+        var state = getImmersiveState(for: windowID)
+        state.isLocked.toggle()
+        updateImmersiveState(for: windowID, state: state)
+    }
+    
+    // MARK: - Layout Management
+    
+    func arrangeWindowsInLayout(_ layout: SpatialLayout, windowIDs: [Int]) {
+        immersiveSpaceLayout = layout
+        
+        switch layout {
+        case .grid:
+            arrangeWindowsInGrid(windowIDs)
+        case .circle:
+            arrangeWindowsInCircle(windowIDs)
+        case .line:
+            arrangeWindowsInLine(windowIDs)
+        case .free:
+            // Free form - don't auto-arrange
+            break
+        }
+    }
+    
+    private func arrangeWindowsInGrid(_ windowIDs: [Int]) {
+        let gridSize = Int(ceil(sqrt(Double(windowIDs.count))))
+        let spacing: Float = 2.0
+        
+        for (index, windowID) in windowIDs.enumerated() {
+            let row = index / gridSize
+            let col = index % gridSize
+            
+            let x = (Float(col) - Float(gridSize - 1) * 0.5) * spacing
+            let y = (Float(row) - Float(gridSize - 1) * 0.5) * spacing
+            let z: Float = -3.0
+            
+            let transform = ImmersiveWindowState.Transform3D(
+                translation: SIMD3<Float>(x, y, z)
+            )
+            
+            setWindowTransform(windowID: windowID, transform: transform)
+        }
+    }
+    
+    private func arrangeWindowsInCircle(_ windowIDs: [Int]) {
+        let radius: Float = 3.0
+        let angleStep = 2.0 * Float.pi / Float(windowIDs.count)
+        
+        for (index, windowID) in windowIDs.enumerated() {
+            let angle = Float(index) * angleStep
+            let x = radius * cos(angle)
+            let z = radius * sin(angle) - 2.0
+            
+            let transform = ImmersiveWindowState.Transform3D(
+                translation: SIMD3<Float>(x, 0, z),
+                rotation: simd_quatf(angle: -angle, axis: SIMD3<Float>(0, 1, 0))
+            )
+            
+            setWindowTransform(windowID: windowID, transform: transform)
+        }
+    }
+    
+    private func arrangeWindowsInLine(_ windowIDs: [Int]) {
+        let spacing: Float = 2.5
+        let startX = -Float(windowIDs.count - 1) * spacing * 0.5
+        
+        for (index, windowID) in windowIDs.enumerated() {
+            let x = startX + Float(index) * spacing
+            
+            let transform = ImmersiveWindowState.Transform3D(
+                translation: SIMD3<Float>(x, 0, -3.0)
+            )
+            
+            setWindowTransform(windowID: windowID, transform: transform)
+        }
+    }
+    
+    // MARK: - Batch Operations
+    
+    func hideAllWindows() {
+        for windowID in immersiveWindowStates.keys {
+            setWindowVisibility(windowID: windowID, isVisible: false)
+        }
+    }
+    
+    func showAllWindows() {
+        for windowID in immersiveWindowStates.keys {
+            setWindowVisibility(windowID: windowID, isVisible: true)
+        }
+    }
+    
+    func resetAllWindowPositions() {
+        let windowIDs = Array(immersiveWindowStates.keys)
+        arrangeWindowsInLayout(immersiveSpaceLayout, windowIDs: windowIDs)
+    }
+    
+    // MARK: - Persistence
+    
+    private func saveImmersiveStates() {
         do {
-            try code.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("✅ Saved: \(fileURL.path)")
+            let data = try JSONEncoder().encode(immersiveWindowStates)
+            UserDefaults.standard.set(data, forKey: persistenceKey)
         } catch {
-            print("❌ Error saving \(filename): \(error)")
+            print("Failed to save immersive states: \(error)")
         }
+    }
+    
+    private func loadImmersiveStates() {
+        guard let data = UserDefaults.standard.data(forKey: persistenceKey) else { return }
+        
+        do {
+            immersiveWindowStates = try JSONDecoder().decode([Int: ImmersiveWindowState].self, from: data)
+        } catch {
+            print("Failed to load immersive states: \(error)")
+        }
+    }
+    
+    // MARK: - Cleanup
+    
+    func cleanupStatesForWindows(_ activeWindowIDs: [Int]) {
+        let activeSet = Set(activeWindowIDs)
+        immersiveWindowStates = immersiveWindowStates.filter { activeSet.contains($0.key) }
+        saveImmersiveStates()
     }
 }
 
@@ -1673,213 +1537,304 @@ struct ExportActionsView: View {
     }
 }
 
+// MARK: - Immersive Space Components
+
+struct ImmersiveSpaceView: View {
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @State private var showControlPanel = false
+    @State private var selectedWindowID: Int?
+    
+    var body: some View {
+        ZStack {
+            // 3D Space content
+            RealityView { content in
+                // Create immersive space environment
+                setupImmersiveEnvironment(content)
+            } update: { content in
+                updateWindowsInSpace(content)
+            }
+            
+            // Control panel overlay
+            if showControlPanel {
+                ImmersiveControlPanel(
+                    isVisible: $showControlPanel,
+                    selectedWindowID: $selectedWindowID
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding()
+            }
+            
+            // Quick controls
+            VStack {
+                Spacer()
+                HStack {
+                    Button("Controls") {
+                        showControlPanel.toggle()
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                    
+                    Button("Reset Layout") {
+                        spatialManager.resetAllWindowPositions()
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                    
+                    Button("Exit Immersive") {
+                        spatialManager.exitImmersiveSpace()
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+        }
+        .onAppear {
+            // Initialize positions for all open windows
+            let openWindows = windowManager.getAllWindows(onlyOpen: true)
+            spatialManager.arrangeWindowsInLayout(spatialManager.immersiveSpaceLayout, windowIDs: openWindows.map { $0.id })
+        }
+    }
+    
+    private func setupImmersiveEnvironment(_ content: RealityViewContent) {
+        // Set up the 3D environment
+        // This would include lighting, ground plane, etc.
+        print("🌐 Setting up immersive environment")
+    }
+    
+    private func updateWindowsInSpace(_ content: RealityViewContent) {
+        // Update window positions and visibility in 3D space
+        print("🌐 Updating windows in space")
+    }
+}
+
+struct ImmersiveControlPanel: View {
+    @Binding var isVisible: Bool
+    @Binding var selectedWindowID: Int?
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @State private var selectedLayout: SpatialWindowManager.SpatialLayout = .grid
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header
+            HStack {
+                Text("Immersive Space Controls")
+                    .font(.title2)
+                    .bold()
+                
+                Spacer()
+                
+                Button("✕") {
+                    isVisible = false
+                }
+                .font(.title2)
+            }
+            
+            Divider()
+            
+            // Layout controls
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Layout")
+                    .font(.headline)
+                
+                Picker("Layout", selection: $selectedLayout) {
+                    ForEach(SpatialWindowManager.SpatialLayout.allCases, id: \.self) { layout in
+                        Text(layout.rawValue).tag(layout)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: selectedLayout) { newLayout in
+                    let openWindows = windowManager.getAllWindows(onlyOpen: true)
+                    spatialManager.arrangeWindowsInLayout(newLayout, windowIDs: openWindows.map { $0.id })
+                }
+            }
+            
+            Divider()
+            
+            // Window list
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Windows")
+                    .font(.headline)
+                
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(windowManager.getAllWindows(onlyOpen: true)) { window in
+                            ImmersiveWindowControlRow(
+                                window: window,
+                                isSelected: selectedWindowID == window.id
+                            ) {
+                                selectedWindowID = window.id
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 300)
+            }
+            
+            Divider()
+            
+            // Batch operations
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Batch Operations")
+                    .font(.headline)
+                
+                HStack {
+                    Button("Hide All") {
+                        spatialManager.hideAllWindows()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Show All") {
+                        spatialManager.showAllWindows()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Reset Positions") {
+                        spatialManager.resetAllWindowPositions()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(.regularMaterial)
+        .cornerRadius(16)
+        .frame(width: 350)
+        .onAppear {
+            selectedLayout = spatialManager.immersiveSpaceLayout
+        }
+    }
+}
+
+struct ImmersiveWindowControlRow: View {
+    let window: NewWindowID
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @State private var immersiveState: ImmersiveWindowState
+    
+    init(window: NewWindowID, isSelected: Bool, onTap: @escaping () -> Void) {
+        self.window = window
+        self.isSelected = isSelected
+        self.onTap = onTap
+        self._immersiveState = State(initialValue: SpatialWindowManager.shared.getImmersiveState(for: window.id))
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Window info
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(window.windowType.displayName) #\(window.id)")
+                        .font(.subheadline)
+                        .bold()
+                    
+                    Text("Pos: (\(String(format: "%.1f", immersiveState.transform.translation.x)), \(String(format: "%.1f", immersiveState.transform.translation.y)), \(String(format: "%.1f", immersiveState.transform.translation.z)))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Button(immersiveState.isVisible ? "👁" : "🙈") {
+                        spatialManager.setWindowVisibility(windowID: window.id, isVisible: !immersiveState.isVisible)
+                        immersiveState = spatialManager.getImmersiveState(for: window.id)
+                    }
+                    .font(.caption)
+                    
+                    Button(immersiveState.isLocked ? "🔒" : "🔓") {
+                        spatialManager.toggleWindowLock(windowID: window.id)
+                        immersiveState = spatialManager.getImmersiveState(for: window.id)
+                    }
+                    .font(.caption)
+                }
+            }
+            
+            // Controls
+            if isSelected {
+                VStack(spacing: 8) {
+                    // Scale control
+                    HStack {
+                        Text("Scale:")
+                        Slider(value: .init(
+                            get: { Double(immersiveState.scale) },
+                            set: { newValue in
+                                spatialManager.setWindowScale(windowID: window.id, scale: Float(newValue))
+                                immersiveState = spatialManager.getImmersiveState(for: window.id)
+                            }
+                        ), in: 0.5...3.0)
+                        Text(String(format: "%.1f", immersiveState.scale))
+                            .font(.caption)
+                            .frame(width: 30)
+                    }
+                    
+                    // Opacity control
+                    HStack {
+                        Text("Opacity:")
+                        Slider(value: .init(
+                            get: { Double(immersiveState.opacity) },
+                            set: { newValue in
+                                spatialManager.setWindowOpacity(windowID: window.id, opacity: Float(newValue))
+                                immersiveState = spatialManager.getImmersiveState(for: window.id)
+                            }
+                        ), in: 0.1...1.0)
+                        Text(String(format: "%.1f", immersiveState.opacity))
+                            .font(.caption)
+                            .frame(width: 30)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding()
+        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        .cornerRadius(8)
+        .onTapGesture {
+            onTap()
+        }
+        .onAppear {
+            immersiveState = spatialManager.getImmersiveState(for: window.id)
+        }
+    }
+}
+
 // MARK: - NewWindow
 struct NewWindow: View {
     let id: Int
     @StateObject private var windowTypeManager = WindowTypeManager.shared
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @State private var immersiveState: ImmersiveWindowState
+    
+    init(id: Int) {
+        self.id = id
+        self._immersiveState = State(initialValue: SpatialWindowManager.shared.getImmersiveState(for: id))
+    }
 
     var body: some View {
         if let window = windowTypeManager.getWindowSafely(for: id) {
-            VStack(spacing: 0) {
-                // Window header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(window.windowType.displayName) - Window #\(id)")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-
-                        if !window.state.tags.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "tag")
-                                    .font(.caption)
-                                Text(window.state.tags.joined(separator: ", "))
-                                    .font(.caption)
-                            }
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Pos: (\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Text("Template: \(window.state.exportTemplate.rawValue)")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-
-                        if !window.state.content.isEmpty {
-                            Text("Has Content")
-                                .font(.caption2)
-                                .foregroundStyle(.green)
-                        }
-                    }
+            Group {
+                if spatialManager.isImmersiveSpaceActive {
+                    // Immersive space version
+                    ImmersiveWindowContent(window: window, immersiveState: immersiveState)
+                } else {
+                    // Regular window version
+                    RegularWindowContent(window: window)
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground).opacity(0.3))
-
-                Divider()
-
-                // Display the appropriate view based on window type with restored data
-                Group {
-                    switch window.windowType {
-
-                    case .model3d:  // Add this case
-                        VStack {
-                            if let model3D = window.state.model3DData {
-                                // You could create a Model3DView here, or for now show info
-                                VStack(spacing: 20) {
-                                    Image(systemName: "cube.transparent")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.orange)
-
-                                    Text("3D Model: \(model3D.title)")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("\(model3D.vertices.count) vertices, \(model3D.faces.count) faces")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-
-                                    if !window.state.content.isEmpty {
-                                        ScrollView {
-                                            Text(window.state.content)
-                                                .font(.system(.caption, design: .monospaced))
-                                                .padding(8)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .background(Color(.tertiarySystemBackground))
-                                                .cornerRadius(8)
-                                        }
-                                        .frame(maxHeight: 150)
-                                    }
-                                }
-                                .padding(40)
-                            } else {
-                                VStack(spacing: 20) {
-                                    Image(systemName: "cube.transparent")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.orange)
-
-                                    Text("3D Model Viewer")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("3D mesh and model visualization")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .padding(40)
-                            }
-                        }
-
-                    case .charts:
-                        VStack {
-                            if !window.state.content.isEmpty {
-                                ScrollView {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Restored Content:")
-                                            .font(.headline)
-
-                                        Text(window.state.content)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.tertiarySystemBackground))
-                                            .cornerRadius(8)
-                                    }
-                                    .padding()
-                                }
-                                .frame(maxHeight: 200)
-
-                                Divider()
-                            }
-
-                            WindowChartView()
-                        }
-
-                    case .spatial:
-                        // Use the initializer with point cloud data if available
-                        if let pointCloud = window.state.pointCloudData {
-                            SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
-                        } else {
-                            SpatialEditorView(windowID: id)
-                        }
-
-                    case .column:
-                        // Use the initializer with DataFrame data if available
-                        if let df = window.state.dataFrameData {
-                            DataTableContentView(windowID: id, initialDataFrame: df)
-                        } else {
-                            DataTableContentView(windowID: id)   // falls back to saved window or sample
-                        }
-                    case .pointcloud:  // Add this case
-                        VStack {
-                            if let pointCloud = window.state.pointCloudData {
-                                SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
-                            } else {
-                                VStack(spacing: 20) {
-                                    Image(systemName: "dot.scope")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.purple)
-
-                                    Text("Point Cloud Viewer")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("3D point cloud visualization and analysis")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .padding(40)
-                            }
-                        }
-
-                    case .volume:  // NEW: Handle volume windows
-                        VStack {
-                            if !window.state.content.isEmpty {
-                                ScrollView {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Model Metrics:")
-                                            .font(.headline)
-
-                                        Text(window.state.content)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.tertiarySystemBackground))
-                                            .cornerRadius(8)
-                                    }
-                                    .padding()
-                                }
-                            } else {
-                                VStack(spacing: 20) {
-                                    Image(systemName: "gauge")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.blue)
-
-                                    Text("Model Metrics Viewer")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("Performance metrics and monitoring dashboard")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .padding(40)
-                            }
-                        }
-                        
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .onAppear {
                 windowTypeManager.markWindowAsOpened(id)
+                immersiveState = spatialManager.getImmersiveState(for: id)
             }
             .onDisappear {
                 windowTypeManager.markWindowAsClosed(id)
@@ -1912,17 +1867,325 @@ struct NewWindow: View {
     }
 }
 
-// MARK: - Preview Provider
-struct Preview: View {
+struct ImmersiveWindowContent: View {
+    let window: NewWindowID
+    let immersiveState: ImmersiveWindowState
+    
     var body: some View {
-        Text("Preview placeholder")
+        if immersiveState.isVisible {
+            VStack(spacing: 0) {
+                // Immersive-specific header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(window.windowType.displayName) #\(window.id)")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        
+                        Text("Immersive Mode")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Scale: \(String(format: "%.1f", immersiveState.scale))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("Opacity: \(String(format: "%.1f", immersiveState.opacity))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        if immersiveState.isLocked {
+                            Text("🔒 Locked")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                .padding()
+                .background(.regularMaterial)
+                
+                Divider()
+                
+                // Window content
+                RegularWindowContent(window: window)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            //.scaleEffect(immersiveState.scale)
+            .opacity(Double(immersiveState.opacity))
+        } else {
+            // Hidden window placeholder
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
+                .frame(width: 200, height: 150)
+                .overlay(
+                    VStack {
+                        Image(systemName: "eye.slash")
+                            .font(.title)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("Window #\(window.id)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("Hidden")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                )
+                .opacity(0.3)
+        }
     }
 }
 
-#Preview("Main Interface") {
-    Preview()
+struct RegularWindowContent: View {
+    let window: NewWindowID
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Regular window header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(window.windowType.displayName) - Window #\(window.id)")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    if !window.state.tags.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                            Text(window.state.tags.joined(separator: ", "))
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Pos: (\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("Template: \(window.state.exportTemplate.rawValue)")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+
+                    if !window.state.content.isEmpty {
+                        Text("Has Content")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                    
+                    // Immersive space entry button
+                    ImmersiveSpaceEntryButton()
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground).opacity(0.3))
+
+            Divider()
+
+            // Window content (unchanged from original)
+            Group {
+                switch window.windowType {
+                case .model3d:
+                    VStack {
+                        if let model3D = window.state.model3DData {
+                            VStack(spacing: 20) {
+                                Image(systemName: "cube.transparent")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.orange)
+
+                                Text("3D Model: \(model3D.title)")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Text("\(model3D.vertices.count) vertices, \(model3D.faces.count) faces")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+
+                                if !window.state.content.isEmpty {
+                                    ScrollView {
+                                        Text(window.state.content)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.tertiarySystemBackground))
+                                            .cornerRadius(8)
+                                    }
+                                    .frame(maxHeight: 150)
+                                }
+                            }
+                            .padding(40)
+                        } else {
+                            VStack(spacing: 20) {
+                                Image(systemName: "cube.transparent")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.orange)
+
+                                Text("3D Model Viewer")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Text("3D mesh and model visualization")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(40)
+                        }
+                    }
+
+                case .charts:
+                    VStack {
+                        if !window.state.content.isEmpty {
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Restored Content:")
+                                        .font(.headline)
+
+                                    Text(window.state.content)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(Color(.tertiarySystemBackground))
+                                        .cornerRadius(8)
+                                }
+                                .padding()
+                            }
+                            .frame(maxHeight: 200)
+
+                            Divider()
+                        }
+                    }
+
+                case .spatial:
+                    if let pointCloud = window.state.pointCloudData {
+                        SpatialEditorView(windowID: window.id, initialPointCloud: pointCloud)
+                    } else {
+                        SpatialEditorView(windowID: window.id)
+                    }
+
+                case .column:
+                    if let df = window.state.dataFrameData {
+                        DataTableContentView(windowID: window.id, initialDataFrame: df)
+                    } else {
+                        DataTableContentView(windowID: window.id)   // falls back to saved window or sample
+                    }
+                case .pointcloud:  // Add this case
+                    VStack {
+                        if let pointCloud = window.state.pointCloudData {
+                            SpatialEditorView(windowID: window.id, initialPointCloud: pointCloud)
+                        } else {
+                            VStack(spacing: 20) {
+                                Image(systemName: "dot.scope")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.purple)
+
+                                Text("Point Cloud Viewer")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Text("3D point cloud visualization and analysis")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(40)
+                        }
+                    }
+
+                case .volume:  // NEW: Handle volume windows
+                    VStack {
+                        if !window.state.content.isEmpty {
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Model Metrics:")
+                                        .font(.headline)
+
+                                    Text(window.state.content)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(Color(.tertiarySystemBackground))
+                                        .cornerRadius(8)
+                                }
+                                .padding()
+                            }
+                        } else {
+                            VStack(spacing: 20) {
+                                Image(systemName: "gauge")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.blue)
+
+                                Text("Model Metrics Viewer")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Text("Performance metrics and monitoring dashboard")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(40)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
 }
 
-#Preview("Spatial Editor") {
-    SpatialEditorView()
+struct ImmersiveSpaceEntryButton: View {
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @StateObject private var windowManager = WindowTypeManager.shared
+    
+    var body: some View {
+        Button(action: {
+            if spatialManager.isImmersiveSpaceActive {
+                spatialManager.exitImmersiveSpace()
+            } else {
+                spatialManager.enterImmersiveSpace()
+            }
+        }) {
+            Label(
+                spatialManager.isImmersiveSpaceActive ? "Exit Immersive Space" : "Enter Immersive Space",
+                systemImage: spatialManager.isImmersiveSpaceActive ? "xmark.circle" : "cube.transparent"
+            )
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(windowManager.getAllWindows(onlyOpen: true).isEmpty)
+    }
+}
+
+struct ImmersiveSpaceModifier: ViewModifier {
+    @StateObject private var spatialManager = SpatialWindowManager.shared
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+    
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: spatialManager.isImmersiveSpaceActive) { isActive in
+                if isActive {
+                    Task {
+                        await openImmersiveSpace(id: "immersive-workspace")
+                    }
+                } else {
+                    Task {
+                        await dismissImmersiveSpace()
+                    }
+                }
+            }
+    }
+}
+
+extension View {
+    func immersiveSpaceSupport() -> some View {
+        self.modifier(ImmersiveSpaceModifier())
+    }
 }

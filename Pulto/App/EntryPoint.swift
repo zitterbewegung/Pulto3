@@ -11,6 +11,7 @@ import SwiftUI
 @main
 struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
+    @StateObject private var spatialManager = SpatialWindowManager.shared
     
     /* Helper to apply placement + sizing to each window scene.
     private func configureScene(_ scene: WindowGroup<some View>, row: Int, col: Int) -> some Scene {
@@ -27,22 +28,21 @@ struct EntryPoint: App {
         WindowGroup(id: "main") {
             EnvironmentView()
                 .environmentObject(windowManager)
+                .environmentObject(spatialManager)
                 .onOpenURL { url in
                     handleSharedURL(url)
                 }
         }
         .windowStyle(.plain)
         .defaultSize(width: 1400, height: 900)
-
-        // Home window - PultoHomeView as secondary interface
-        //WindowGroup(id: "home") {
-        //    PultoHomeView()
-        //        .environmentObject(windowManager)
-        //}
-        //.windowStyle(.plain)
-        //.defaultSize(width: 1280, height: 850)
         
-
+        // Immersive Space for 3D window management
+        ImmersiveSpace(id: "immersive-workspace") {
+            ImmersiveSpaceView()
+                .environmentObject(windowManager)
+                .environmentObject(spatialManager)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
         
         // Grid launcher (original functionality)
         WindowGroup(id: "launcher") {
@@ -55,11 +55,14 @@ struct EntryPoint: App {
         Group {
             WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
                 NewWindow(id: id ?? 1)
+                    .environmentObject(windowManager)
+                    .environmentObject(spatialManager)
             }
 
             WindowGroup(id: "open-project-window") {
                 ProjectBrowserView(windowManager: windowManager)
                     .environmentObject(windowManager)
+                    .environmentObject(spatialManager)
             }
             .windowStyle(.plain)
             .defaultSize(width: 1000, height: 700)

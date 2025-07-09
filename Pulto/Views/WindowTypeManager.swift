@@ -55,6 +55,10 @@ class WindowTypeManager: ObservableObject {
         for windowID in windowsToRemove {
             windows.removeValue(forKey: windowID)
         }
+        
+        // Clean up immersive states
+        SpatialWindowManager.shared.cleanupStatesForWindows(Array(openWindowIDs))
+        
         objectWillChange.send()
     }
 
@@ -736,7 +740,14 @@ class WindowTypeManager: ObservableObject {
         )
     }
 
-    // Helper functions for parsing
+    private func extractLabel(from content: String, type: String) -> String? {
+        let pattern = "plt\\.\(type)\\(['\"]([^'\"]+)['\"]"
+        if let match = content.range(of: pattern, options: .regularExpression) {
+            return extractQuotedString(from: String(content[match]))
+        }
+        return nil
+    }
+
     private func determineVolumeCategory(from content: String) -> String {
         let lowercased = content.lowercased()
         if lowercased.contains("performance") || lowercased.contains("metric") {
@@ -802,14 +813,6 @@ class WindowTypeManager: ObservableObject {
         return arrays
     }
 
-    private func extractLabel(from content: String, type: String) -> String? {
-        let pattern = #"plt\.\#(type)\(['""]([^'""]+)['""]"#
-        if let match = content.range(of: pattern, options: .regularExpression) {
-            return extractQuotedString(from: String(content[match]))
-        }
-        return nil
-    }
-
     private func parseISO8601Date(_ dateString: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         return formatter.date(from: dateString)
@@ -832,8 +835,18 @@ class WindowTypeManager: ObservableObject {
 
     func updateWindowPosition(_ id: Int, position: WindowPosition) {
         windows[id]?.position = position
+        
+        // Also update the immersive space position
+        if SpatialWindowManager.shared.isImmersiveSpaceActive {
+            let transform = ImmersiveWindowState.Transform3D(
+                translation: SIMD3<Float>(Float(position.x), Float(position.y), Float(position.z))
+            )
+            SpatialWindowManager.shared.setWindowTransform(windowID: id, transform: transform)
+        }
+        
+        objectWillChange.send()
     }
-
+    
     func updateWindowState(_ id: Int, state: WindowState) {
         windows[id]?.state = state
     }
@@ -873,7 +886,6 @@ class WindowTypeManager: ObservableObject {
     func getWindowDataFrame(for id: Int) -> DataFrameData? {
         return windows[id]?.state.dataFrameData
     }
-
 
     func removeWindow(_ id: Int) {
         windows.removeValue(forKey: id)
@@ -1122,5 +1134,32 @@ class WindowTypeManager: ObservableObject {
             print("Error saving notebook: \(error)")
             return nil
         }
+    }
+
+    // MARK: - Immersive Space Integration
+
+    func enterImmersiveSpace() {
+        SpatialWindowManager.shared.enterImmersiveSpace()
+    }
+    
+    func exitImmersiveSpace() {
+        SpatialWindowManager.shared.exitImmersiveSpace()
+    }
+    
+    func isImmersiveSpaceActive() -> Bool {
+        return SpatialWindowManager.shared.isImmersiveSpaceActive
+    }
+    
+    func getImmersiveState(for windowID: Int) -> ImmersiveWindowState {
+        return SpatialWindowManager.shared.getImmersiveState(for: windowID)
+    }
+    
+    func updateImmersiveState(for windowID: Int, state: ImmersiveWindowState) {
+        SpatialWindowManager.shared.updateImmersiveState(for: windowID, state: state)
+    }
+    
+    func arrangeWindowsInImmersiveSpace(layout: SpatialWindowManager.SpatialLayout) {
+        let openWindows = getAllWindows(onlyOpen: true)
+        SpatialWindowManager.shared.arrangeWindowsInLayout(layout, windowIDs: openWindows.map { $0.id })
     }
 }

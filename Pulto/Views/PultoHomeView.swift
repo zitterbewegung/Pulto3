@@ -361,34 +361,7 @@ struct VisionOSButtonStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
-/*
-// MARK: - VisionOS Window Component
-struct VisionOSWindow<Content: View>: View {
-    let content: Content
-    let depth: CGFloat
-    
-    init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
-        self.content = content()
-        self.depth = depth
-    }
-    
-    var body: some View {
-        content
-            .background {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
-                    }
-                    .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
-                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .scaleEffect(depth > 0 ? 1.0 + (depth * 0.02) : 1.0)
-    }
-}
-*/
+
 // MARK: - Main View
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
