@@ -959,4 +959,15 @@ extension WindowTypeManager {
             failedWindows: []
         )
     }
+    func openVolumetricWindow(for window: NewWindowID, using openWindow: OpenWindowAction) {
+           switch window.windowType {
+           case .pointcloud:
+               openWindow(id: "volumetric-pointcloud", value: window.id)
+           case .model3d:
+               openWindow(id: "volumetric-model3d", value: window.id)
+           default:
+               // For non-volumetric windows, open the regular window
+               openWindow(id: "new-window", value: window.id)
+           }
+       }
 }

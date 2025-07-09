@@ -8,137 +8,101 @@ import SwiftUI
 import Foundation
 import Charts
 
-enum WindowType: String, CaseIterable, Codable, Hashable {
-    case charts = "Charts"
-    case spatial = "Spatial Editor"
-    case column = "DataFrame Viewer"
-    case volume = "Model Metric Viewer"
-    case pointcloud = "Point Cloud Viewer"
-    case model3d = "3D Model Viewer"  // Add this new case
+// ─────────────────────────────────────────────────────────────
+// MARK: - Window metadata
+// ─────────────────────────────────────────────────────────────
 
-    var displayName: String {
-        return self.rawValue
-    }
+enum WindowType: String, CaseIterable, Codable, Hashable {
+    case charts      = "Charts"
+    case spatial     = "Spatial Editor"
+    case column      = "DataFrame Viewer"
+    case volume      = "Model Metric Viewer"
+    case pointcloud  = "Point Cloud Viewer"
+    case model3d     = "3D Model Viewer"
+
+    var displayName: String { rawValue }
 
     var jupyterCellType: String {
         switch self {
-        case .charts:
-            return "code"
-        case .spatial:
-            return "spatial"
-        case .column:
-            return "code"
-        case .volume:
-            return "code"
-        case .pointcloud:
-            return "code"
-        case .model3d:  // Add this case
-            return "code"
+        case .charts, .column, .volume, .pointcloud, .model3d: "code"
+        case .spatial: "spatial"
         }
     }
 }
 
 struct WindowPosition: Codable, Hashable {
-    var x: Double
-    var y: Double
-    var z: Double
-    var width: Double
-    var height: Double
+    var x, y, z: Double
+    var width, height: Double
     var depth: Double?
 
     init(x: Double = 0, y: Double = 0, z: Double = 0,
          width: Double = 400, height: Double = 300, depth: Double? = nil) {
-        self.x = x
-        self.y = y
-        self.z = z
-        self.width = width
-        self.height = height
+        (self.x, self.y, self.z) = (x, y, z)
+        (self.width, self.height) = (width, height)
         self.depth = depth
     }
 }
 
 enum ExportTemplate: String, CaseIterable, Codable {
-    case plain = "Plain Text"
-    case matplotlib = "Matplotlib Chart"
-    case pandas = "Pandas DataFrame"
-    case numpy = "NumPy Array"
-    case plotly = "Plotly Interactive"
-    case seaborn = "Seaborn Statistical"
-    case custom = "Custom Code"
-    case markdown = "Markdown Only"
+    case plain, matplotlib, pandas, numpy, plotly, seaborn, custom, markdown
 
     var defaultImports: [String] {
         switch self {
-        case .plain:
-            return []
-        case .matplotlib:
-            return ["import matplotlib.pyplot as plt", "import numpy as np"]
-        case .pandas:
-            return ["import pandas as pd", "import numpy as np"]
-        case .numpy:
-            return ["import numpy as np"]
-        case .plotly:
-            return ["import plotly.graph_objects as go", "import plotly.express as px", "import pandas as pd"]
-        case .seaborn:
-            return ["import seaborn as sns", "import matplotlib.pyplot as plt", "import pandas as pd"]
-        case .custom:
-            return []
-        case .markdown:
-            return []
+        case .plain      : []
+        case .matplotlib : ["import matplotlib.pyplot as plt", "import numpy as np"]
+        case .pandas     : ["import pandas as pd", "import numpy as np"]
+        case .numpy      : ["import numpy as np"]
+        case .plotly     : ["import plotly.graph_objects as go",
+                            "import plotly.express as px", "import pandas as pd"]
+        case .seaborn    : ["import seaborn as sns", "import matplotlib.pyplot as plt",
+                            "import pandas as pd"]
+        case .custom, .markdown: []
         }
     }
 
     var defaultContent: String {
         switch self {
-        case .plain:
-            return "# Add your code here"
-        case .matplotlib:
-            return """
+        case .plain: "# Add your code here"
+        case .matplotlib: """
             # Create figure and axis
             fig, ax = plt.subplots(figsize=(10, 6))
-            
+
             # Your plotting code here
             # ax.plot(x, y)
-            
+
             plt.show()
             """
-        case .pandas:
-            return """
+        case .pandas: """
             # Create or load your DataFrame
             # df = pd.read_csv('your_file.csv')
             # df = pd.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]})
-            
+
             # Display DataFrame info
             # print(df.head())
             # print(df.describe())
             """
-        case .numpy:
-            return """
+        case .numpy: """
             # Create numpy arrays
             # arr = np.array([1, 2, 3, 4, 5])
-            
+
             # Your numpy operations here
             """
-        case .plotly:
-            return """
+        case .plotly: """
             # Create interactive plot
             # fig = go.Figure()
             # fig.add_trace(go.Scatter(x=[1, 2, 3, 4], y=[10, 11, 12, 13]))
             # fig.show()
             """
-        case .seaborn:
-            return """
+        case .seaborn: """
             # Set style
             sns.set_style("whitegrid")
-            
+
             # Create statistical plot
             # sns.scatterplot(data=df, x='col1', y='col2')
             # plt.show()
             """
-        case .custom:
-            return "# Add your custom code here"
-        case .markdown:
-            return "Add your markdown content here"
+        case .custom:   "# Add your custom code here"
+        case .markdown: "Add your markdown content here"
         }
     }
 }
@@ -1673,6 +1637,9 @@ struct ExportActionsView: View {
     }
 }
 
+
+
+/*
 // MARK: - NewWindow
 struct NewWindow: View {
     let id: Int
@@ -1725,7 +1692,161 @@ struct NewWindow: View {
                 // Display the appropriate view based on window type with restored data
                 Group {
                     switch window.windowType {
+                    case .model3d:
+                        // For 3D Model, we should open a volumetric window instead
+                        VStack {
+                            Spacer()
 
+                            VStack(spacing: 20) {
+                                Image(systemName: "cube.transparent.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.orange, .pink],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+
+                                Text("3D Model Viewer")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+
+                                if let model3D = window.state.model3DData {
+                                    VStack(spacing: 12) {
+                                        Text(model3D.title)
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+
+                                        HStack(spacing: 40) {
+                                            VStack {
+                                                Text("\(model3D.vertices.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Vertices")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text("\(model3D.faces.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Faces")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text(model3D.modelType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Type")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .padding(.top)
+                                    }
+                                }
+
+                                Text("This content is displayed in a volumetric window")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top)
+
+                                #if os(visionOS)
+                                Button(action: {
+                                    // Open the volumetric window
+                                    if let openWindow = NSApplication.shared.keyWindow?.windowScene?.openWindow {
+                                        openWindow(id: "volumetric-model3d", value: id)
+                                    }
+                                }) {
+                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.orange.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                                #endif
+                            }
+                            .padding(40)
+
+                            Spacer()
+                        }
+
+                    case .pointcloud:
+                        // For Point Cloud, we should open a volumetric window instead
+                        VStack {
+                            Spacer()
+
+                            VStack(spacing: 20) {
+                                Image(systemName: "dot.scope")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.purple, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+
+                                Text("Point Cloud Viewer")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+
+                                if let pointCloud = window.state.pointCloudData {
+                                    VStack(spacing: 12) {
+                                        Text(pointCloud.title)
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+
+                                        HStack(spacing: 40) {
+                                            VStack {
+                                                Text("\(pointCloud.totalPoints)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Points")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text(pointCloud.demoType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Type")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .padding(.top)
+                                    }
+                                }
+
+                                Text("This content is displayed in a volumetric window")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top)
+
+                                #if os(visionOS)
+                                Button(action: {
+                                    // Open the volumetric window
+                                    if let openWindow = NSApplication.shared.keyWindow?.windowScene?.openWindow {
+                                        openWindow(id: "volumetric-pointcloud", value: id)
+                                    }
+                                }) {
+                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.purple.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                                #endif
+                            }
+                            .padding(40)
+
+                            Spacer()
+                        }
+                        /*
                     case .model3d:  // Add this case
                         VStack {
                             if let model3D = window.state.model3DData {
@@ -1774,7 +1895,7 @@ struct NewWindow: View {
                                 .padding(40)
                             }
                         }
-
+                    */
                     case .charts:
                         VStack {
                             if !window.state.content.isEmpty {
@@ -1815,6 +1936,7 @@ struct NewWindow: View {
                         } else {
                             DataTableContentView(windowID: id)   // falls back to saved window or sample
                         }
+                    /*
                     case .pointcloud:  // Add this case
                         VStack {
                             if let pointCloud = window.state.pointCloudData {
@@ -1837,7 +1959,7 @@ struct NewWindow: View {
                                 .padding(40)
                             }
                         }
-
+                */
                     case .volume:  // NEW: Handle volume windows
                         VStack {
                             if !window.state.content.isEmpty {
@@ -1911,17 +2033,325 @@ struct NewWindow: View {
         }
     }
 }
+*/
 
-// MARK: - Preview Provider
-struct Preview: View {
+struct NewWindow: View {
+    let id: Int
+    @StateObject private var windowTypeManager = WindowTypeManager.shared
+    @Environment(\.openWindow) private var openWindow   // ← NEW: visionOS-safe window opener
+
     var body: some View {
-        Text("Preview placeholder")
+        if let window = windowTypeManager.getWindowSafely(for: id) {
+            VStack(spacing: 0) {
+                // Window header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(window.windowType.displayName) - Window #\(id)")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        if !window.state.tags.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "tag")
+                                    .font(.caption)
+                                Text(window.state.tags.joined(separator: ", "))
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Pos: (\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text("Template: \(window.state.exportTemplate.rawValue)")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+
+                        if !window.state.content.isEmpty {
+                            Text("Has Content")
+                                .font(.caption2)
+                                .foregroundStyle(.green)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground).opacity(0.3))
+
+                Divider()
+
+                // Display the appropriate view based on window type with restored data
+                Group {
+                    switch window.windowType {
+                    // ───────────── 3-D MODEL ─────────────
+                    case .model3d:
+                        VStack {
+                            Spacer()
+
+                            VStack(spacing: 20) {
+                                Image(systemName: "cube.transparent.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.orange, .pink],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+
+                                Text("3D Model Viewer")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+
+                                if let model3D = window.state.model3DData {
+                                    VStack(spacing: 12) {
+                                        Text(model3D.title)
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+
+                                        HStack(spacing: 40) {
+                                            VStack {
+                                                Text("\(model3D.vertices.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Vertices")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text("\(model3D.faces.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Faces")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text(model3D.modelType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Type")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .padding(.top)
+                                    }
+                                }
+
+                                Text("This content is displayed in a volumetric window")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top)
+
+                                Button {
+                                    // Open the volumetric window (visionOS-safe)
+                                    openWindow(id: "volumetric-model3d", value: id)
+                                } label: {
+                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.orange.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(40)
+
+                            Spacer()
+                        }
+
+                    // ───────────── POINT CLOUD ─────────────
+                    case .pointcloud:
+                        VStack {
+                            Spacer()
+
+                            VStack(spacing: 20) {
+                                Image(systemName: "dot.scope")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.purple, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+
+                                Text("Point Cloud Viewer")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+
+                                if let pointCloud = window.state.pointCloudData {
+                                    VStack(spacing: 12) {
+                                        Text(pointCloud.title)
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+
+                                        HStack(spacing: 40) {
+                                            VStack {
+                                                Text("\(pointCloud.totalPoints)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Points")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text(pointCloud.demoType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Type")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .padding(.top)
+                                    }
+                                }
+
+                                Text("This content is displayed in a volumetric window")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top)
+
+                                Button {
+                                    // Open the volumetric window (visionOS-safe)
+                                    openWindow(id: "volumetric-pointcloud", value: id)
+                                } label: {
+                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.purple.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(40)
+
+                            Spacer()
+                        }
+
+                    // ───────────── CHARTS ─────────────
+                    case .charts:
+                        VStack {
+                            if !window.state.content.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Restored Content:")
+                                            .font(.headline)
+
+                                        Text(window.state.content)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.tertiarySystemBackground))
+                                            .cornerRadius(8)
+                                    }
+                                    .padding()
+                                }
+                                .frame(maxHeight: 200)
+
+                                Divider()
+                            }
+
+                            WindowChartView()
+                        }
+
+                    // ───────────── SPATIAL EDITOR ─────────────
+                    case .spatial:
+                        if let pointCloud = window.state.pointCloudData {
+                            SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
+                        } else {
+                            SpatialEditorView(windowID: id)
+                        }
+
+                    // ───────────── DATAFRAME ─────────────
+                    case .column:
+                        if let df = window.state.dataFrameData {
+                            DataTableContentView(windowID: id, initialDataFrame: df)
+                        } else {
+                            DataTableContentView(windowID: id)
+                        }
+
+                    // ───────────── VOLUME METRICS ─────────────
+                    case .volume:
+                        VStack {
+                            if !window.state.content.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Model Metrics:")
+                                            .font(.headline)
+
+                                        Text(window.state.content)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .padding(8)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(Color(.tertiarySystemBackground))
+                                            .cornerRadius(8)
+                                    }
+                                    .padding()
+                                }
+                            } else {
+                                VStack(spacing: 20) {
+                                    Image(systemName: "gauge")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.blue)
+
+                                    Text("Model Metrics Viewer")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Text("Performance metrics and monitoring dashboard")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .padding(40)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .onAppear {
+                windowTypeManager.markWindowAsOpened(id)
+            }
+            .onDisappear {
+                windowTypeManager.markWindowAsClosed(id)
+            }
+        } else {
+            VStack(spacing: 20) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 50))
+                    .foregroundStyle(.orange)
+
+                Text("Window #\(id) Unavailable")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("This window may have been closed or removed from the workspace.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Button("Cleanup Closed Windows") {
+                    windowTypeManager.cleanupClosedWindows()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(40)
+            .onAppear {
+                windowTypeManager.markWindowAsClosed(id)
+            }
+        }
     }
 }
 
-#Preview("Main Interface") {
-    Preview()
-}
+// MARK: - Preview Provider
+
 
 #Preview("Spatial Editor") {
     SpatialEditorView()
