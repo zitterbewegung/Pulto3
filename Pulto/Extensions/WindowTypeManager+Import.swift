@@ -100,9 +100,9 @@ struct NotebookFile: Identifiable {
 }
 
 // MARK: - WindowTypeManager Import Extensions
-
+/*
 extension WindowTypeManager {
-
+    
     // MARK: - Main Import Methods
 
     func importFromGenericNotebook(data: Data) throws -> ImportResult {
@@ -960,3 +960,4 @@ extension WindowTypeManager {
         )
     }
 }
+*/

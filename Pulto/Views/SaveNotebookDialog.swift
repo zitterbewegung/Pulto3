@@ -330,10 +330,11 @@ struct SaveResult {
     let fileSize:    Int64
     var error: String? = nil
 }
-
+/*
 // MARK: - WindowTypeManager extension ----------------------------------------
 
 extension WindowTypeManager {
+    
 
     /// Public view of currently open windows.
     var newWindows: [NewWindowID] { getAllWindows() }
@@ -635,4 +636,32 @@ extension WindowTypeManager {
         }
         return meta
     }
+    // MARK: - Window ID helper
+    /// Generate a fresh, globally-unique window identifier.
+    /// Replace this with your own scheme if you already have one.
+    @MainActor
+    func generateNewWindowID() -> String {
+        UUID().uuidString
+    }
+
+    // MARK: - Per-window 3-D data helper
+    /// Persist the `model3DData` (title, geometry, etc.) for the
+    /// window identified by `id`.
+    ///
+    /// 👉  Hook this up to whatever storage you use for window state.
+    ///     The stub below simply prints in Debug builds so the app
+    ///     compiles and runs.
+    @MainActor
+    func updateWindowModel3DData(_ id: String, model3DData: Model3DData) {
+        #if DEBUG
+        print("updateWindowModel3DData(id: \(id), title: \(model3DData.title))")
+        #endif
+
+        // ───────── Real implementation sketch ─────────
+        // if var window = windows[id] {
+        //     window.model3DData = model3DData
+        //     windows[id] = window
+        // }
+    }
 }
+*/

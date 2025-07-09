@@ -141,6 +141,7 @@ struct EnvironmentView: View {
     // Window management
     @State private var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @StateObject private var windowManager    = WindowTypeManager.shared
     @StateObject private var workspaceManager = WorkspaceManager.shared
 
@@ -153,34 +154,36 @@ struct EnvironmentView: View {
     @State private var showNotebookImport  = false
     @State private var showFileImporter    = false
     @State private var showSettings        = false
-    @State private var showAppleSignIn     = false
     @State private var showWelcome         = true
+    @State private var showModel3DImport   = false
 
     var body: some View {
         VStack(spacing: 0) {
             HeaderView(viewModel: viewModel,
-                       onLoginTap:    { closeAllSheets(); showAppleSignIn = true },
-                       onSettingsTap: { closeAllSheets(); showSettings    = true })
+                       onLoginTap:    { closeAllSheets() },
+                       onSettingsTap: { closeAllSheets(); showSettings = true })
                 .padding(.horizontal)
                 .padding(.top)
 
             TabView(selection: $selectedTab) {
                 Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
                     WorkspaceTab(
-                        showWorkspaceDialog: $showWorkspaceDialog,
-                        showTemplateGallery: $showTemplateGallery,
-                        showNotebookImport:  $showNotebookImport,
-                        loadWorkspace:       loadWorkspace
+                        showModel3DImport: $showModel3DImport,
+                        loadWorkspace: loadWorkspace
                     )
                 }
 
                 Tab("Create", systemImage: "plus.circle.fill", value: .create) {
-                    CreateTab(createWindow: createStandardWindow)
+                    CreateTab(
+                        createWindow: createStandardWindow,
+                        showModel3DImport: $showModel3DImport
+                    )
                 }
 
                 Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
                     DataTab(
                         showFileImporter: $showFileImporter,
+                        showModel3DImport: $showModel3DImport,
                         createBlankTable: createBlankDataTable
                     )
                 }
@@ -189,6 +192,7 @@ struct EnvironmentView: View {
                     ActiveWindowsTab(
                         windowManager:  windowManager,
                         openWindow:     { openWindow(value: $0) },
+                        openImmersive:  { await openImmersiveSpace(value: $0) },
                         closeWindow:    { windowManager.removeWindow($0) },
                         closeAllWindows: clearAllWindowsWithConfirmation
                     )
@@ -204,27 +208,17 @@ struct EnvironmentView: View {
         }
 
         // ══════════ Sheets ══════════
-        .sheet(isPresented: $showWorkspaceDialog) {
-            WorkspaceDialog(isPresented: $showWorkspaceDialog,
-                            windowManager: windowManager)
-        }
-        .sheet(isPresented: $showTemplateGallery) {
-            TemplateView()
-                .frame(minWidth: 800, minHeight: 600)
-        }
-        .sheet(isPresented: $showNotebookImport) {
-            NotebookImportDialog(isPresented: $showNotebookImport,
-                                 windowManager: windowManager)
+        .sheet(isPresented: $showModel3DImport) {
+            Model3DImportView(
+                isPresented: $showModel3DImport,
+                windowManager: windowManager
+            )
         }
         .sheet(isPresented: $showWelcome) {
             WelcomeSheet(isPresented: $showWelcome)
         }
         .sheet(isPresented: $showSettings) {
             SettingsSheet(isPresented: $showSettings)
-        }
-        .sheet(isPresented: $showAppleSignIn) {
-            AppleSignInView(isPresented: $showAppleSignIn)
-                .frame(width: 700, height: 800)
         }
         .fileImporter(
             isPresented: $showFileImporter,
@@ -292,6 +286,27 @@ struct EnvironmentView: View {
                                 .foregroundStyle(.secondary)
                         }
 
+                        // 3D Model Settings
+                        SettingsSection("3D Models") {
+                            Toggle("Create volumetric windows by default", isOn: .constant(true))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+
+                            Text("New 3D models will open in immersive space instead of regular windows")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 4)
+
+                            Toggle("Enable model animation", isOn: .constant(true))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+
+                            Text("Automatically animate 3D models when opened in volumetric mode")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 4)
+                        }
+
                         // General
                         SettingsSection("General") {
                             Toggle("Enable Notifications", isOn: .constant(true))
@@ -333,8 +348,8 @@ struct EnvironmentView: View {
         showNotebookImport  = false
         showFileImporter    = false
         showSettings        = false
-        showAppleSignIn     = false
         showWelcome         = false
+        showModel3DImport   = false
     }
 
     private func checkFirstLaunch() {
@@ -388,14 +403,42 @@ struct EnvironmentView: View {
     @MainActor
     private func createBlankDataTable() { createStandardWindow(.dataFrame) }
 
-    @MainActor
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            if let url = urls.first { print("Importing file:", url.lastPathComponent) }
+            if let url = urls.first {
+                // Handle 3D model files
+                if ["usdz", "usd", "usda", "usdc", "obj", "gltf", "glb"].contains(url.pathExtension.lowercased()) {
+                    Task.init(priority: .userInitiated, operation: {
+
+                        do {
+                            let modelData = try await create3DModelFromURL(url)
+                            let windowId = windowManager.getNextWindowID()
+                            _ = windowManager.createWindow(.model3d, id: windowId)
+                            windowManager.updateWindowModel3DData(windowId, model3DData: modelData)
+                            openWindow(value: windowId)
+                            windowManager.markWindowAsOpened(windowId)
+                        } catch {
+                            print("Error importing 3D model: \(error)")
+                        }
+                    })
+                } else {
+                    print("Importing file:", url.lastPathComponent)
+                }
+            }
         case .failure(let error):
             print("Import failed:", error)
         }
+    }
+
+    private func create3DModelFromURL(_ url: URL) async throws -> Model3DData {
+        return Model3DData(
+            title: url.lastPathComponent,
+            modelType: "imported",
+            //vertices: [],
+            //faces: [],
+            //materials: []
+        )
     }
 
     private var supportedFileTypes: [UTType] {
@@ -407,9 +450,7 @@ struct EnvironmentView: View {
 // MARK: - Workspace Tab
 struct WorkspaceTab: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @Binding var showWorkspaceDialog: Bool
-    @Binding var showTemplateGallery: Bool
-    @Binding var showNotebookImport: Bool
+    @Binding var showModel3DImport: Bool
     let loadWorkspace: (WorkspaceMetadata) -> Void
 
     var body: some View {
@@ -425,19 +466,19 @@ struct WorkspaceTab: View {
                         GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
                     ], spacing: 16) {
                         EnvironmentActionCard(
-                            title: "New Project", subtitle: "Create from scratch",
-                            icon:  "plus.square.fill", color: .blue) {
-                            showWorkspaceDialog = true
+                            title: "Import 3D Model", subtitle: "Volumetric visualization",
+                            icon:  "cube.transparent.fill", color: .blue) {
+                            showModel3DImport = true
                         }
                         EnvironmentActionCard(
-                            title: "Templates", subtitle: "Pre-built projects",
-                            icon:  "doc.text.fill", color: .red) {
-                            showTemplateGallery = true
+                            title: "Create Window", subtitle: "Start visualizing",
+                            icon:  "plus.square.fill", color: .green) {
+                            // Could add window creation logic here
                         }
                         EnvironmentActionCard(
-                            title: "Import Notebook", subtitle: "Jupyter files",
-                            icon:  "square.and.arrow.down.fill", color: .green) {
-                            showNotebookImport = true
+                            title: "Sample Data", subtitle: "Try with examples",
+                            icon:  "chart.bar.fill", color: .orange) {
+                            // Could add sample data logic here
                         }
                     }
                 }
@@ -451,11 +492,6 @@ struct WorkspaceTab: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         Spacer()
-                        if !workspaceManager.getCustomWorkspaces().isEmpty {
-                            Button("View All") { showWorkspaceDialog = true }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.blue)
-                        }
                     }
 
                     if workspaceManager.getCustomWorkspaces().isEmpty {
@@ -489,17 +525,15 @@ struct WorkspaceTab: View {
 // MARK: - Create Tab
 struct CreateTab: View {
     let createWindow: (StandardWindowType) -> Void
+    @Binding var showModel3DImport: Bool
     @State private var selectedType: StandardWindowType? = nil
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Create an new Visualization")
+                Text("Create a new Visualization")
                     .font(.title2)
                     .fontWeight(.semibold)
-                //Text("Choose a visualization type for your data")
-                //    .font(.body)
-                //    .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: [
                     GridItem(.flexible()), GridItem(.flexible())
@@ -517,6 +551,46 @@ struct CreateTab: View {
                         }
                     }
                 }
+
+                Divider().padding(.vertical, 8)
+
+                // Special 3D Model Import Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("3D Model Import")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("Import and visualize 3D models in immersive space")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+
+                    Button(action: { showModel3DImport = true }) {
+                        HStack(spacing: 16) {
+                            Image(systemName: "cube.transparent.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.red)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Import 3D Model")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+
+                                Text("USDZ, USD, OBJ, and more formats supported")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "arrow.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding()
+                    }
+                    .buttonStyle(.plain)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                }
             }
             .padding()
         }
@@ -526,6 +600,7 @@ struct CreateTab: View {
 // MARK: - Data Tab
 struct DataTab: View {
     @Binding var showFileImporter: Bool
+    @Binding var showModel3DImport: Bool
     let createBlankTable: () -> Void
 
     var body: some View {
@@ -538,14 +613,29 @@ struct DataTab: View {
                 // Import Actions
                 HStack(spacing: 16) {
                     EnvironmentActionCard(
-                        title: "Import File", subtitle: "CSV, JSON, Images, 3D",
+                        title: "Import File", subtitle: "CSV, JSON, Images",
                         icon:  "doc.badge.plus", color: .blue) {
                         showFileImporter = true
                     }
                     EnvironmentActionCard(
+                        title: "Import 3D Model", subtitle: "USDZ, USD, OBJ",
+                        icon:  "cube.transparent.fill", color: .red) {
+                        showModel3DImport = true
+                    }
+                }
+
+                HStack(spacing: 16) {
+                    EnvironmentActionCard(
                         title: "Blank Table", subtitle: "Start with sample data",
                         icon:  "tablecells", color: .yellow) {
                         createBlankTable()
+                    }
+
+                    // Placeholder for future import types
+                    EnvironmentActionCard(
+                        title: "Coming Soon", subtitle: "More import options",
+                        icon:  "ellipsis.circle", color: .gray) {
+                        // Future functionality
                     }
                 }
 
@@ -587,6 +677,7 @@ struct DataTab: View {
 struct ActiveWindowsTab: View {
     let windowManager: WindowTypeManager
     let openWindow:      (Int) -> Void
+    let openImmersive:   (Int) async -> Void
     let closeWindow:     (Int) -> Void
     let closeAllWindows: () -> Void
 
@@ -712,6 +803,7 @@ struct ActiveWindowsTab: View {
                                         window:         window,
                                         isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
                                         onOpen:         { openWindow(window.id) },
+                                        onOpenImmersive: { Task { await openImmersive(window.id) } },
                                         onClose:        { closeWindow(window.id) }
                                     )
                                 }
@@ -968,6 +1060,7 @@ struct WindowRow: View {
     let window: NewWindowID
     let isActuallyOpen: Bool
     let onOpen:  () -> Void
+    let onOpenImmersive: () -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -1014,6 +1107,16 @@ struct WindowRow: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .tint(isActuallyOpen ? .blue : .green)
+
+                if window.windowType == .model3d {
+                    Button(action: onOpenImmersive) {
+                        Label("Immersive", systemImage: "viewfinder")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.purple)
+                }
 
                 Button(action: onClose) {
                     Label("Remove", systemImage: "xmark")
@@ -1185,8 +1288,8 @@ struct WelcomeSheet: View {
                             ProTip(
                                 icon: "cube.fill",
                                 color: .purple,
-                                title: "Explore spatial views",
-                                description: "Use the 3D spatial editor and point cloud viewer to visualize your data in three dimensions"
+                                title: "Explore volumetric 3D models",
+                                description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
                             )
                         }
                     }

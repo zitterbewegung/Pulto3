@@ -160,7 +160,7 @@ class WindowTypeManager: ObservableObject {
     }
 
     // Add these methods to WindowTypeManager class
-    func updateWindowModel3DData(_ id: Int, model3DData: Model3DData) {
+    /*func updateWindowModel3DData(_ id: Int, model3DData: Model3DData) {
         windows[id]?.state.model3DData = model3DData
         windows[id]?.state.lastModified = Date()
 
@@ -172,7 +172,7 @@ class WindowTypeManager: ObservableObject {
 
     func getWindowModel3DData(for id: Int) -> Model3DData? {
         return windows[id]?.state.model3DData
-    }
+    }*/
 
     // Chart data methods
     func updateWindowChartData(_ id: Int, chartData: ChartData) {
@@ -1231,5 +1231,51 @@ class WindowTypeManager: ObservableObject {
         saveWindows()
         
         objectWillChange.send()
+    }
+    @MainActor
+    func updateWindowModel3DData(_ id: Int, model3DData: Model3DData) {
+        windows[id]?.state.model3DData = model3DData
+        windows[id]?.state.lastModified = Date()
+    }
+    // MARK: — API for SaveNotebookDialog
+
+    /// Returns the currently open windows
+    var newWindows: [NewWindowID] {
+        getAllWindows()
+    }
+    func exportToJupyterNotebookWithDebug(debugOptions: DebugExportOptions) -> String {
+        // If you have existing debug logic in an extension, you can call it here:
+        // return exportToJupyterNotebookWithDebug(debugOptions: debugOptions)
+        //
+        // Otherwise, just fall back to the non‐debug export:
+        return exportToJupyterNotebook()
+    }
+    /// Save the notebook (with debug info) to disk and return its file URL.
+    func saveNotebookWithDebug(
+        filename: String,
+        directory: URL,
+        debugOptions opt: DebugExportOptions
+    ) -> URL? {
+        // 1. Generate the notebook JSON string
+        let notebookJSON = exportToJupyterNotebookWithDebug(debugOptions: opt)
+        
+        // 2. Ensure filename ends in .ipynb
+        let name = filename.hasSuffix(".ipynb") ? filename : "\(filename).ipynb"
+        let fileURL = directory.appendingPathComponent(name)
+        
+        do {
+            // 3a. Create the directory if needed
+            try FileManager.default.createDirectory(at: directory,
+                                                    withIntermediateDirectories: true)
+            // 3b. Write the string as UTF-8 text
+            try notebookJSON.write(to: fileURL,
+                                   atomically: true,
+                                   encoding: .utf8)
+            // 4. Return the location
+            return fileURL
+        } catch {
+            print("❌ Error saving notebook to \\(fileURL): \\(error)")
+            return nil
+        }
     }
 }

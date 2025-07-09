@@ -36,6 +36,8 @@
 		DCA1D30B2DE3F443009F79AD /* PultoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
 		DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */; };
+		DCDD6EE82E1EBC2E00E752A0 /* Model3DImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6EE72E1EBC2E00E752A0 /* Model3DImportView.swift */; };
+		DCDD6EEA2E1EBC4600E752A0 /* VolumetricModelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6EE92E1EBC4600E752A0 /* VolumetricModelView.swift */; };
 		DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */; };
 		DCF74EAB2E05DE5C0078C4B8 /* WindowTypeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */; };
 		DCF74EAD2E05DEB00078C4B8 /* PointCloudData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */; };
@@ -97,6 +99,8 @@
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricWindow.swift; sourceTree = "<group>"; };
 		DCDD6A512E1E18B100E752A0 /* PointCloudDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDemo.swift; sourceTree = "<group>"; };
+		DCDD6EE72E1EBC2E00E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
+		DCDD6EE92E1EBC4600E752A0 /* VolumetricModelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricModelView.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
 		DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInView.swift; sourceTree = "<group>"; };
 		DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTypeManager.swift; sourceTree = "<group>"; };
@@ -112,21 +116,25 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		DCDD6EF92E1EDDB100E752A0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"WindowTypeManager+Import.swift",
+				"WindowTypeManager+Model3D.swift",
+				"WindowTypeManager+Notebook.swift",
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+		DCDD6EFA2E1EDDB100E752A0 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
 			membershipExceptions = (
 				"WindowTypeManager+Import.swift",
+				"WindowTypeManager+Model3D.swift",
+				"WindowTypeManager+Notebook.swift",
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -137,7 +145,8 @@
 		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
 		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
-		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
+		DCDD6EF62E1EDD9800E752A0 /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCDD6EF92E1EDDB100E752A0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DCDD6EFA2E1EDDB100E752A0 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
+		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -215,12 +224,13 @@
 		DF58AE1D2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXGroup;
 			children = (
-				DCF810432E030A1900258CAE /* Models */,
-				DC28CF682E02695000F3705E /* Tests */,
-				DC71196E2DE778C8005F916A /* Backend */,
-				F5CE2A592C2B2A00009123E2 /* Views */,
-				DF58AE3D2BCD8D8200C8F737 /* Resources */,
 				F5CE2A582C2B27D7009123E2 /* App */,
+				DC71196E2DE778C8005F916A /* Backend */,
+				DCF810432E030A1900258CAE /* Models */,
+				DCDD6EF62E1EDD9800E752A0 /* Extensions */,
+				DF58AE3D2BCD8D8200C8F737 /* Resources */,
+				DC28CF682E02695000F3705E /* Tests */,
+				F5CE2A592C2B2A00009123E2 /* Views */,
 			);
 			path = Pulto;
 			sourceTree = "<group>";
@@ -250,38 +260,40 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
+				DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */,
+				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
+				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
+				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
+				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
+				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
 				DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */,
-				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
-				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
-				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
-				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
 				DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */,
 				DCF74ECF2E0619550078C4B8 /* GridConstants.swift */,
-				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
-				DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */,
-				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
-				DC661B302E049681005454FE /* TemplateView.swift */,
-				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
-				DCDD6A512E1E18B100E752A0 /* PointCloudDemo.swift */,
-				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
-				DC4532DD2E18508D00A0A435 /* ProjectBrowserView.swift */,
-				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
+				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
+				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
+				DCDD6EE72E1EBC2E00E752A0 /* Model3DImportView.swift */,
+				DCDD6EE92E1EBC4600E752A0 /* VolumetricModelView.swift */,
+				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC85D57F2E0399A900559301 /* NotebookFile.swift */,
-				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
-				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
-				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
+				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
+				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
-				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
+				DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */,
+				DCDD6A512E1E18B100E752A0 /* PointCloudDemo.swift */,
+				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DC4532DD2E18508D00A0A435 /* ProjectBrowserView.swift */,
+				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
+				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
+				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
+				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
 				DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */,
 				DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */,
-				DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */,
-				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
-				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
-				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
-				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
+				DC661B302E049681005454FE /* TemplateView.swift */,
+				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
-				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
+				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -327,6 +339,7 @@
 			fileSystemSynchronizedGroups = (
 				DC28CF682E02695000F3705E /* Tests */,
 				DC71196E2DE778C8005F916A /* Backend */,
+				DCDD6EF62E1EDD9800E752A0 /* Extensions */,
 				DCF810432E030A1900258CAE /* Models */,
 			);
 			name = Pulto;
@@ -415,12 +428,14 @@
 				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
 				DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */,
 				DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */,
+				DCDD6EE82E1EBC2E00E752A0 /* Model3DImportView.swift in Sources */,
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
 				DC5CB4222E00DF7700B59F38 /* DataTableContentView.swift in Sources */,
 				DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
 				DC4532DE2E18508D00A0A435 /* ProjectBrowserView.swift in Sources */,
+				DCDD6EEA2E1EBC4600E752A0 /* VolumetricModelView.swift in Sources */,
 				DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */,
 				DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */,
 				DCF74ED02E0619550078C4B8 /* GridConstants.swift in Sources */,

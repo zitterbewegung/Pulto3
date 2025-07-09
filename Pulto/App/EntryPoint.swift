@@ -6,10 +6,118 @@ The app's main entry point
 */
 
 import SwiftUI
-import RealityKit
+
 
 @main
-struct EntryPoint: SwiftUI.App {
+struct EntryPoint: App {
+    @StateObject private var windowManager = WindowTypeManager.shared
+
+    /* Helper to apply placement + sizing to each window scene.
+    private func configureScene(_ scene: WindowGroup<some View>, row: Int, col: Int) -> some Scene {
+        let size = CGSize(width: GridConstants.tileWidth, height: GridConstants.tileHeight)
+        return scene
+            .windowStyle(.plain)
+            .defaultSize(width: size.width, height: size.height)
+            .defaultWindowPlacement { _, _ in
+                WindowPlacement(positionForCell(row: row, col: col), size: size)
+            }
+    }*/
+    var body: some Scene {
+        // Main interface - EnvironmentView as primary entry point
+        WindowGroup(id: "main") {
+            EnvironmentView()
+                .environmentObject(windowManager)
+                .onOpenURL { url in
+                    handleSharedURL(url)
+                }
+        }
+        .windowStyle(.plain)
+        .defaultSize(width: 1400, height: 900)
+
+        // Home window - PultoHomeView as secondary interface
+        WindowGroup(id: "home") {
+            PultoHomeView()
+                .environmentObject(windowManager)
+        }
+        .windowStyle(.plain)
+        .defaultSize(width: 1280, height: 850)
+
+
+
+        // Grid launcher (original functionality)
+        WindowGroup(id: "launcher") {
+            LauncherView()
+        }
+        .windowStyle(.plain)
+        .defaultSize(width: 800, height: 600)
+
+        // Secondary windows - loaded on demand
+        Group {
+            //WindowGroup("New Window", for: NewWindowID.ID.self) { $id in
+            //    NewWindow(id: id ?? 1)
+            //}
+
+            WindowGroup(id: "open-project-window") {
+                ProjectBrowserView(windowManager: windowManager)
+                    .environmentObject(windowManager)
+            }
+            .windowStyle(.plain)
+            .defaultSize(width: 1000, height: 700)
+
+            // TODO: Re-enable when TestFeaturesView compilation is fixed
+            // WindowGroup("Test Features", id: "test-features") {
+            //     TestFeaturesView()
+            // }
+            // .windowStyle(.plain)
+            // .defaultSize(width: 1000, height: 700)
+        }
+    }
+
+    private func handleSharedURL(_ url: URL) {
+        // Handle CSV files shared from Safari or other apps
+        if url.pathExtension.lowercased() == "csv" {
+            Task {
+                do {
+                    let content = try String(contentsOf: url)
+                    if let csvData = CSVParser.parse(content) {
+                        // Convert CSVData to DataFrameData
+                        let dataFrame = DataFrameData(
+                            columns: csvData.headers,
+                            rows: csvData.rows,
+                            dtypes: csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
+                                let (index, type) = item
+                                if index < csvData.headers.count {
+                                    switch type {
+                                    case .numeric:
+                                        result[csvData.headers[index]] = "float"
+                                    case .categorical:
+                                        result[csvData.headers[index]] = "string"
+                                    case .date:
+                                        result[csvData.headers[index]] = "string"
+                                    case .unknown:
+                                        result[csvData.headers[index]] = "string"
+                                    }
+                                }
+                            }
+                        )
+
+                        // Create a new DataFrame window with the imported data
+                        let windowId = windowManager.getNextWindowID()
+                        let newWindow = windowManager.createWindow(.column, id: windowId)
+                        windowManager.updateWindowDataFrame(newWindow.id, dataFrame: dataFrame)
+                        windowManager.markWindowAsOpened(newWindow.id)
+                    }
+                } catch {
+                    print("Error importing shared CSV: \(error)")
+                }
+            }
+        }
+    }
+}
+
+/*
+@main
+struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var spatialManager = SpatialWindowManager.shared
     
@@ -25,7 +133,7 @@ struct EntryPoint: SwiftUI.App {
         }
         .windowStyle(.plain)
         .defaultSize(width: 1400, height: 900)
-        
+        /*
         // Immersive Space for 3D window management
         ImmersiveSpace(id: "immersive-workspace") {
             ImmersiveSpaceView()
@@ -33,7 +141,7 @@ struct EntryPoint: SwiftUI.App {
                 .environmentObject(spatialManager)
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
-        
+        */
         // Grid launcher (original functionality)
         WindowGroup(id: "launcher") {
             LauncherView()
@@ -126,7 +234,7 @@ struct ImmersiveSpaceView: View {
             print("🌌 ImmersiveSpace disappeared")
         }
     }
-    
+
     private func setupImmersiveSpace(content: RealityViewContent) {
         // Add lighting
         let directionalLight = DirectionalLight()
@@ -146,7 +254,7 @@ struct ImmersiveSpaceView: View {
         let openWindows = windowManager.getAllWindows(onlyOpen: true)
         
         for window in openWindows {
-            let immersiveState = spatialManager.getImmersiveState(for: window.id)
+            let immersiveState = $spatialManager.getImmersiveState(for: window.id)
             
             if immersiveState.isVisible {
                 // Update window position and appearance in 3D space
@@ -154,7 +262,7 @@ struct ImmersiveSpaceView: View {
             }
         }
     }
-    
+
     private func positionWindowsIn3DSpace(content: RealityViewContent) {
         let openWindows = windowManager.getAllWindows(onlyOpen: true)
         
@@ -419,3 +527,4 @@ struct PointCloudEditorView: View {
         }
     }
 }
+*/
