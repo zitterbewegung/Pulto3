@@ -294,7 +294,7 @@ struct SpatialEditorView: View {
                     case .chart: return 1
                     }
                 },
-                set: { newValue in
+                set: { (newValue: Int) in
                     if newValue == 0 {
                         currentVisualization = .pointCloud(PointCloudDemo.generateSpherePointCloudData())
                         startRotationAnimation()

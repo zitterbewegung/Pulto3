@@ -401,6 +401,21 @@ struct PultoHomeView: View {
                             },
                             closeAllSheets: closeAllSheets
                         )
+                        
+                        Button(action: {
+                            let pointCloudWindow = windowManager.createPointCloudWindow(
+                                at: WindowPosition(x: 0, y: 0, z: 0, width: 600, height: 500)
+                            )
+                            openWindow(value: pointCloudWindow.id)
+                            windowManager.markWindowAsOpened(pointCloudWindow.id)
+                        }) {
+                            Label("Point Cloud Viewer", systemImage: "dot.scope")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                        }
+                        .buttonStyle(.plain)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
 
                         if viewModel.isLoadingProjects {
                             VisionOSWindow {
@@ -528,129 +543,7 @@ struct PultoHomeView: View {
         }
     }
 }
-/*
-// MARK: - Header View
-struct HeaderView: View {
-    @ObservedObject var viewModel: PultoHomeViewModel
-    let onLoginTap: () -> Void
-    let onSettingsTap: () -> Void
 
-    var body: some View {
-        VisionOSWindow(depth: 1) {
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Pulto")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-
-                    Text("Spatial Data Visualization Platform")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 16) {
-                    SettingsButton(onTap: onSettingsTap)
-
-                    UserProfileButton(
-                        userName: viewModel.userName,
-                        isLoggedIn: viewModel.isUserLoggedIn,
-                        onTap: onLoginTap
-                    )
-                }
-            }
-            .padding(24)
-        }
-    }
-}
-
-// MARK: - User Profile Button
-struct UserProfileButton: View {
-    let userName: String
-    let isLoggedIn: Bool
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
-                    .font(.title)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.blue)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(isLoggedIn ? userName : "Sign In")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    if isLoggedIn {
-                        Text("View Profile")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
-                }
-        }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-    }
-}
-
-struct SettingsButton: View {
-    let onTap: () -> Void
-    @State private var isHovered = false
-    
-    var body: some View {
-        Button {
-            onTap()
-        } label: {
-            Image(systemName: "gearshape")
-                .font(.title)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
-                }
-        }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-    }
-}
- */
 // MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool

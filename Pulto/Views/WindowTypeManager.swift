@@ -217,13 +217,13 @@ class WindowTypeManager: ObservableObject {
         let importResult = try importFromGenericNotebook(fileURL: fileURL)
 
         // Then actually open the windows visually
-        var openedWindows: [NewWindowID] = []
+        var openedWindows: [ImportedWindowID] = []
 
         for window in importResult.restoredWindows {
             await MainActor.run {
                 openWindow(window.id) // This actually creates the visual window
                 markWindowAsOpened(window.id)
-                openedWindows.append(window)
+                openedWindows.append(window) // window is already ImportedWindowID
             }
 
             // Small delay for smooth animation
@@ -264,7 +264,7 @@ class WindowTypeManager: ObservableObject {
             throw ImportError.invalidNotebookFormat
         }
 
-        var restoredWindows: [NewWindowID] = []
+        var restoredWindows: [ImportedWindowID] = []
         var errors: [ImportError] = []
         var idMapping: [Int: Int] = [:]
 
@@ -278,17 +278,24 @@ class WindowTypeManager: ObservableObject {
                         idMapping[oldID] = nextAvailableID
                     }
 
-                    restoredWindows.append(windowData)
+                    // Convert NewWindowID to ImportedWindowID
+                    let importedWindow = ImportedWindowID(
+                        id: windowData.id,
+                        windowType: windowData.windowType.rawValue,
+                        position: windowData.position,
+                        state: windowData.state
+                    )
+                    
+                    restoredWindows.append(importedWindow)
+                    
+                    // Also store in the main windows dictionary
+                    windows[windowData.id] = windowData
+                    
                     nextAvailableID += 1
                 }
             } catch {
                 errors.append(error as? ImportError ?? ImportError.cellParsingFailed)
             }
-        }
-
-        // Store the restored windows
-        for window in restoredWindows {
-            windows[window.id] = window
         }
 
         let visionOSMetadata = extractVisionOSMetadata(from: json)
@@ -491,6 +498,42 @@ class WindowTypeManager: ObservableObject {
     }
 
     // MARK: - Utility Methods
+    
+    private func generateUniqueId() -> Int {
+        let currentMaxID = getAllWindows().map { $0.id }.max() ?? 0
+        return currentMaxID + 1
+    }
+    
+    private func saveWindows() {
+        // Save windows to UserDefaults or persistent storage
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(Array(windows.values))
+            UserDefaults.standard.set(data, forKey: "SavedWindows")
+        } catch {
+            print("Failed to save windows: \(error)")
+        }
+    }
+    
+    private func loadWindows() {
+        // Load windows from UserDefaults or persistent storage
+        guard let data = UserDefaults.standard.data(forKey: "SavedWindows") else { return }
+        
+        do {
+            let decoder = JSONDecoder()
+            let loadedWindows = try decoder.decode([NewWindowID].self, from: data)
+            
+            // Convert to dictionary
+            windows = Dictionary(uniqueKeysWithValues: loadedWindows.map { ($0.id, $0) })
+        } catch {
+            print("Failed to load windows: \(error)")
+        }
+    }
+
+    func updateWindowContent(_ id: Int, content: String) {
+        windows[id]?.state.content = content
+        windows[id]?.state.lastModified = Date()
+    }
 
     private func parseDataFrameFromContent(_ content: String) throws -> DataFrameData? {
         let patterns = [
@@ -763,7 +806,7 @@ class WindowTypeManager: ObservableObject {
     private func extractUnit(from content: String) -> String? {
         let unitPatterns = [
             #"unit[s]?['""]:\s*['""]([^'""]+)['""]"#,
-            #"([a-zA-Z]+)\s*per\s*([a-zA-Z]+)"#
+            #"'([a-zA-Z]+)\s*per\s*([a-zA-Z]+)"#
         ]
 
         for pattern in unitPatterns {
@@ -849,11 +892,6 @@ class WindowTypeManager: ObservableObject {
     
     func updateWindowState(_ id: Int, state: WindowState) {
         windows[id]?.state = state
-    }
-
-    func updateWindowContent(_ id: Int, content: String) {
-        windows[id]?.state.content = content
-        windows[id]?.state.lastModified = Date()
     }
 
     func updateWindowTemplate(_ id: Int, template: ExportTemplate) {
@@ -1161,5 +1199,37 @@ class WindowTypeManager: ObservableObject {
     func arrangeWindowsInImmersiveSpace(layout: SpatialWindowManager.SpatialLayout) {
         let openWindows = getAllWindows(onlyOpen: true)
         SpatialWindowManager.shared.arrangeWindowsInLayout(layout, windowIDs: openWindows.map { $0.id })
+    }
+
+    func createPointCloudWindow(at position: WindowPosition = WindowPosition()) -> NewWindowID {
+        let newId = generateUniqueId()
+        
+        let newWindow = NewWindowID(
+            id: newId,
+            windowType: .pointcloud,
+            position: position,
+            state: WindowState(
+                content: "# Point Cloud Viewer\n# Import point cloud data to visualize in 3D space",
+                exportTemplate: .custom
+            )
+        )
+        
+        windows[newId] = newWindow
+        saveWindows()
+        
+        return newWindow
+    }
+
+    func updateWindowWithPointCloud(_ windowId: Int, pointCloud: PointCloudData) {
+        guard var window = windows[windowId] else { return }
+        
+        window.state.pointCloudData = pointCloud
+        window.state.content = pointCloud.toPythonCode()
+        window.state.lastModified = Date()
+        
+        windows[windowId] = window
+        saveWindows()
+        
+        objectWillChange.send()
     }
 }

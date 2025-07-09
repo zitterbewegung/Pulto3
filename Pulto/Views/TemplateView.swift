@@ -604,9 +604,9 @@ struct TemplateView: View {
         }
         
         // For Spatial windows with point cloud data
-        if windowType == .spatial && window.title.contains("3D") {
-            state.pointCloudData = PointCloudDemo.generateSpherePointCloudData(radius: 10.0, points: 500)
-        }
+        //if windowType == .spatial && window.title.contains("3D") {
+        //    state.pointCloudData = PointCloudDemo.generateSpherePointCloudData(radius: 10.0, points: 500)
+        //}
         
         // For volume/metric windows
         if windowType == .volume {

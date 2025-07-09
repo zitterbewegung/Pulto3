@@ -96,6 +96,7 @@
 		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricWindow.swift; sourceTree = "<group>"; };
+		DCDD6A512E1E18B100E752A0 /* PointCloudDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDemo.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
 		DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInView.swift; sourceTree = "<group>"; };
 		DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTypeManager.swift; sourceTree = "<group>"; };
@@ -262,6 +263,7 @@
 				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
 				DC661B302E049681005454FE /* TemplateView.swift */,
 				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
+				DCDD6A512E1E18B100E752A0 /* PointCloudDemo.swift */,
 				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
 				DC4532DD2E18508D00A0A435 /* ProjectBrowserView.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
@@ -663,7 +665,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.0;
+				XROS_DEPLOYMENT_TARGET = 2.5;
 			};
 			name = Debug;
 		};
@@ -708,7 +710,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.0;
+				XROS_DEPLOYMENT_TARGET = 2.5;
 			};
 			name = Release;
 		};

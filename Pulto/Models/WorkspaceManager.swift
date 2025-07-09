@@ -1,4 +1,4 @@
-//
+// 
 //  WorkspaceManager.swift
 //  Pulto
 //
@@ -276,15 +276,15 @@ class WorkspaceManager: ObservableObject {
         let importResult = try windowManager.importFromGenericNotebook(fileURL: fileURL)
         print("📥 WorkspaceManager: Imported \(importResult.restoredWindows.count) windows from notebook")
         
-        // Open windows with visual feedback
-        var openedWindows: [NewWindowID] = []
+        // Convert ImportedWindowID to NewWindowID and open windows with visual feedback
+        var openedWindows: [ImportedWindowID] = []
         
-        for window in importResult.restoredWindows {
+        for importedWindow in importResult.restoredWindows {
             await MainActor.run {
-                print("🪟 WorkspaceManager: Opening window #\(window.id) (\(window.windowType.displayName))")
-                openWindow(window.id)
-                windowManager.markWindowAsOpened(window.id)
-                openedWindows.append(window)
+                print("🪟 WorkspaceManager: Opening window #\(importedWindow.id) (\(importedWindow.windowType))")
+                openWindow(importedWindow.id)
+                windowManager.markWindowAsOpened(importedWindow.id)
+                openedWindows.append(importedWindow)
             }
             
             // Small delay for smooth animation

@@ -3,7 +3,7 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/18/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 
@@ -13,6 +13,28 @@
 //
 
 import Foundation
+import SwiftUI
+
+// MARK: - Forward declarations and imports
+// We need to reference types from OpenWindowView, but to avoid circular imports,
+// we'll use a protocol or recreate the essential structure
+
+// Essential window types needed for import results
+struct ImportedWindowID: Identifiable, Codable, Hashable {
+    var id: Int
+    var windowType: String
+    var position: WindowPosition
+    var state: WindowState
+    var createdAt: Date
+    
+    init(id: Int, windowType: String, position: WindowPosition = WindowPosition(), state: WindowState = WindowState()) {
+        self.id = id
+        self.windowType = windowType
+        self.position = position
+        self.state = state
+        self.createdAt = Date()
+    }
+}
 
 // MARK: - Notebook File Type
 
@@ -46,7 +68,7 @@ struct NotebookFile: Identifiable, Hashable {
 // MARK: - Import Result Types
 
 struct ImportResult {
-    let restoredWindows: [NewWindowID]
+    let restoredWindows: [ImportedWindowID]
     let errors: [ImportError]
     let originalMetadata: VisionOSExportInfo?
     let idMapping: [Int: Int] // old ID -> new ID
@@ -119,8 +141,8 @@ enum ImportError: Error, LocalizedError {
 
 struct EnvironmentRestoreResult {
     let importResult: ImportResult
-    let openedWindows: [NewWindowID]
-    let failedWindows: [NewWindowID]
+    let openedWindows: [ImportedWindowID]
+    let failedWindows: [ImportedWindowID]
     
     var totalRestored: Int {
         return openedWindows.count

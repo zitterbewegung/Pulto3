@@ -635,13 +635,13 @@ struct EnvironmentRestoreDialog: View {
 
                     ScrollView {
                         LazyVStack(spacing: 4) {
-                            ForEach(result.openedWindows, id: \.id) { window in
+                            ForEach(Array(result.openedWindows.enumerated()), id: \.element.id) { index, window in
                                 HStack {
-                                    Image(systemName: iconForWindowType(window.windowType.rawValue))
+                                    Image(systemName: iconForWindowType(window.windowType))
                                         .foregroundStyle(.green)
                                         .frame(width: 20)
 
-                                    Text("\(window.windowType.displayName) #\(window.id)")
+                                    Text("\(window.windowType) #\(window.id)")
                                         .font(.caption)
 
                                     Spacer()
@@ -671,11 +671,11 @@ struct EnvironmentRestoreDialog: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
 
-                    ForEach(result.failedWindows, id: \.id) { window in
+                    ForEach(Array(result.failedWindows.enumerated()), id: \.element.id) { index, window in
                         HStack {
                             Image(systemName: "xmark.circle")
                                 .foregroundStyle(.red)
-                            Text("\(window.windowType.displayName) #\(window.id)")
+                            Text("\(window.windowType) #\(window.id)")
                                 .font(.caption)
                         }
                     }

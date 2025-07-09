@@ -3,9 +3,8 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/22/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 import SwiftUI
 import UIKit
@@ -436,7 +435,7 @@ struct EnhancedNotebookChartsView: View {
                     )
 
                     for window in importResult.restoredWindows {
-                        openWindow(id: window.windowType.rawValue, value: window.id)
+                        openWindow(id: window.windowType, value: window.id)
                     }
                 } else {
                     self.result = "No windows found to restore"

@@ -11,6 +11,9 @@ import RealityKit
 import UniformTypeIdentifiers
 
 struct ModelViewerView: View {
+    let windowID: Int
+    let model3DData: Model3DData?
+    
     @State private var modelURL: String = ""
     @State private var loadedEntity: ModelEntity?
     @State private var isLoading = false
@@ -22,31 +25,56 @@ struct ModelViewerView: View {
         case url, localFile
     }
     
+    init(windowID: Int, model3DData: Model3DData? = nil) {
+        self.windowID = windowID
+        self.model3DData = model3DData
+    }
+    
     var body: some View {
         VStack(spacing: 20) {
-            // Default model info
-            if isDefaultModelLoaded {
-                VStack(spacing: 8) {
-                    HStack {
-                        Image(systemName: "cube.transparent.fill")
-                            .foregroundColor(.blue)
-                        Text("Default Model: Pluto_1_2374.usdz")
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                    }
-                    Text("Drag to rotate • Enter URL below to load different models")
-                        .font(.caption)
+            // Window info
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "cube.transparent.fill")
+                        .foregroundColor(.blue)
+                    Text("3D Model Viewer - Window #\(windowID)")
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                }
+                if let model3DData = model3DData {
+                    Text("Model: \(model3DData.title)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Load a 3D model to view")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+            }
+            .padding()
+            .background(Color.blue.opacity(0.1))
+            .cornerRadius(8)
+            .padding(.horizontal)
+            
+            // Model info display
+            if let model3DData = model3DData {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Model Information:")
+                        .font(.headline)
+                    Text("Title: \(model3DData.title)")
+                    Text("Type: \(model3DData.modelType)")
+                    Text("Vertices: \(model3DData.vertices.count)")
+                    Text("Faces: \(model3DData.faces.count)")
+                }
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .padding(.horizontal)
             }
             
             // URL Input section
             VStack(alignment: .leading, spacing: 8) {
-                Text("Model URL:")
+                Text("Load New Model:")
                     .font(.headline)
                 
                 TextField("Enter model URL (USDZ, Reality file)", text: $modelURL)
@@ -92,8 +120,10 @@ struct ModelViewerView: View {
             }
         }
         .onAppear {
-            // Load default model when view appears
-            if loadedEntity == nil {
+            // Load model data if available, otherwise load default
+            if let model3DData = model3DData {
+                loadModel3DData(model3DData)
+            } else if loadedEntity == nil {
                 Task {
                     await loadDefaultModel()
                 }
@@ -155,6 +185,39 @@ struct ModelViewerView: View {
         if let entity = loadedEntity {
             content.add(entity)
         }
+    }
+    
+    private func loadModel3DData(_ model3DData: Model3DData) {
+        // Convert Model3DData to RealityKit entity
+        Task {
+            await generateEntityFromModel3DData(model3DData)
+        }
+    }
+    
+    private func generateEntityFromModel3DData(_ model3DData: Model3DData) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            // Create a simple mesh from the model data
+            let entity = try await createModelEntityFromData(model3DData)
+            
+            await MainActor.run {
+                self.loadedEntity = entity
+                self.isLoading = false
+                self.isDefaultModelLoaded = false
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to create model: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+        }
+    }
+    
+    private func createModelEntityFromData(_ model3DData: Model3DData) async throws -> ModelEntity {
+        // Implementation not provided
+        throw NSError(domain: "ModelViewerError", code: 3, userInfo: [NSLocalizedDescriptionKey: "createModelEntityFromData implementation missing"])
     }
     
     private func loadDefaultModel() async {
@@ -240,5 +303,5 @@ extension UTType {
 }
 
 #Preview {
-    ModelViewerView()
+    ModelViewerView(windowID: 1)
 }
