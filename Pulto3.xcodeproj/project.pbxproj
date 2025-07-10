@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 73;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -121,22 +121,48 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"WindowTypeManager+Replace.swift",
+			);
+			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
+		};
 		DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				generateSamplePointCloud.swift,
 				"WindowTypeManager+Import.swift",
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		DC7094512E2010720000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
+			membershipExceptions = (
+				generateSamplePointCloud.swift,
+			);
+		};
+		DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
+			membershipExceptions = (
+				"WindowTypeManager+Replace.swift",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
 		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
 		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
+		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
 		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
-		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
+		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094512E2010720000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -214,6 +240,7 @@
 		DF58AE1D2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXGroup;
 			children = (
+				DC7094552E206D110000CC3A /* Extensions */,
 				DCF810432E030A1900258CAE /* Models */,
 				DC28CF682E02695000F3705E /* Tests */,
 				DC71196E2DE778C8005F916A /* Backend */,
@@ -249,42 +276,42 @@
 		F5CE2A592C2B2A00009123E2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */,
-				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
+				DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */,
+				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
+				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
+				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
+				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
+				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
 				DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */,
-				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
-				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
-				DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */,
-				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
-				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
-				DCDD6FB02E1F19FE00E752A0 /* PointCloudVolumetricView.swift */,
-				DCDD6FB42E1F1EAF00E752A0 /* Model3DVolumetricView.swift */,
+				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
 				DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */,
 				DCF74ECF2E0619550078C4B8 /* GridConstants.swift */,
-				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
-				DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */,
-				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
-				DC661B302E049681005454FE /* TemplateView.swift */,
-				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
+				DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */,
+				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
 				DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */,
-				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
-				DC4532DD2E18508D00A0A435 /* ProjectBrowserView.swift */,
+				DCDD6FB42E1F1EAF00E752A0 /* Model3DVolumetricView.swift */,
+				DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */,
+				DC28CF642E02390500F3705E /* ModelViewerView.swift */,
+				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
-				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
-				DCDD6FAA2E1EF0CD00E752A0 /* VolumetricModelView.swift */,
-				DC5CB4212E00DF7700B59F38 /* DataTableContentView.swift */,
-				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
+				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
 				DC0E89A02DE36AA800B27198 /* PlotlyWebView.swift */,
-				DC09C6442DE3E22000774D7D /* DataImportView.swift */,
+				DCF74EAC2E05DEB00078C4B8 /* PointCloudData.swift */,
+				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DCDD6FB02E1F19FE00E752A0 /* PointCloudVolumetricView.swift */,
+				DC4532DD2E18508D00A0A435 /* ProjectBrowserView.swift */,
+				DCA1D30A2DE3F443009F79AD /* PultoHomeView.swift */,
+				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
+				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
+				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
 				DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */,
 				DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */,
-				DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */,
-				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
-				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
-				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
-				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
+				DC661B302E049681005454FE /* TemplateView.swift */,
+				DCDD6FAA2E1EF0CD00E752A0 /* VolumetricModelView.swift */,
+				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
-				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
+				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -329,6 +356,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				DC28CF682E02695000F3705E /* Tests */,
+				DC7094552E206D110000CC3A /* Extensions */,
 				DC71196E2DE778C8005F916A /* Backend */,
 				DCF810432E030A1900258CAE /* Models */,
 			);
@@ -358,7 +386,6 @@
 				};
 			};
 			buildConfigurationList = DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -366,6 +393,7 @@
 				Base,
 			);
 			mainGroup = DF58AE122BCD826D00C8F737;
+			preferredProjectObjectVersion = 56;
 			productRefGroup = DF58AE1C2BCD826D00C8F737 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

@@ -796,7 +796,8 @@ struct WindowState: Codable, Hashable {
     var chartData: ChartData? = nil
     var model3DData: Model3DData? = nil
     var usdzBookmark: Data? = nil
-
+    var pointCloudBookmark: Data? = nil  // ADD THIS LINE
+    
     init(isMinimized: Bool = false, isMaximized: Bool = false,
          opacity: Double = 1.0, content: String = "",
          exportTemplate: ExportTemplate = .plain) {
@@ -1642,6 +1643,8 @@ struct NewWindow: View {
     let id: Int
     @StateObject private var windowTypeManager = WindowTypeManager.shared
     @Environment(\.openWindow) private var openWindow   // ← NEW: visionOS-safe window opener
+    @State private var showFileImporter = false  // ← For USDZ import
+    @State private var showPointCloudImporter = false  // ← NEW: For point cloud import
 
     var body: some View {
         if let window = windowTypeManager.getWindowSafely(for: id) {
@@ -1744,6 +1747,10 @@ struct NewWindow: View {
                                         }
                                         .padding(.top)
                                     }
+                                } else if window.state.usdzBookmark != nil {
+                                    Text("Imported USDZ Model")
+                                        .font(.title2)
+                                        .foregroundStyle(.secondary)
                                 }
 
                                 Text("This content is displayed in a volumetric window")
@@ -1762,10 +1769,33 @@ struct NewWindow: View {
                                         .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
+
+                                Button {
+                                    showFileImporter = true
+                                } label: {
+                                    Label("Import USDZ Model", systemImage: "square.and.arrow.down")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.blue.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
                             }
                             .padding(40)
 
                             Spacer()
+                        }
+                        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.usdz], allowsMultipleSelection: false) { result in
+                            if let url = try? result.get().first {
+                                Task {
+                                    do {
+                                        let bookmark = try url.bookmarkData(options: .minimalBookmark)
+                                        windowTypeManager.updateUSDZBookmark(for: id, bookmark: bookmark)
+                                    } catch {
+                                        print("Failed to import USDZ: \(error)")
+                                    }
+                                }
+                            }
                         }
 
                     // ───────────── POINT CLOUD ─────────────
@@ -1813,6 +1843,10 @@ struct NewWindow: View {
                                         }
                                         .padding(.top)
                                     }
+                                } else if window.state.pointCloudBookmark != nil {
+                                    Text("Imported Point Cloud")
+                                        .font(.title2)
+                                        .foregroundStyle(.secondary)
                                 }
 
                                 Text("This content is displayed in a volumetric window")
@@ -1831,10 +1865,35 @@ struct NewWindow: View {
                                         .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
+
+                                Button {
+                                    showPointCloudImporter = true
+                                } label: {
+                                    Label("Import Point Cloud", systemImage: "square.and.arrow.down")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.green.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
                             }
                             .padding(40)
 
                             Spacer()
+                        }
+                        .fileImporter(isPresented: $showPointCloudImporter, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
+                            if let url = try? result.get().first, ["ply", "pcd", "xyz", "csv"].contains(url.pathExtension.lowercased()) {
+                                Task {
+                                    do {
+                                        let bookmark = try url.bookmarkData(options: .minimalBookmark)
+                                        windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
+                                    } catch {
+                                        print("Failed to import point cloud: \(error)")
+                                    }
+                                }
+                            } else {
+                                print("Unsupported file type")
+                            }
                         }
 
                     // ───────────── CHARTS ─────────────

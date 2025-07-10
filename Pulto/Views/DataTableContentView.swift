@@ -52,7 +52,7 @@ struct PointCloudVisualizationData {
 }
 
 // Enhanced DataFrame viewer with spreadsheet-like appearance - Cross-platform version
-struct DataTableContentView: View {
+/*struct DataTableContentView: View {
 
     let windowID: Int?
     let initialDataFrame: DataFrameData?
@@ -177,10 +177,12 @@ struct DataTableContentView: View {
             }
 
             // Code Sidebar
-            if showCodeSidebar {
-                DataTableCodeSidebarView(code: generatedCode)
-                    .frame(width: 400)
-                    .transition(.move(edge: .trailing))
+            Group {
+                if showCodeSidebar {
+                    DataTableCodeSidebarView(code: generatedCode)
+                        .frame(width: 400)
+                        .transition(AnyTransition.move(edge: .trailing))
+                }
             }
         }
         .onAppear {
@@ -1853,11 +1855,11 @@ struct DataTableContentView: View {
         var pythonCode = """
         # Chart Visualization Data
         # Generated from DataTable
-        
+
         import matplotlib.pyplot as plt
         import pandas as pd
         import numpy as np
-        
+
         # Data
         data = {
         """
@@ -1871,12 +1873,12 @@ struct DataTableContentView: View {
 
         pythonCode += """
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         # Chart: \(chartData.chartType)
         plt.figure(figsize=(10, 6))
-        
+
         """
 
         switch chartData.chartType {
@@ -1906,12 +1908,12 @@ struct DataTableContentView: View {
         }
 
         pythonCode += """
-        
+
         plt.title('\(chartData.title)')
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.show()
-        
+
         # Chart metadata
         chart_info = {
             'type': '\(chartData.chartType)',
@@ -1920,7 +1922,7 @@ struct DataTableContentView: View {
             'data_points': len(df),
             'columns': list(df.columns)
         }
-        
+
         print("Chart Information:")
         for key, value in chart_info.items():
             print(f"  {key}: {value}")
@@ -1945,12 +1947,317 @@ struct DataTableContentView: View {
             }
         }
     }
+}*/
+struct DataTableContentView: View {
+    let windowID: Int
+    var initialDataFrame: DataFrameData?
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @State private var selectedRows = Set<Int>()
+    @State private var sortColumn: String? = nil
+    @State private var sortAscending = true
+    @State private var searchText = ""
+    // Added properties to fix missing identifiers
+    @State private var filterText: String = ""
+    @State private var generatedCode: String = ""
+
+    // Computed property to provide backward-compatibility with older code blocks
+    private var sampleData: DataFrameData {
+        currentDataFrame ?? DataFrameData(columns: [], rows: [], dtypes: [:])
+    }
+
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Toolbar
+            HStack {
+                Label("Data Table", systemImage: "tablecells")
+                    .font(.headline)
+
+                Spacer()
+
+                if let dataFrame = currentDataFrame {
+                    Text("\(dataFrame.shapeRows) × \(dataFrame.shapeColumns)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Search field
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search...", text: $searchText)
+                        .textFieldStyle(.plain)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(6)
+                .frame(width: 200)
+            }
+            .padding()
+            .background(Color.gray.opacity(0.05))
+
+            Divider()
+
+            // Table content
+            if let dataFrame = currentDataFrame {
+                if !dataFrame.columns.isEmpty {
+                    tableView(for: dataFrame)
+                } else {
+                    emptyStateView
+                }
+            } else {
+                emptyStateView
+            }
+
+            Divider()
+
+            // Status bar
+            HStack {
+                if !selectedRows.isEmpty {
+                    Text("\(selectedRows.count) row(s) selected")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button("Generate Sample Data") {
+                    generateSampleData()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color.gray.opacity(0.05))
+        }
+    }
+
+    private var currentDataFrame: DataFrameData? {
+        if let dataFrame = initialDataFrame {
+            return dataFrame
+        }
+        return windowManager.getWindow(for: windowID)?.state.dataFrameData
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "tablecells")
+                .font(.system(size: 60))
+                .foregroundStyle(.gray)
+
+            Text("No Data Available")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("Generate sample data or import a CSV file")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Button("Generate Sample Data") {
+                generateSampleData()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(60)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func tableView(for dataFrame: DataFrameData) -> some View {
+        ScrollView([.horizontal, .vertical]) {
+            VStack(spacing: 0) {
+                // Header row
+                HStack(spacing: 0) {
+                    // Row number column
+                    headerCell("", width: 50)
+
+                    // Data columns
+                    ForEach(Array(dataFrame.columns.enumerated()), id: \.offset) { index, column in
+                        headerCell(column, width: 120, sortable: true) {
+                            toggleSort(column: column)
+                        }
+                    }
+                }
+
+                // Data rows
+                let filteredRows = filterRows(dataFrame.rows)
+                let sortedRows = sortRows(filteredRows, columns: dataFrame.columns)
+
+                ForEach(Array(sortedRows.enumerated()), id: \.offset) { rowIndex, row in
+                    HStack(spacing: 0) {
+                        // Row number
+                        rowNumberCell(rowIndex + 1, isSelected: selectedRows.contains(rowIndex)) {
+                            toggleRowSelection(rowIndex)
+                        }
+
+                        // Data cells
+                        ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
+                            dataCell(value, dtype: dataFrame.dtypes[dataFrame.columns[colIndex]] ?? "string")
+                        }
+
+                        // Fill remaining columns if row is shorter
+                        ForEach(row.count..<dataFrame.columns.count, id: \.self) { _ in
+                            dataCell("", dtype: "string")
+                        }
+                    }
+                    .background(selectedRows.contains(rowIndex) ? Color.blue.opacity(0.1) : Color.clear)
+                }
+            }
+        }
+        .background(Color.gray.opacity(0.02))
+    }
+
+    private func headerCell(_ text: String, width: CGFloat, sortable: Bool = false, action: (() -> Void)? = nil) -> some View {
+        Button(action: { action?() }) {
+            HStack {
+                Text(text)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+
+                if sortable && sortColumn == text {
+                    Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                        .font(.caption2)
+                }
+            }
+            .frame(width: width, height: 30, alignment: .leading)
+            .padding(.horizontal, 8)
+        }
+        .buttonStyle(.plain)
+        .background(Color.gray.opacity(0.15))
+        .border(Color.gray.opacity(0.3), width: 0.5)
+        .disabled(!sortable)
+    }
+
+    private func rowNumberCell(_ number: Int, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                } else {
+                    Text("\(number)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 50, height: 28)
+        }
+        .buttonStyle(.plain)
+        .background(Color.gray.opacity(0.05))
+        .border(Color.gray.opacity(0.3), width: 0.5)
+    }
+
+    private func dataCell(_ text: String, dtype: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(colorForDataType(dtype))
+            .lineLimit(1)
+            .frame(width: 120, height: 28, alignment: .leading)
+            .padding(.horizontal, 8)
+            .border(Color.gray.opacity(0.3), width: 0.5)
+    }
+
+    private func colorForDataType(_ dtype: String) -> Color {
+        switch dtype.lowercased() {
+        case "int", "integer", "float", "numeric":
+            return .blue
+        case "bool", "boolean":
+            return .green
+        case "datetime", "date":
+            return .orange
+        default:
+            return .primary
+        }
+    }
+
+    private func toggleSort(column: String) {
+        if sortColumn == column {
+            sortAscending.toggle()
+        } else {
+            sortColumn = column
+            sortAscending = true
+        }
+    }
+
+    private func toggleRowSelection(_ index: Int) {
+        if selectedRows.contains(index) {
+            selectedRows.remove(index)
+        } else {
+            selectedRows.insert(index)
+        }
+    }
+
+    private func filterRows(_ rows: [[String]]) -> [[String]] {
+        guard !searchText.isEmpty else { return rows }
+
+        return rows.filter { row in
+            row.contains { cell in
+                cell.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+
+    private func sortRows(_ rows: [[String]], columns: [String]) -> [[String]] {
+        guard let sortColumn = sortColumn,
+              let columnIndex = columns.firstIndex(of: sortColumn) else {
+            return rows
+        }
+
+        return rows.sorted { row1, row2 in
+            let value1 = row1.indices.contains(columnIndex) ? row1[columnIndex] : ""
+            let value2 = row2.indices.contains(columnIndex) ? row2[columnIndex] : ""
+
+            if sortAscending {
+                return value1.localizedStandardCompare(value2) == .orderedAscending
+            } else {
+                return value1.localizedStandardCompare(value2) == .orderedDescending
+            }
+        }
+    }
+
+    private func generateSampleData() {
+        let sampleColumns = ["ID", "Name", "Category", "Value", "Status", "Date"]
+        let categories = ["Electronics", "Books", "Clothing", "Food", "Sports"]
+        let statuses = ["Active", "Pending", "Completed", "Cancelled"]
+
+        var sampleRows: [[String]] = []
+        for i in 1...50 {
+            let row = [
+                "\(i)",
+                "Item \(i)",
+                categories.randomElement()!,
+                "\(Int.random(in: 100...999))",
+                statuses.randomElement()!,
+                ISO8601DateFormatter().string(from: Date().addingTimeInterval(Double.random(in: -86400*30...0)))
+            ]
+            sampleRows.append(row)
+        }
+
+        let sampleDataFrame = DataFrameData(
+            columns: sampleColumns,
+            rows: sampleRows,
+            dtypes: [
+                "ID": "int",
+                "Name": "string",
+                "Category": "string",
+                "Value": "int",
+                "Status": "string",
+                "Date": "datetime"
+            ]
+        )
+
+        windowManager.updateDataFrame(for: windowID, dataFrame: sampleDataFrame)
+    }
 }
 
 struct DataTableButtonStyle: ButtonStyle {
     let color: Color
     @State private var isHovered = false
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, 12)
@@ -1977,26 +2284,26 @@ struct RecommendationCard: View {
     let isSelected: Bool
     let action: () -> Void
     @State private var isHovered = false
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: score.recommendation.icon)
                     .font(.title)
                     .foregroundStyle(isSelected ? .white : .blue)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(score.recommendation.name)
                         .font(.headline)
                         .foregroundStyle(isSelected ? .white : .primary)
-                    
+
                     Text("Score: \(Int(score.score * 100))%")
                         .font(.caption)
                         .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.white)
@@ -2037,14 +2344,14 @@ extension DataTableContentView {
         # Data
         data = {
         """
-        
+
         for (index, column) in sampleData.columns.enumerated() {
             let columnData = sampleData.rows.map { row in
                 index < row.count ? row[index] : ""
             }
             code += "\n    '\(column)': \(columnData),"
         }
-        
+
         code += """
         }
         
@@ -2076,7 +2383,7 @@ extension DataTableContentView {
         print()
         
         """
-        
+
         if !filterText.isEmpty {
             code += """
             # Current Filter: '\(filterText)'
@@ -2088,11 +2395,11 @@ extension DataTableContentView {
             
             """
         }
-        
+
         // Add visualization suggestions based on data types
         let numericColumns = sampleData.dtypes.filter { $0.value == "int" || $0.value == "float" }.keys
         let categoricalColumns = sampleData.dtypes.filter { $0.value == "string" }.keys
-        
+
         if !numericColumns.isEmpty {
             code += """
             # Visualizations
@@ -2100,7 +2407,7 @@ extension DataTableContentView {
             fig.suptitle('Data Analysis Dashboard')
             
             """
-            
+
             if numericColumns.count >= 1 {
                 let firstNumeric = Array(numericColumns)[0]
                 code += """
@@ -2113,7 +2420,7 @@ extension DataTableContentView {
                 
                 """
             }
-            
+
             if numericColumns.count >= 2 {
                 let numericArray = Array(numericColumns)
                 code += """
@@ -2126,7 +2433,7 @@ extension DataTableContentView {
                 
                 """
             }
-            
+
             if !categoricalColumns.isEmpty && !numericColumns.isEmpty {
                 let firstCategorical = Array(categoricalColumns)[0]
                 let firstNumeric = Array(numericColumns)[0]
@@ -2147,14 +2454,14 @@ extension DataTableContentView {
                 
                 """
             }
-            
+
             code += """
             plt.tight_layout()
             plt.show()
             
             """
         }
-        
+
         // Data Quality Check
         code += """
         # Data Quality Check
@@ -2175,7 +2482,7 @@ extension DataTableContentView {
         print("df.to_excel('data_export.xlsx', index=False)")
         print("df.to_json('data_export.json', orient='records')")
         """
-        
+
         generatedCode = code
     }
 }
@@ -2184,7 +2491,7 @@ extension DataTableContentView {
 struct DataTableCodeSidebarView: View {
     let code: String
     @State private var showingCopySuccess = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -2192,9 +2499,9 @@ struct DataTableCodeSidebarView: View {
                 Label("DataFrame Code", systemImage: "tablecells")
                     .font(.headline)
                     .foregroundStyle(.primary)
-                
+
                 Spacer()
-                
+
                 Button(action: copyCode) {
                     Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
                         .foregroundStyle(showingCopySuccess ? .green : .blue)
@@ -2203,9 +2510,9 @@ struct DataTableCodeSidebarView: View {
             }
             .padding()
             .background(.regularMaterial)
-            
+
             Divider()
-            
+
             // Code content
             ScrollView {
                 Text(code)
@@ -2218,7 +2525,7 @@ struct DataTableCodeSidebarView: View {
         }
         .background(.regularMaterial)
     }
-    
+
     private func copyCode() {
         #if os(macOS)
         NSPasteboard.general.clearContents()
@@ -2226,7 +2533,7 @@ struct DataTableCodeSidebarView: View {
         #else
         UIPasteboard.general.string = code
         #endif
-        
+
         showingCopySuccess = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             showingCopySuccess = false

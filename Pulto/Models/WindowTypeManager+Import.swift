@@ -970,5 +970,52 @@ extension WindowTypeManager {
                openWindow(id: "new-window", value: window.id)
            }
        }
+    func updateDataFrame(for windowID: Int, dataFrame: DataFrameData) {
+            updateWindowState(windowID) { state in
+                state.dataFrameData = dataFrame
+            }
+        }
 
+        func updateWindowChartData(_ windowID: Int, chartData: ChartData) {
+            updateWindowState(windowID) { state in
+                state.chartData = chartData
+            }
+        }
+
+        func updateWindowPointCloud(_ windowID: Int, pointCloud: PointCloudData) {
+            updateWindowState(windowID) { state in
+                state.pointCloudData = pointCloud
+            }
+        }
+
+        func getWindowChartData(for windowID: Int) -> ChartData? {
+            return getWindow(for: windowID)?.state.chartData
+        }
+
+        func getWindowPointCloud(for windowID: Int) -> PointCloudData? {
+            return getWindow(for: windowID)?.state.pointCloudData
+        }
+
+        private func updateWindowState(_ windowID: Int, update: (inout WindowState) -> Void) {
+            if var window = getWindow(for: windowID) {
+                update(&window.state)
+                window.state.lastModified = Date()
+                updateWindow(window)
+            }
+        }
+    func updateUSDZBookmark(for windowID: Int, bookmark: Data) {
+         updateWindowState(windowID) { state in
+             state.usdzBookmark = bookmark
+         }
+     }
+
+     func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
+         updateWindowState(windowID) { state in
+             state.pointCloudBookmark = bookmark
+         }
+     }
+
+     func getWindowSafely(for id: Int) -> NewWindowID? {
+         return getWindow(for: id)
+     }
 }

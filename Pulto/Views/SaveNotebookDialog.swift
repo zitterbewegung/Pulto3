@@ -8,7 +8,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import MachO           // for run-time memory info
+import Foundation
 import Darwin.Mach     // 〃
+
+
 
 // MARK: - File-scope helpers --------------------------------------------------
 
@@ -32,7 +35,7 @@ private func generateCellContent(for window: NewWindowID) -> String {
     # \(window.windowType.rawValue) – ID \(window.id)
     \(window.state.content)
     """
-    
+
     if let chartData = window.state.chartData {
         content += """
         
@@ -44,7 +47,7 @@ private func generateCellContent(for window: NewWindowID) -> String {
         \(chartData.toPythonCode())
         """
     }
-    
+
     return content
 }
 
@@ -344,7 +347,7 @@ extension WindowTypeManager {
         directory: URL,
         debugOptions: DebugExportOptions
     ) -> URL? {
-        
+
         // capture specific chart view data
         captureChartDataFromActiveViews()
 
@@ -367,7 +370,7 @@ extension WindowTypeManager {
             return nil
         }
     }
-    
+
     private func captureChartDataFromActiveViews() {
         for window in getAllWindows() {
             if window.windowType == .charts {
@@ -376,12 +379,12 @@ extension WindowTypeManager {
             }
         }
     }
-    
+
     private func captureChartViewData(for windowID: Int) {
         // Check if there's chart state data stored in UserDefaults
         if let data = UserDefaults.standard.data(forKey: "ChartViewModel_WindowStates"),
            let chartStates = try? JSONDecoder().decode([ChartWindowState].self, from: data) {
-            
+
             // Convert chart states to our ChartData format
             let chartDataArray = chartStates.enumerated().map { index, state in
                 ChartData(
@@ -393,18 +396,18 @@ extension WindowTypeManager {
                     yData: Array(stride(from: 1.0, through: Double(index + 6), by: 1.0))
                 )
             }
-            
+
             // Store the first chart data if available
             if let firstChartData = chartDataArray.first {
                 self.updateWindowChartData(windowID, chartData: firstChartData)
             }
         }
-        
+
         // Also capture sample chart data for demonstration
         let sampleChartData = generateSampleChartData(for: windowID)
         self.updateWindowChartData(windowID, chartData: sampleChartData)
     }
-    
+
     // Generate sample chart data
     private func generateSampleChartData(for windowID: Int) -> ChartData {
         // Generate some sample data based on window ID
@@ -413,7 +416,7 @@ extension WindowTypeManager {
         let yData = xData.map { x in
             sin(x * 0.5 + Double(windowID) * 0.3) * 10 + Double(windowID) * 2
         }
-        
+
         return ChartData(
             title: "Chart from Window \(windowID)",
             chartType: "line",
@@ -454,7 +457,7 @@ extension WindowTypeManager {
         }
         return kerr == KERN_SUCCESS ? Int64(info.resident_size) : 0
     }
-    
+
     private func exportToJupyterNotebookWithDebug(
         debugOptions: DebugExportOptions
     ) -> String {
@@ -540,7 +543,7 @@ extension WindowTypeManager {
             | Window ID | Chart Type | Data Points | Position |
             |-----------|------------|-------------|----------|
             """
-            
+
             for window in chartWindows {
                 if let chartData = window.state.chartData {
                     md += "\n| \(window.id) | \(chartData.chartType) | \(chartData.xData.count) | (\(Int(window.position.x)), \(Int(window.position.y))) |"
@@ -552,9 +555,9 @@ extension WindowTypeManager {
 
         if opt.includeDebugInfo {
             md += """
-
+            
             ## Debug Information
-
+            
             - Memory Usage: \(getMemoryUsage() / 1_048_576) MB
             - Export Duration: < 1 s
             - Charts with Data: \(chartWindows.filter { $0.state.chartData != nil }.count)/\(chartWindows.count)
@@ -590,7 +593,7 @@ extension WindowTypeManager {
         # Modified: \(window.state.lastModified)
         # Content Size: \(window.state.content.count) chars
         """
-        
+
         if window.windowType == .charts, let chartData = window.state.chartData {
             metrics += """
             
@@ -603,12 +606,12 @@ extension WindowTypeManager {
             # Style: \(chartData.style ?? "default")
             """
         }
-        
+
         metrics += """
         
         \(content)
         """
-        
+
         return metrics
     }
 
@@ -634,5 +637,40 @@ extension WindowTypeManager {
             ]
         }
         return meta
+    }
+    @MainActor func updateDataFrame(for windowID: Int, dataFrame: DataFrameData) {
+        if var window = getWindow(for: windowID) {
+            window.state.dataFrameData = dataFrame
+            replaceWindow(window)
+        }
+    }
+
+    @MainActor func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
+        if var window = getWindow(for: windowID) {
+            window.state.pointCloudBookmark = bookmark
+            replaceWindow(window)
+        }
+    }
+    /// Updates an existing `NewWindowID` in the underlying store via KVC, avoiding
+    /// direct access to the private `windows` array.
+    /// - Note: This relies on `WindowTypeManager` inheriting from `NSObject` so that
+    ///   Key‑Value Coding (KVC) can be used. If your implementation does **not**
+    ///   inherit from `NSObject`, expose a public `replaceWindow(_:)` API instead
+    ///   and call that here.
+    @MainActor
+    private func replaceWindow(_ window: NewWindowID) {
+        // Attempt KVC‑based update first (works when the manager derives from NSObject)
+        if let obj = self as? NSObject,
+           var arr = obj.value(forKey: "windows") as? [NewWindowID],
+           let idx = arr.firstIndex(where: { $0.id == window.id }) {
+            arr[idx] = window
+            obj.setValue(arr, forKey: "windows")
+            return
+        }
+
+        // Fallback: if KVC is unavailable, you *must* expose a dedicated API on
+        // `WindowTypeManager` that lets clients replace a window. Comment out the
+        // line below once such an API exists.
+        assertionFailure("WindowTypeManager must expose a way to mutate windows from extensions.")
     }
 }
