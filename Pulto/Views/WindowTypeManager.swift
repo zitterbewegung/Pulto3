@@ -1123,4 +1123,25 @@ class WindowTypeManager: ObservableObject {
             return nil
         }
     }
+
+    // MARK: - 3-D Model payload --------------------------------------------
+    @MainActor
+    func updateWindowModel3D(_ id: Int,
+                             modelData: Model3DData,
+                             replaceExisting: Bool = true)
+    {
+        // 1. Fetch the window (dictionaries return an optional).
+        guard var win = windows[id] else { return }
+
+        // 2. Respect the caller’s choice not to overwrite.
+        if win.state.model3DData != nil && !replaceExisting { return }
+
+        // 3. Update the payload and meta-data.
+        win.windowType              = .model3d
+        win.state.model3DData       = modelData
+        win.state.lastModified      = Date()
+
+        // 4. Write the mutated value back into the dictionary.
+        windows[id] = win
+    }
 }

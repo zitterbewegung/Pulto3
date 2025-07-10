@@ -970,4 +970,5 @@ extension WindowTypeManager {
                openWindow(id: "new-window", value: window.id)
            }
        }
+
 }

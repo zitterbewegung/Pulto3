@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 73;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -130,23 +130,13 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
-			membershipExceptions = (
-				"WindowTypeManager+Import.swift",
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
 		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
 		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
 		DC71196E2DE778C8005F916A /* Backend */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Backend; sourceTree = "<group>"; };
-		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC85D57C2E03852300559301 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
+		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -368,6 +358,7 @@
 				};
 			};
 			buildConfigurationList = DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -375,7 +366,6 @@
 				Base,
 			);
 			mainGroup = DF58AE122BCD826D00C8F737;
-			preferredProjectObjectVersion = 56;
 			productRefGroup = DF58AE1C2BCD826D00C8F737 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -664,17 +654,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/rpds",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/zmq/.dylibs",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/_core/lib",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/random/lib",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/PIL/.dylibs",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/debugpy/_vendored/pydevd/pydevd_attach_to_process",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/pydantic_core",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/watchfiles",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.spatialcard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -709,17 +689,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/rpds",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/zmq/.dylibs",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/_core/lib",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/numpy/random/lib",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/PIL/.dylibs",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/debugpy/_vendored/pydevd/pydevd_attach_to_process",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/pydantic_core",
-					"$(PROJECT_DIR)/Pulto/Backend/venv/lib/python3.13/site-packages/watchfiles",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aconsapart.spatialcard;
 				PRODUCT_NAME = "$(TARGET_NAME)";

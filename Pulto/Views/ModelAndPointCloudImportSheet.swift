@@ -168,7 +168,8 @@ struct Model3DImportSheet: View {
     private func createWindow(for model: Model3DData) {
         let newID = wm.getNextWindowID()
         _ = wm.createWindow(.model3d, id: newID)
-        wm.updateWindowModel3D(newID, model: model)        // extension below
+        wm.updateWindowModel3DData(newID, model3DData: model)
+        //wm.updateWindowModel3D(newID, model: model)        // extension below
         wm.markWindowAsOpened(newID)
     }
 }
@@ -185,17 +186,6 @@ private enum FileImportError: LocalizedError {
     }
 }
 
-// MARK: - WindowTypeManager fallback stubs
-//  Delete these if your real singleton already has matching methods.
-/*extension WindowTypeManager {
-    func updateWindowPointCloud(_ id: Int, pointCloud: PointCloudData) {
-        // TODO: wire into your real implementation
-    }
-    func updateWindowModel3D(_ id: Int, model: Model3DData) {
-        // TODO: wire into your real implementation
-    }
-}
-*/
 // MARK: - UTType helpers (visionOS SDK lacks these)
 private extension UTType {
     static let model3d = UTType(exportedAs: "com.apple.model3d")
