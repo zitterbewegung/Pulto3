@@ -24,6 +24,7 @@ struct Model3DVolumetricView: View {
     @State private var wireframe   = false
     @State private var showNormals = false
     @State private var matIndex    = 0
+    @State private var isUSDZ      = false  // ← NEW: flag for USDZ-specific handling
 
     @State private var showImportSheet = false
 
@@ -35,7 +36,7 @@ struct Model3DVolumetricView: View {
                 let root = Entity(); root.name = "Model3DRoot"
 
                 if let md = modelData {
-                    let e = try? await makeModelEntity(from: md)
+                    let e = try? makeModelEntity(from: md)  // ← Removed unnecessary 'await' (function isn't async)
                     e.map { root.addChild($0) }
                 }
                 addKeyLight(to: root)
@@ -44,7 +45,7 @@ struct Model3DVolumetricView: View {
 
                 // UI panel
                 if let panel = attachments.entity(for: "ui") {
-                    panel.position = [0, -0.35, 0.25]
+                    panel.position = [0, -0.25, 0]  // ← Adjusted position for better visibility
                     content.add(panel)
                 }
 
@@ -65,10 +66,39 @@ struct Model3DVolumetricView: View {
                 Attachment(id: "ui") { controlPanel }
             }
         }
+        .task {
+            await loadUSDZModel()  // ← NEW: async load USDZ if available
+        }
         .sheet(isPresented: $showImportSheet) { Model3DImportSheet() }
-        .onChange(of: wireframe)   { _ in vm.needsRenderRefresh = true }
+        .onChange(of: wireframe) { _ in vm.needsRenderRefresh = true }
         .onChange(of: showNormals) { _ in vm.needsRenderRefresh = true }
         .onChange(of: matIndex)    { _ in vm.needsRenderRefresh = true }
+    }
+
+    // Updated loadUSDZModel in Model3DVolumetricView
+    private func loadUSDZModel() async {
+        guard let bookmark = WindowTypeManager.shared.getWindowSafely(for: windowID)?.state.usdzBookmark,
+              modelData == nil else { return }
+        do {
+            var isStale = false
+            let url = try URL(resolvingBookmarkData: bookmark, bookmarkDataIsStale: &isStale)
+            if url.startAccessingSecurityScopedResource() {
+                defer { url.stopAccessingSecurityScopedResource() }
+                let modelEntity = try await Entity(contentsOf: url)
+                modelEntity.name = "USDZModel"
+                // Center and normalize scale
+                let bounds = modelEntity.visualBounds(relativeTo: nil as Entity?)
+                modelEntity.position = -bounds.center
+                let maxExtent = max(bounds.extents.x, max(bounds.extents.y, bounds.extents.z))
+                if maxExtent > 0 {
+                    modelEntity.scale *= 0.5 / maxExtent  // Fit to ~0.5 units, adjust as needed
+                }
+                vm.root?.addChild(modelEntity)
+                isUSDZ = true
+            }
+        } catch {
+            print("Failed to load USDZ: \(error)")
+        }
     }
 
     // MARK: control panel
@@ -87,12 +117,14 @@ struct Model3DVolumetricView: View {
                    value: Binding(get:{Double(scale)}, set:{scale = Float($0)}),
                    range: 0.5...3)                       // ← Float→Double fix
 
-            Toggle("Wire-frame",    isOn: $wireframe )
-                .tint(.blue).foregroundColor(.white)
-            Toggle("Show Normals", isOn: $showNormals)
-                .tint(.green).foregroundColor(.white)
+            if !isUSDZ {
+                Toggle("Wire-frame",    isOn: $wireframe )
+                    .tint(.blue).foregroundColor(.white)
+                Toggle("Show Normals", isOn: $showNormals)
+                    .tint(.green).foregroundColor(.white)
+            }
 
-            if let md = modelData, !md.materials.isEmpty {
+            if let md = modelData, !md.materials.isEmpty, !isUSDZ {
                 Picker("Material", selection: $matIndex) {
                     ForEach(md.materials.indices, id:\.self) {
                         Text(md.materials[$0].name).tag($0)
@@ -118,6 +150,9 @@ struct Model3DVolumetricView: View {
                     Text("Type: \(md.modelType)")
                 }
                 .font(.caption).foregroundColor(.white.opacity(0.8))
+            } else if isUSDZ {
+                Text("Imported USDZ Model")
+                    .font(.caption).foregroundColor(.white.opacity(0.8))
             }
         }
         .padding().background(.ultraThinMaterial).cornerRadius(12)
@@ -156,13 +191,16 @@ struct Model3DVolumetricView: View {
         desc.positions = MeshBuffers.Positions(pos)
         desc.normals = MeshBuffers.Normals(nrm)
         desc.primitives = .triangles(idx)
-        
+
         let mesh = try MeshResource.generate(from: [desc])
 
         let mat = makeMaterial(for: d)
         let mEnt = ModelEntity(mesh: mesh, materials: [mat])
         mEnt.position = [Float(d.position.x), Float(d.position.y), Float(d.position.z)]
         mEnt.scale    = [Float(d.scale), Float(d.scale), Float(d.scale)]
+
+        // Store positions/normals for later normal-debug rebuild
+        mEnt.components.set(PositionsNormalsComponent(positions: pos, normals: nrm))
 
         e.addChild(mEnt)
 
@@ -188,10 +226,10 @@ struct Model3DVolumetricView: View {
     }
 
     private func updateRenderMode(on root: Entity) {
-        guard let model = root.children.first(where: { $0.name == "3DModel" }) as? ModelEntity
-        else { return }
+        guard let md = modelData,  // ← Added guard to prevent crash if modelData is nil
+              let model = root.findEntity(named: "3DModel") as? ModelEntity else { return }
 
-        model.model?.materials = [makeMaterial(for: modelData!)]
+        model.model?.materials = [makeMaterial(for: md)]
 
         // Normal-debug toggle (add / remove child)
         if showNormals, model.findEntity(named: "Normals") == nil {

@@ -18,6 +18,7 @@ class WindowTypeManager: ObservableObject {
     @Published private var windows: [Int: NewWindowID] = [:]
     @Published private var openWindowIDs: Set<Int> = []
     @Published var selectedProject: Project? = nil
+    var usdzBookmark: Data? = nil
 
     private init() {}
 
@@ -1143,5 +1144,13 @@ class WindowTypeManager: ObservableObject {
 
         // 4. Write the mutated value back into the dictionary.
         windows[id] = win
+    }
+
+    // Updated updateUSDZBookmark function in WindowTypeManager
+    func updateUSDZBookmark(for id: Int, bookmark: Data?) {
+        if var window = windows[id] {
+            window.state.usdzBookmark = bookmark
+            windows[id] = window  // Re-assign to mutate the struct in the dictionary
+        }
     }
 }
