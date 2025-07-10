@@ -14,7 +14,7 @@ import Charts
 class WindowTypeManager: ObservableObject {
 
     static let shared = WindowTypeManager()
-
+    @Published var activeWindowID: Int? = nil        // ← NEW
     @Published private var windows: [Int: NewWindowID] = [:]
     @Published private var openWindowIDs: Set<Int> = []
     @Published var selectedProject: Project? = nil

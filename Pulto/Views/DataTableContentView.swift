@@ -52,7 +52,7 @@ struct PointCloudVisualizationData {
 }
 
 // Enhanced DataFrame viewer with spreadsheet-like appearance - Cross-platform version
-/*struct DataTableContentView: View {
+struct DataTableContentView: View {
 
     let windowID: Int?
     let initialDataFrame: DataFrameData?
@@ -188,7 +188,7 @@ struct PointCloudVisualizationData {
         .onAppear {
             loadDataFromWindow()
             initializeColumnWidths()
-            generateDataTableCode()
+            //generateDataTableCode()
         }
         .onDisappear {
             if let windowID = windowID {
@@ -196,10 +196,10 @@ struct PointCloudVisualizationData {
             }
         }
         .onChange(of: sampleData.rows.count) { _, _ in
-            generateDataTableCode()
+            //generateDataTableCode()
         }
         .onChange(of: filterText) { _, _ in
-            generateDataTableCode()
+            //generateDataTableCode()
         }
         .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
         .sheet(isPresented: $showingDataImport) {
@@ -1353,7 +1353,59 @@ struct PointCloudVisualizationData {
         )
         .padding()
     }
+    // MARK: - DataTable Code Sidebar
+    struct DataTableCodeSidebarView: View {
+        let code: String
+        @State private var showingCopySuccess = false
 
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Label("DataFrame Code", systemImage: "tablecells")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button(action: copyCode) {
+                        Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
+                            .foregroundStyle(showingCopySuccess ? .green : .blue)
+                    }
+                    .animation(.easeInOut, value: showingCopySuccess)
+                }
+                .padding()
+                .background(.regularMaterial)
+
+                Divider()
+
+                // Code content
+                ScrollView {
+                    Text(code)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.ultraThinMaterial)
+            }
+            .background(.regularMaterial)
+        }
+
+        private func copyCode() {
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #else
+            UIPasteboard.general.string = code
+            #endif
+
+            showingCopySuccess = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
+            }
+        }
+    }
     private func columnHeaderView(column: String) -> some View {
         HStack(spacing: 4) {
             Text(column)
@@ -1947,7 +1999,82 @@ struct PointCloudVisualizationData {
             }
         }
     }
-}*/
+    struct RecommendationCard: View {
+        let score: ChartScore
+        let isSelected: Bool
+        let action: () -> Void
+        @State private var isHovered = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 16) {
+                    Image(systemName: score.recommendation.icon)
+                        .font(.title)
+                        .foregroundStyle(isSelected ? .white : .blue)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(score.recommendation.name)
+                            .font(.headline)
+                            .foregroundStyle(isSelected ? .white : .primary)
+
+                        Text("Score: \(Int(score.score * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                    }
+
+                    Spacer()
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.white)
+                    }
+                }
+                .padding()
+            }
+            .buttonStyle(.plain)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(isSelected ? .clear : (isHovered ? .blue.opacity(0.3) : .clear), lineWidth: 2)
+                    }
+                    .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 8 : 4, x: 0, y: isHovered ? 4 : 2)
+            }
+            .scaleEffect(isHovered ? 1.02 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .onHover { hovering in
+                isHovered = hovering
+            }
+        }
+    }
+
+    struct DataTableButtonStyle: ButtonStyle {
+        let color: Color
+        @State private var isHovered = false
+
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(color.opacity(isHovered ? 0.15 : 0.1))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(color.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
+                        }
+                }
+                .scaleEffect(configuration.isPressed ? 0.95 : (isHovered ? 1.02 : 1.0))
+                .animation(.easeInOut(duration: 0.15), value: isHovered)
+                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+                .onHover { hovering in
+                    isHovered = hovering
+                }
+        }
+    }
+}
+/*
 struct DataTableContentView: View {
     let windowID: Int
     var initialDataFrame: DataFrameData?
@@ -2254,289 +2381,9 @@ struct DataTableContentView: View {
     }
 }
 
-struct DataTableButtonStyle: ButtonStyle {
-    let color: Color
-    @State private var isHovered = false
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(color.opacity(isHovered ? 0.15 : 0.1))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(color.opacity(isHovered ? 0.3 : 0.1), lineWidth: 1)
-                    }
-            }
-            .scaleEffect(configuration.isPressed ? 0.95 : (isHovered ? 1.02 : 1.0))
-            .animation(.easeInOut(duration: 0.15), value: isHovered)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-            .onHover { hovering in
-                isHovered = hovering
-            }
-    }
-}
 
-struct RecommendationCard: View {
-    let score: ChartScore
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovered = false
 
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
-                Image(systemName: score.recommendation.icon)
-                    .font(.title)
-                    .foregroundStyle(isSelected ? .white : .blue)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(score.recommendation.name)
-                        .font(.headline)
-                        .foregroundStyle(isSelected ? .white : .primary)
-
-                    Text("Score: \(Int(score.score * 100))%")
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
-                }
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.white)
-                }
-            }
-            .padding()
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color.blue : Color.gray.opacity(0.1))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(isSelected ? .clear : (isHovered ? .blue.opacity(0.3) : .clear), lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 8 : 4, x: 0, y: isHovered ? 4 : 2)
-        }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-    }
-}
-
-// MARK: - Code Generation
-extension DataTableContentView {
-    private func generateDataTableCode() {
-        var code = """
-        # DataFrame Analysis
-        # Generated from DataTable Viewer
-        
-        import pandas as pd
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        
-        # Data
-        data = {
-        """
-
-        for (index, column) in sampleData.columns.enumerated() {
-            let columnData = sampleData.rows.map { row in
-                index < row.count ? row[index] : ""
-            }
-            code += "\n    '\(column)': \(columnData),"
-        }
-
-        code += """
-        }
-        
-        df = pd.DataFrame(data)
-        
-        # Data Types
-        dtypes = \(sampleData.dtypes)
-        for column, dtype in dtypes.items():
-            if dtype in ['int', 'float']:
-                df[column] = pd.to_numeric(df[column], errors='coerce')
-            elif dtype == 'date':
-                df[column] = pd.to_datetime(df[column], errors='coerce')
-        
-        # Basic Information
-        print("DataFrame Information:")
-        print("-" * 40)
-        print(f"Shape: {df.shape}")
-        print(f"Columns: {list(df.columns)}")
-        print()
-        
-        # Data Summary
-        print("Data Summary:")
-        print(df.info())
-        print()
-        
-        # Statistical Summary
-        print("Statistical Summary:")
-        print(df.describe())
-        print()
-        
-        """
-
-        if !filterText.isEmpty {
-            code += """
-            # Current Filter: '\(filterText)'
-            filtered_df = df[df.astype(str).apply(lambda x: x.str.contains('\(filterText)', case=False, na=False)).any(axis=1)]
-            print(f"Filtered Data (contains '\(filterText)'):")
-            print(f"Showing {len(filtered_df)} of {len(df)} rows")
-            print(filtered_df)
-            print()
-            
-            """
-        }
-
-        // Add visualization suggestions based on data types
-        let numericColumns = sampleData.dtypes.filter { $0.value == "int" || $0.value == "float" }.keys
-        let categoricalColumns = sampleData.dtypes.filter { $0.value == "string" }.keys
-
-        if !numericColumns.isEmpty {
-            code += """
-            # Visualizations
-            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-            fig.suptitle('Data Analysis Dashboard')
-            
-            """
-
-            if numericColumns.count >= 1 {
-                let firstNumeric = Array(numericColumns)[0]
-                code += """
-                # Distribution of \(firstNumeric)
-                axes[0, 0].hist(df['\(firstNumeric)'].dropna(), bins=20, alpha=0.7, edgecolor='black')
-                axes[0, 0].set_title('Distribution of \(firstNumeric)')
-                axes[0, 0].set_xlabel('\(firstNumeric)')
-                axes[0, 0].set_ylabel('Frequency')
-                axes[0, 0].grid(True, alpha=0.3)
-                
-                """
-            }
-
-            if numericColumns.count >= 2 {
-                let numericArray = Array(numericColumns)
-                code += """
-                # Scatter plot: \(numericArray[0]) vs \(numericArray[1])
-                axes[0, 1].scatter(df['\(numericArray[0])'], df['\(numericArray[1])'], alpha=0.6)
-                axes[0, 1].set_xlabel('\(numericArray[0])')
-                axes[0, 1].set_ylabel('\(numericArray[1])')
-                axes[0, 1].set_title('\(numericArray[0]) vs \(numericArray[1])')
-                axes[0, 1].grid(True, alpha=0.3)
-                
-                """
-            }
-
-            if !categoricalColumns.isEmpty && !numericColumns.isEmpty {
-                let firstCategorical = Array(categoricalColumns)[0]
-                let firstNumeric = Array(numericColumns)[0]
-                code += """
-                # Box plot: \(firstNumeric) by \(firstCategorical)
-                df.boxplot(column='\(firstNumeric)', by='\(firstCategorical)', ax=axes[1, 0])
-                axes[1, 0].set_title('\(firstNumeric) by \(firstCategorical)')
-                axes[1, 0].set_xlabel('\(firstCategorical)')
-                axes[1, 0].set_ylabel('\(firstNumeric)')
-                
-                # Category counts
-                category_counts = df['\(firstCategorical)'].value_counts()
-                axes[1, 1].bar(category_counts.index, category_counts.values)
-                axes[1, 1].set_title('\(firstCategorical) Distribution')
-                axes[1, 1].set_xlabel('\(firstCategorical)')
-                axes[1, 1].set_ylabel('Count')
-                axes[1, 1].tick_params(axis='x', rotation=45)
-                
-                """
-            }
-
-            code += """
-            plt.tight_layout()
-            plt.show()
-            
-            """
-        }
-
-        // Data Quality Check
-        code += """
-        # Data Quality Check
-        print("Data Quality Report:")
-        print("-" * 25)
-        missing_data = df.isnull().sum()
-        if missing_data.any():
-            print("Missing Values:")
-            for col, count in missing_data[missing_data > 0].items():
-                percentage = (count / len(df)) * 100
-                print(f"  {col}: {count} ({percentage:.1f}%)")
-        else:
-            print("No missing values found")
-        
-        # Export options
-        print("\\nExport Options:")
-        print("df.to_csv('data_export.csv', index=False)")
-        print("df.to_excel('data_export.xlsx', index=False)")
-        print("df.to_json('data_export.json', orient='records')")
-        """
-
-        generatedCode = code
-    }
-}
-
-// MARK: - DataTable Code Sidebar
-struct DataTableCodeSidebarView: View {
-    let code: String
-    @State private var showingCopySuccess = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                Label("DataFrame Code", systemImage: "tablecells")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                Button(action: copyCode) {
-                    Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
-                        .foregroundStyle(showingCopySuccess ? .green : .blue)
-                }
-                .animation(.easeInOut, value: showingCopySuccess)
-            }
-            .padding()
-            .background(.regularMaterial)
-
-            Divider()
-
-            // Code content
-            ScrollView {
-                Text(code)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(.ultraThinMaterial)
-        }
-        .background(.regularMaterial)
-    }
-
-    private func copyCode() {
-        #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(code, forType: .string)
-        #else
-        UIPasteboard.general.string = code
-        #endif
-
-        showingCopySuccess = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            showingCopySuccess = false
-        }
-    }
-}
+/
+*/
