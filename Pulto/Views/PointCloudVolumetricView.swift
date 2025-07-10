@@ -322,7 +322,7 @@ struct PointCloudVolumetricView: View {
 }
 
 // MARK: - 3D Model Volumetric Window
-
+/*
 struct Model3DVolumetricView: View {
     let windowID: Int
     let modelData: Model3DData?
@@ -606,7 +606,7 @@ struct Model3DVolumetricView: View {
         model.needsUpdate = true
     }
 }
-
+*/
 // MARK: - View Models
 
 class PointCloudViewModel: ObservableObject {
