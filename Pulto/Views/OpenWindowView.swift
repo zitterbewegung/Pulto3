@@ -1927,11 +1927,11 @@ struct NewWindow: View {
 
                     // ───────────── SPATIAL EDITOR ─────────────
                     case .spatial:
-                        if let pointCloud = window.state.pointCloudData {
-                            SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
-                        } else {
-                            SpatialEditorView(windowID: id)
-                        }
+                        //if let pointCloud = window.state.pointCloudData {
+                        //     SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
+                        //} else {
+                        SpatialEditorView(windowID: id)
+                        //}
 
                     // ───────────── DATAFRAME ─────────────
                     case .column:
@@ -1944,7 +1944,7 @@ struct NewWindow: View {
                     // ───────────── VOLUME METRICS ─────────────
                     case .volume:
                         VStack {
-                            if !window.state.content.isEmpty {
+                            if window.state.content.isEmpty {
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("Model Metrics:")
@@ -1959,6 +1959,14 @@ struct NewWindow: View {
                                     }
                                     .padding()
                                 }
+
+                                Divider()
+
+                                SupersetDashboardView(dashboardURL: URL(string: "https://localhost:8088/screembedded/your-dashboard")!)
+                                    .frame(width: 1200, height: 800)
+                                    .glassBackgroundEffect()
+                                    .cornerRadius(12)
+                                    .padding()
                             } else {
                                 VStack(spacing: 20) {
                                     Image(systemName: "gauge")

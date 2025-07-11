@@ -36,6 +36,7 @@ struct Model3DVolumetricView: View {
 
     // ───────── view-model & state ─────────
     @StateObject private var vm = VolumetricModelViewModel()
+    @StateObject private var exportManager = Model3DExportManager()
     @State private var rotX: Float = 0
     @State private var rotY: Float = 0
     @State private var rotZ: Float = 0
@@ -174,6 +175,7 @@ struct Model3DVolumetricView: View {
         .sheet(isPresented: $showImportSheet) {
             Model3DImportSheet()
         }
+        .withModel3DExportUI(exportManager)
         .onChange(of: wireframe) { _ in vm.needsRenderRefresh = true }
         .onChange(of: showNormals) { _ in vm.needsRenderRefresh = true }
         .onChange(of: showBoundingBox) { _ in vm.needsRenderRefresh = true }
@@ -595,14 +597,24 @@ struct Model3DVolumetricView: View {
         matIndex = 0
     }
 
+    // 2. Replace the takeScreenshot() method with:
     private func takeScreenshot() {
-        // Implementation for screenshot
-        print("Taking screenshot...")
+        //Task {
+        //    await exportManager.takeScreenshot()
+        //}
     }
 
+    // 3. Replace the exportModel() method with:
     private func exportModel() {
-        // Implementation for model export
-        print("Exporting model...")
+        Task {
+            await exportManager.exportModel(
+                root: vm.root,
+                modelData: modelData,
+                isUSDZ: isUSDZ,
+                windowID: windowID,
+                materialProvider: makeMaterial
+            )
+        }
     }
 
     // MARK: - Original Methods (preserved from your implementation)
