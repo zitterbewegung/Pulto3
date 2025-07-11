@@ -6,7 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-import WebKit
 import SwiftUI
 import Charts
 
@@ -67,34 +66,29 @@ struct NativeChart: View {
             .chartYAxis {
                 AxisMarks(position: .trailing)
             }
-        }
-        /*.task {
-            do {
-                if jwt.isEmpty {
-                    jwt = try await loginToSuperset(username: username, password: password)
+            .onAppear {
+                Task {
+                    do {
+                        if jwt.isEmpty {
+                            jwt = try await loginToSuperset(username: username, password: password)
+                        }
+                        points = try await fetchSeries(sliceID: 123, jwt: jwt)
+                    } catch {
+                        self.error = error
+                    }
                 }
-                points = try await fetchSeries(sliceID: 123, jwt: jwt)
-            } catch {
-                self.error = error
             }
-        }*/
+        }
     }
 }
 
-struct SupersetDashboardView: UIViewRepresentable {
-    let dashboardURL: URL
+struct SupersetDashboardView: View {
+    let username: String
+    let password: String
 
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.isScrollEnabled = true
-        webView.load(URLRequest(url: dashboardURL))
-        return webView
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        // Optional: update logic
+    var body: some View {
+        NativeChart(username: username, password: password)
+            // To expand to full dashboard: Fetch dashboard metadata via API (/api/v1/dashboard/{id}),
+            // parse json_metadata for chart IDs and types, then render multiple NativeChart-like views in a layout.
     }
 }

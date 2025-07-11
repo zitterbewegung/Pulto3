@@ -118,14 +118,14 @@ struct PointCloudData: Codable, Hashable {
     var parameters: [String: Double]
     var totalPoints: Int
     var points: [PointData]
-    
+
     struct PointData: Codable, Hashable {
         var x: Double
         var y: Double
         var z: Double
         var intensity: Double?
         var color: String?
-        
+
         init(x: Double, y: Double, z: Double, intensity: Double? = nil, color: String? = nil) {
             self.x = x
             self.y = y
@@ -134,10 +134,10 @@ struct PointCloudData: Codable, Hashable {
             self.color = color
         }
     }
-    
+
     init(title: String = "Point Cloud Data",
          xAxisLabel: String = "X",
-         yAxisLabel: String = "Y", 
+         yAxisLabel: String = "Y",
          zAxisLabel: String = "Z",
          demoType: String = "custom",
          parameters: [String: Double] = [:]) {
@@ -150,7 +150,7 @@ struct PointCloudData: Codable, Hashable {
         self.totalPoints = 0
         self.points = []
     }
-    
+
     // Convert to Python code for Jupyter
     func toPythonCode() -> String {
         guard !points.isEmpty else {
@@ -160,7 +160,7 @@ struct PointCloudData: Codable, Hashable {
         let xPoints = points.map { String($0.x) }.joined(separator: ", ")
         let yPoints = points.map { String($0.y) }.joined(separator: ", ")
         let zPoints = points.map { String($0.z) }.joined(separator: ", ")
-        
+
         var intensityString = ""
         let hasIntensity = points.contains { $0.intensity != nil }
         if hasIntensity {
@@ -426,14 +426,14 @@ struct ChartData: Codable, Hashable {
             return "ax.plot(x_data, y_data\(colorCode)\(styleCode))"
         }
     }
-    
+
     func toEnhancedPythonCode() -> String {
         let xDataStr = xData.map { String($0) }.joined(separator: ", ")
         let yDataStr = yData.map { String($0) }.joined(separator: ", ")
-        
+
         let colorStr = color ?? "blue"
         let styleStr = style ?? "solid"
-        
+
         return """
         # Chart Window - \(title)
         # Chart Type: \(chartType)
@@ -469,7 +469,7 @@ struct ChartData: Codable, Hashable {
         print(f"Y range: [{min(y_data):.2f}, {max(y_data):.2f}]")
         """
     }
-    
+
 }
 
 // Add this structure after ChartData
@@ -885,21 +885,21 @@ struct DataFrameData: Codable, Hashable {
         }
         return csv
     }
-    
+
     func toEnhancedPandasCode() -> String {
         let columnsStr = columns.map { "'\($0)'" }.joined(separator: ", ")
-        
+
         // Create the data dictionary
         var dataDict: [String] = []
         for (index, column) in columns.enumerated() {
             let columnValues = rows.map { row in
                 index < row.count ? row[index] : ""
             }
-            
+
             // Format values based on data type
             let dtype = dtypes[column] ?? "string"
             let formattedValues: [String]
-            
+
             switch dtype {
             case "int":
                 formattedValues = columnValues.map { Int($0) != nil ? $0 : "0" }
@@ -908,16 +908,16 @@ struct DataFrameData: Codable, Hashable {
             default: // string
                 formattedValues = columnValues.map { "'\($0)'" }
             }
-            
+
             let valuesStr = formattedValues.joined(separator: ", ")
             dataDict.append("    '\(column)': [\(valuesStr)]")
         }
-        
+
         let dataDictStr = "{\n\(dataDict.joined(separator: ",\n"))\n}"
-        
+
         // Generate dtypes dictionary
         let dtypesStr = dtypes.map { "'\($0.key)': '\($0.value)'" }.joined(separator: ", ")
-        
+
         return """
         # DataFrame Window - \(columns.count) columns, \(rows.count) rows
         # DataFrame Columns: [\(columnsStr)]
@@ -951,7 +951,7 @@ struct DataFrameData: Codable, Hashable {
         df
         """
     }
-    
+
     private func formatRowsForComment() -> String {
         let formattedRows = rows.prefix(5).map { row in
             let quotedRow = row.map { "'\($0)'" }.joined(separator: ", ")
@@ -961,10 +961,10 @@ struct DataFrameData: Codable, Hashable {
         let suffix = rows.count > 5 ? ", ..." : ""
         return "[\(rowsStr)\(suffix)]"
     }
-    
+
     private func generateDtypeConversions() -> String {
         var conversions: [String] = []
-        
+
         for (column, dtype) in dtypes {
             switch dtype {
             case "int":
@@ -977,7 +977,7 @@ struct DataFrameData: Codable, Hashable {
                 conversions.append("df['\(column)'] = df['\(column)'].astype('string')")
             }
         }
-        
+
         return conversions.joined(separator: "\n")
     }
 }
@@ -1370,7 +1370,7 @@ class PointCloudDemo {
         print("\\nDataFrame Preview:")
         print(df.head())
         """
-        
+
         saveJupyterCode(notebookCode, to: "pointcloud_demo_notebook.py")
     }
 
@@ -1856,7 +1856,7 @@ struct NewWindow: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.top)
-                                
+
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
                                     openWindow(id: "volumetric-pointcloud", value: id)
@@ -1928,7 +1928,7 @@ struct NewWindow: View {
                     // ───────────── SPATIAL EDITOR ─────────────
                     case .spatial:
                         //if let pointCloud = window.state.pointCloudData {
-                        //     SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
+                        //    SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
                         //} else {
                         SpatialEditorView(windowID: id)
                         //}
@@ -1944,7 +1944,7 @@ struct NewWindow: View {
                     // ───────────── VOLUME METRICS ─────────────
                     case .volume:
                         VStack {
-                            if window.state.content.isEmpty {
+                            if !window.state.content.isEmpty {
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("Model Metrics:")
@@ -1959,14 +1959,6 @@ struct NewWindow: View {
                                     }
                                     .padding()
                                 }
-
-                                Divider()
-
-                                SupersetDashboardView(dashboardURL: URL(string: "https://localhost:8088/screembedded/your-dashboard")!)
-                                    .frame(width: 1200, height: 800)
-                                    .glassBackgroundEffect()
-                                    .cornerRadius(12)
-                                    .padding()
                             } else {
                                 VStack(spacing: 20) {
                                     Image(systemName: "gauge")
