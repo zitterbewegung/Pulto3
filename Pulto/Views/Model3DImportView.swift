@@ -6,15 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
-//
-//  Model3DImportView.swift
-//  Pulto3
-//
-//  Created by Joshua Herman on 7/9/25.
-//  Copyright © 2025 Apple. All rights reserved.
-//
-
 import SwiftUI
 import RealityKit
 import UniformTypeIdentifiers
