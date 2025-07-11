@@ -1853,7 +1853,7 @@ struct NewWindow: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.top)
-
+                                
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
                                     openWindow(id: "volumetric-pointcloud", value: id)
