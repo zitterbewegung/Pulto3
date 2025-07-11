@@ -43,61 +43,82 @@ struct EntryPoint: App {
         .defaultSize(width: 800, height: 600)
     }
 
+    @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
-        Group {
-            WindowGroup(for: NewWindowID.ID.self) { $id in
-                if let id = id {
-                    NewWindow(id: id)
-                }
+        WindowGroup(for: NewWindowID.ID.self) { $id in
+            if let id = id {
+                NewWindow(id: id)
             }
-
-            WindowGroup(id: "open-project-window") {
-                ProjectBrowserView(windowManager: windowManager)   // ← added argument
-                    .environmentObject(windowManager)
-            }
-            .windowStyle(.plain)
-            .defaultSize(width: 1_000, height: 700)
         }
+
+        WindowGroup(id: "open-project-window") {
+            ProjectBrowserView(windowManager: windowManager)
+                .environmentObject(windowManager)
+        }
+        .windowStyle(.plain)
+        .defaultSize(width: 1_000, height: 700)
     }
 
     // MARK: - visionOS-only Scenes
     #if os(visionOS)
+    @SceneBuilder
     private var volumetricWindows: some SwiftUI.Scene {
-        Group {
-            // Point-cloud volume
-            WindowGroup(id: "volumetric-pointcloud", for: Int.self) { $id in
-                if
-                    let id = id,
-                    let win = windowManager.getWindow(for: id)
-                {
-                    PointCloudVolumetricView(
-                        windowID: id,
-                        pointCloudData: win.state.pointCloudData ?? generateDefaultPointCloud()
-                    )
-                    .frame(width: 400, height: 400)
-                    .environmentObject(windowManager)
-                }
+        // Point-cloud volume
+        WindowGroup(id: "volumetric-pointcloud", for: Int.self) { $id in
+            if
+                let id = id,
+                let win = windowManager.getWindow(for: id),
+                let pointCloudData = win.state.pointCloudData
+            {
+                PointCloudVolumetricView(
+                    windowID: id,
+                    pointCloudData: pointCloudData
+                )
+                .environmentObject(windowManager)
+            } else {
+                EmptyView()
             }
-            .windowStyle(.volumetric)
-            .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
-
-            // 3-D model volume
-            WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
-                if
-                    let id = id,
-                    let win = windowManager.getWindow(for: id)
-                {
-                    Model3DVolumetricView(
-                        windowID: id,
-                        modelData: win.state.model3DData ?? generateDefault3DModel()
-                    )
-                    .frame(width: 400, height: 400)
-                    .environmentObject(windowManager)
-                }
-            }
-            .windowStyle(.volumetric)
-            .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
         }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+
+        // 3-D model volume
+        WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
+            if
+                let id = id,
+                let win = windowManager.getWindow(for: id),
+                let modelData = win.state.model3DData
+            {
+                Model3DVolumetricView(
+                    windowID: id,
+                    modelData: modelData
+                )
+                .environmentObject(windowManager)
+            } else {
+                EmptyView()
+            }
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+
+        // 3-D chart volume
+        WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
+            if
+                let id = id,
+                let win = windowManager.getWindow(for: id),
+                let chartData = win.state.chart3DData
+            {
+                Chart3DVolumetricView(
+                    windowID: id,
+                    chartData: chartData
+                )
+                .environmentObject(windowManager)
+            } else {
+                EmptyView()
+            }
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
     }
 
     private var immersiveWorkspace: some SwiftUI.Scene {
@@ -147,15 +168,4 @@ struct EntryPoint: App {
         }
     }
 
-    // MARK: - Demo data
-    private func generateDefaultPointCloud() -> PointCloudData {
-        PointCloudDemo.generateSpherePointCloudData(radius: 10, points: 1_000)
-    }
-
-    private func generateDefault3DModel() -> Model3DData {
-        Model3DData.generateTestPyramid()
-    }
 }
-
-
-

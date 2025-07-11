@@ -108,6 +108,7 @@
 		DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"WindowTypeManager+Import.swift",
 				"WindowTypeManager+Replace.swift",
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
@@ -116,7 +117,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				generateSamplePointCloud.swift,
-				"WindowTypeManager+Import.swift",
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};

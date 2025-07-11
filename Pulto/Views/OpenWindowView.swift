@@ -43,7 +43,7 @@ struct WindowPosition: Codable, Hashable {
     }
 }
 
-enum ExportTemplate: String, CaseIterable, Codable {
+enum ExportTemplate: String, CaseIterable, Codable, Hashable {
     case plain, matplotlib, pandas, numpy, plotly, seaborn, custom, markdown
 
     var defaultImports: [String] {
@@ -782,6 +782,7 @@ struct Model3DData: Codable, Hashable {
 }
 
 struct WindowState: Codable, Hashable {
+    let id: Int = Int()
     var isMinimized: Bool = false
     var isMaximized: Bool = false
     var opacity: Double = 1.0
@@ -792,12 +793,13 @@ struct WindowState: Codable, Hashable {
     var tags: [String] = []
     var dataFrameData: DataFrameData? = nil
     var pointCloudData: PointCloudData? = nil
-    var volumeData: VolumeData? = nil        
+    var volumeData: VolumeData? = nil
     var chartData: ChartData? = nil
     var model3DData: Model3DData? = nil
     var usdzBookmark: Data? = nil
-    var pointCloudBookmark: Data? = nil  // ADD THIS LINE
-    
+    var pointCloudBookmark: Data? = nil
+    var chart3DData: Chart3DData?
+
     init(isMinimized: Bool = false, isMaximized: Bool = false,
          opacity: Double = 1.0, content: String = "",
          exportTemplate: ExportTemplate = .plain) {
@@ -809,6 +811,7 @@ struct WindowState: Codable, Hashable {
         self.lastModified = Date()
     }
 }
+
 
 struct DataFrameData: Codable, Hashable {
     var columns: [String]
