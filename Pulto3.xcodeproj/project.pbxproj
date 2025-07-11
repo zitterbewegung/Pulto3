@@ -22,15 +22,12 @@
 		DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
-		DC661B312E049681005454FE /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B302E049681005454FE /* TemplateView.swift */; };
 		DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B342E04A126005454FE /* SpatialEditorView.swift */; };
 		DC6A50A52E0B607600C4FEAF /* EnvironmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
 		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
 		DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
-		DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */; };
-		DCDD6FAB2E1EF0CD00E752A0 /* VolumetricModelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FAA2E1EF0CD00E752A0 /* VolumetricModelView.swift */; };
 		DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */; };
 		DCDD6FB72E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */; };
 		DCDD6FBD2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */; };
@@ -77,7 +74,6 @@
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
-		DC661B302E049681005454FE /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
@@ -86,8 +82,6 @@
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
 		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
-		DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricWindow.swift; sourceTree = "<group>"; };
-		DCDD6FAA2E1EF0CD00E752A0 /* VolumetricModelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumetricModelView.swift; sourceTree = "<group>"; };
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
 		DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveWorkspaceView.swift; sourceTree = "<group>"; };
 		DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelAndPointCloudImportSheet.swift; sourceTree = "<group>"; };
@@ -280,9 +274,6 @@
 				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
 				DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */,
 				DC28CF6D2E026E2300F3705E /* TemplateNotebook.swift */,
-				DC661B302E049681005454FE /* TemplateView.swift */,
-				DCDD6FAA2E1EF0CD00E752A0 /* VolumetricModelView.swift */,
-				DCCF6DC02E02216100C90252 /* VolumetricWindow.swift */,
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
 				DCF74EAA2E05DE5C0078C4B8 /* WindowTypeManager.swift */,
 				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
@@ -424,7 +415,6 @@
 				DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */,
 				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
 				DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */,
-				DCCF6DC12E02216100C90252 /* VolumetricWindow.swift in Sources */,
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
 				DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */,
@@ -442,10 +432,8 @@
 				DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */,
 				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,
 				DCFC32E02E15DCAF002A2AA4 /* WorkspaceDialog.swift in Sources */,
-				DCDD6FAB2E1EF0CD00E752A0 /* VolumetricModelView.swift in Sources */,
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DCF74EAB2E05DE5C0078C4B8 /* WindowTypeManager.swift in Sources */,
-				DC661B312E049681005454FE /* TemplateView.swift in Sources */,
 				DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
