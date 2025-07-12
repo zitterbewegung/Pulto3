@@ -249,3 +249,6 @@ struct WindowChartView: View {
         return content
     }
 }
+#Preview {
+    WindowChartView()
+}
