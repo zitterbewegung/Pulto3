@@ -94,16 +94,16 @@ struct EntryPoint: App {
                     )
                     .environmentObject(windowManager)
                 } else if let usdzBookmark = win.state.usdzBookmark {
-                    // Case 2: We have a USDZ file bookmark
-                    VStack {
-                        // In a real app, you would load the USDZ file here
-                        // For now, show a placeholder or use RealityKit to load the model
-                        Model3DPlaceholderView(
-                            usdzBookmark: usdzBookmark,
-                            windowID: id
+                    // Case 2: We have a USDZ file bookmark - create Model3DData from it
+                    Model3DVolumetricView(
+                        windowID: id,
+                        modelData: Model3DData(
+                            title: "Imported USDZ Model",
+                            modelType: "usdz",
+                            scale: 1.0
                         )
-                        .environmentObject(windowManager)
-                    }
+                    )
+                    .environmentObject(windowManager)
                 } else {
                     // Case 3: No model data available
                     VStack {
@@ -113,6 +113,9 @@ struct EntryPoint: App {
                         Text("No 3D model loaded")
                             .font(.title)
                             .foregroundStyle(.secondary)
+                        Text("Create a demo model or import a USDZ file")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
                     }
                 }
             } else {
@@ -122,7 +125,7 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 15, height: 15, depth: 15, in: .meters)
+        .defaultSize(width: 0.8, height: 0.8, depth: 0.8, in: .meters)
 
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in

@@ -82,6 +82,7 @@
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
 		DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveWorkspaceView.swift; sourceTree = "<group>"; };
 		DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelAndPointCloudImportSheet.swift; sourceTree = "<group>"; };
+		DCE749342E22F99800B2C2E6 /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Volumetric Window.entitlements"; sourceTree = "<group>"; };
 		DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInView.swift; sourceTree = "<group>"; };
 		DCF74ECF2E0619550078C4B8 /* GridConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridConstants.swift; sourceTree = "<group>"; };
@@ -206,6 +207,7 @@
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
 				DC60FCCD2DFF928500996C50 /* Frameworks */,
 				DCA833952E0E21E200D32258 /* MARKETING.md */,
+				DCE749342E22F99800B2C2E6 /* SpatialEditorView.swift */,
 			);
 			sourceTree = "<group>";
 		};

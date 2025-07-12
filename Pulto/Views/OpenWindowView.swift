@@ -1705,6 +1705,9 @@ struct NewWindow: View {
                                 // Generate a demo cube
                                 let cubeModel = Model3DData.generateCube(size: 2.0)
 
+                                // Store the model data in the window state
+                                windowTypeManager.updateWindowModel3DData(id, model3DData: cubeModel)
+
                                 // Convert to Python code and store as content
                                 let pythonCode = cubeModel.toPythonCode()
                                 windowTypeManager.updateWindowContent(id, content: pythonCode)
@@ -1716,6 +1719,28 @@ struct NewWindow: View {
                                     .font(.headline)
                                     .padding()
                                     .background(.green.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                // Generate a demo sphere
+                                let sphereModel = Model3DData.generateSphere(radius: 1.5, segments: 16)
+
+                                // Store the model data in the window state
+                                windowTypeManager.updateWindowModel3DData(id, model3DData: sphereModel)
+
+                                // Convert to Python code and store as content
+                                let pythonCode = sphereModel.toPythonCode()
+                                windowTypeManager.updateWindowContent(id, content: pythonCode)
+
+                                // Store a marker that this is 3D content
+                                windowTypeManager.addWindowTag(id, tag: "3D-Sphere")
+                            } label: {
+                                Label("Demo: Sphere", systemImage: "circle.circle")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(.blue.opacity(0.2))
                                     .cornerRadius(10)
                             }
                             .buttonStyle(.plain)
