@@ -1538,7 +1538,7 @@ struct WindowConfigurationView: View {
                     ForEach(window.state.tags, id: \.self) { tag in
                         Text(tag)
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            //.padding(.vertical: 2)
                             .background(Color.blue.opacity(0.2))
                             .cornerRadius(4)
                             .font(.caption)
@@ -1646,8 +1646,8 @@ struct NewWindow: View {
     let id: Int
     @StateObject private var windowTypeManager = WindowTypeManager.shared
     @Environment(\.openWindow) private var openWindow   // ← NEW: visionOS-safe window opener
-    @State private var showFileImporter = false  // ← For USDZ import
-    @State private var showPointCloudImporter = false  // ← NEW: For point cloud import
+    @State var showFileImporter = false  // ← For USDZ import
+    @State var showPointCloudImporter = false  // ← NEW: For point cloud import
 
     var body: some View {
         if let window = windowTypeManager.getWindowSafely(for: id) {
@@ -1700,7 +1700,25 @@ struct NewWindow: View {
                     case .model3d:
                         VStack {
                             Spacer()
+                            // For the demo buttons:
+                            Button {
+                                // Generate a demo cube
+                                let cubeModel = Model3DData.generateCube(size: 2.0)
 
+                                // Convert to Python code and store as content
+                                let pythonCode = cubeModel.toPythonCode()
+                                windowTypeManager.updateWindowContent(id, content: pythonCode)
+
+                                // Store a marker that this is 3D content
+                                windowTypeManager.addWindowTag(id, tag: "3D-Cube")
+                            } label: {
+                                Label("Demo: Cube", systemImage: "cube")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(.green.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
                             VStack(spacing: 20) {
                                 Image(systemName: "cube.transparent.fill")
                                     .font(.system(size: 80))
@@ -1792,15 +1810,27 @@ struct NewWindow: View {
                             if let url = try? result.get().first {
                                 Task {
                                     do {
-                                        let bookmark = try url.bookmarkData(options: .minimalBookmark)
+                                        // Save the bookmark
+                                        let bookmark = try url.bookmarkData()
                                         windowTypeManager.updateUSDZBookmark(for: id, bookmark: bookmark)
+
+                                        // For now, create a placeholder Model3DData
+                                        // In a real app, you would parse the USDZ file here
+                                        let placeholderModel = Model3DData(
+                                            title: url.lastPathComponent,
+                                            modelType: "usdz",
+                                            scale: 1.0
+                                        )
+
+                                        // Update the model data so the volumetric window can display it
+                                        windowTypeManager.updateWindowModel3D(id, modelData: placeholderModel)
+
                                     } catch {
                                         print("Failed to import USDZ: \(error)")
                                     }
                                 }
                             }
                         }
-
                     // ───────────── POINT CLOUD ─────────────
                     case .pointcloud:
                         VStack {

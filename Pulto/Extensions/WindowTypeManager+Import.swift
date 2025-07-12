@@ -103,6 +103,46 @@ struct NotebookFile: Identifiable {
 
 extension WindowTypeManager {
 
+    // MARK: - Notebook Management Methods
+
+    func openVolumetricWindow(for window: NewWindowID, using openWindow: OpenWindowAction) {
+        switch window.windowType {
+        case .pointcloud:
+            openWindow(id: "volumetric-pointcloud", value: window.id)
+        case .model3d:
+            openWindow(id: "volumetric-model3d", value: window.id)
+        default:
+            // For non-volumetric windows, open the regular window
+            openWindow(id: "new-window", value: window.id)
+        }
+    }
+
+    func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
+        if var window = windows[windowID] {
+            window.state.pointCloudBookmark = bookmark
+            window.state.lastModified = Date()
+            windows[windowID] = window
+            objectWillChange.send()
+        }
+    }
+
+    // Helper method to check if window has 3D content
+    func windowHas3DContent(_ windowID: Int) -> Bool {
+        guard let window = getWindowSafely(for: windowID) else { return false }
+        return window.state.model3DData != nil || window.state.usdzBookmark != nil
+    }
+
+    // Clear 3D content from window
+    func clearWindow3DContent(_ windowID: Int) {
+        if var window = windows[windowID] {
+            window.state.model3DData = nil
+            window.state.usdzBookmark = nil
+            window.state.lastModified = Date()
+            windows[windowID] = window
+            objectWillChange.send()
+        }
+    }
+
     // MARK: - Main Import Methods
 
     func importFromGenericNotebook(data: Data) throws -> ImportResult {
@@ -662,6 +702,19 @@ extension WindowTypeManager {
         return nil
     }
     
+    private func extractStringFromParameter(_ paramStr: String, parameter: String) -> String? {
+        let pattern = #"\#(parameter)\s*=\s*['"]([^'"]+)['"]*"#
+        if let match = paramStr.range(of: pattern, options: .regularExpression) {
+            let matchStr = String(paramStr[match])
+            let valuePattern = #"['"]([^'"]+)['"]*"#
+            if let valueMatch = matchStr.range(of: valuePattern, options: .regularExpression) {
+                let quoted = String(matchStr[valueMatch])
+                return quoted.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
+            }
+        }
+        return nil
+    }
+    
     private func extractDataFromPlotCall(_ line: String) -> (x: [Double], y: [Double], color: String?, style: String?)? {
         // Match plot calls like plt.plot([1,2,3], [4,5,6], color='blue', linestyle='-')
         let arrayPattern = #"\[([\d\.,\s]+)\]"#
@@ -704,19 +757,6 @@ extension WindowTypeManager {
             return (x: xData, y: yData, color: color, style: style)
         }
         
-        return nil
-    }
-    
-    private func extractStringFromParameter(_ paramStr: String, parameter: String) -> String? {
-        let pattern = #"\#(parameter)\s*=\s*['"]([^'"]+)['"]*"#
-        if let match = paramStr.range(of: pattern, options: .regularExpression) {
-            let matchStr = String(paramStr[match])
-            let valuePattern = #"['"]([^'"]+)['"]*"#
-            if let valueMatch = matchStr.range(of: valuePattern, options: .regularExpression) {
-                let quoted = String(matchStr[valueMatch])
-                return quoted.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
-            }
-        }
         return nil
     }
     
@@ -959,50 +999,40 @@ extension WindowTypeManager {
             failedWindows: []
         )
     }
-    func openVolumetricWindow(for window: NewWindowID, using openWindow: OpenWindowAction) {
-           switch window.windowType {
-           case .pointcloud:
-               openWindow(id: "volumetric-pointcloud", value: window.id)
-           case .model3d:
-               openWindow(id: "volumetric-model3d", value: window.id)
-           default:
-               // For non-volumetric windows, open the regular window
-               openWindow(id: "new-window", value: window.id)
-           }
-       }
+    
     func updateDataFrame(for windowID: Int, dataFrame: DataFrameData) {
-            updateWindowState(windowID) { state in
-                state.dataFrameData = dataFrame
-            }
+        updateWindowState(windowID) { state in
+            state.dataFrameData = dataFrame
         }
+    }
 
-        func updateWindowChartData(_ windowID: Int, chartData: ChartData) {
-            updateWindowState(windowID) { state in
-                state.chartData = chartData
-            }
+    func updateWindowChartData(_ windowID: Int, chartData: ChartData) {
+        updateWindowState(windowID) { state in
+            state.chartData = chartData
         }
+    }
 
-        func updateWindowPointCloud(_ windowID: Int, pointCloud: PointCloudData) {
-            updateWindowState(windowID) { state in
-                state.pointCloudData = pointCloud
-            }
+    func updateWindowPointCloud(_ windowID: Int, pointCloud: PointCloudData) {
+        updateWindowState(windowID) { state in
+            state.pointCloudData = pointCloud
         }
+    }
 
-        func getWindowChartData(for windowID: Int) -> ChartData? {
-            return getWindow(for: windowID)?.state.chartData
-        }
+    func getWindowChartData(for windowID: Int) -> ChartData? {
+        return getWindow(for: windowID)?.state.chartData
+    }
 
-        func getWindowPointCloud(for windowID: Int) -> PointCloudData? {
-            return getWindow(for: windowID)?.state.pointCloudData
-        }
+    func getWindowPointCloud(for windowID: Int) -> PointCloudData? {
+        return getWindow(for: windowID)?.state.pointCloudData
+    }
 
-        private func updateWindowState(_ windowID: Int, update: (inout WindowState) -> Void) {
-            if var window = getWindow(for: windowID) {
-                update(&window.state)
-                window.state.lastModified = Date()
-                updateWindow(window)
-            }
+    private func updateWindowState(_ windowID: Int, update: (inout WindowState) -> Void) {
+        if var window = getWindow(for: windowID) {
+            update(&window.state)
+            window.state.lastModified = Date()
+            updateWindow(window)
         }
+    }
     func updateUSDZBookmark(for windowID: Int, bookmark: Data) {
          updateWindowState(windowID) { state in
              state.usdzBookmark = bookmark
@@ -1018,4 +1048,34 @@ extension WindowTypeManager {
      func getWindowSafely(for id: Int) -> NewWindowID? {
          return getWindow(for: id)
      }
+    // Update window with Model3D data
+    func updateWindowModel3DData(_ windowID: Int, model3DData: Model3DData) {
+        guard let index = windows.firstIndex(where: { $0.id == windowID }) else { return }
+        windows[index].state.model3DData = model3DData
+        windows[index].state.lastModified = Date()
+        objectWillChange.send()
+    }
+
+    // Update window with USDZ bookmark
+    func updateWindowUSDZBookmark(_ windowID: Int, bookmark: Data) {
+        guard let index = windows.firstIndex(where: { $0.id == windowID }) else { return }
+        windows[index].state.usdzBookmark = bookmark
+        windows[index].state.lastModified = Date()
+        objectWillChange.send()
+    }
+
+    // Helper method to check if window has 3D content
+    func windowHas3DContent(_ windowID: Int) -> Bool {
+        guard let window = getWindow(for: windowID) else { return false }
+        return window.state.model3DData != nil || window.state.usdzBookmark != nil
+    }
+
+    // Clear 3D content from window
+    func clearWindow3DContent(_ windowID: Int) {
+        guard let index = windows.firstIndex(where: { $0.id == windowID }) else { return }
+        windows[index].state.model3DData = nil
+        windows[index].state.usdzBookmark = nil
+        windows[index].state.lastModified = Date()
+        objectWillChange.send()
+    }
 }

@@ -83,23 +83,46 @@ struct EntryPoint: App {
         .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
 
         // 3-D model volume
+
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
-            if
-                let id = id,
-                let win = windowManager.getWindow(for: id),
-                let modelData = win.state.model3DData
-            {
-                Model3DVolumetricView(
-                    windowID: id,
-                    modelData: modelData
-                )
-                .environmentObject(windowManager)
+            if let id = id, let win = windowManager.getWindow(for: id) {
+                if let modelData = win.state.model3DData {
+                    // Case 1: We have parsed model data
+                    Model3DVolumetricView(
+                        windowID: id,
+                        modelData: modelData
+                    )
+                    .environmentObject(windowManager)
+                } else if let usdzBookmark = win.state.usdzBookmark {
+                    // Case 2: We have a USDZ file bookmark
+                    VStack {
+                        // In a real app, you would load the USDZ file here
+                        // For now, show a placeholder or use RealityKit to load the model
+                        Model3DPlaceholderView(
+                            usdzBookmark: usdzBookmark,
+                            windowID: id
+                        )
+                        .environmentObject(windowManager)
+                    }
+                } else {
+                    // Case 3: No model data available
+                    VStack {
+                        Image(systemName: "cube.transparent")
+                            .font(.system(size: 100))
+                            .foregroundStyle(.gray)
+                        Text("No 3D model loaded")
+                            .font(.title)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             } else {
-                EmptyView()
+                Text("Error in loading window state")
+                    .font(.title)
+                    .foregroundStyle(.secondary)
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+        .defaultSize(width: 15, height: 15, depth: 15, in: .meters)
 
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in

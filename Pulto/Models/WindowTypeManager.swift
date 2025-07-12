@@ -81,6 +81,8 @@ class WindowTypeManager: ObservableObject {
         return window
     }
 
+    
+
     // Add these functions to WindowTypeManager class
     private func parseModel3DDataFromContent(_ content: String) throws -> Model3DData? {
         let patterns = [
@@ -1153,4 +1155,5 @@ class WindowTypeManager: ObservableObject {
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
         }
     }
+
 }
