@@ -4,11 +4,9 @@
 //  Created by Joshua Herman on 5/25/25.
 //
 
-import simd
 import SwiftUI
 import Foundation
 import Charts
-import SceneKit
 
 // ─────────────────────────────────────────────────────────────
 // MARK: - Window metadata
@@ -801,7 +799,6 @@ struct WindowState: Codable, Hashable {
     var usdzBookmark: Data? = nil
     var pointCloudBookmark: Data? = nil
     var chart3DData: Chart3DData?
-    var usdzTempURL: URL? = nil 
 
     init(isMinimized: Bool = false, isMaximized: Bool = false,
          opacity: Double = 1.0, content: String = "",
@@ -1700,134 +1697,140 @@ struct NewWindow: View {
                 Group {
                     switch window.windowType {
                     // ───────────── 3-D MODEL ─────────────
-                    
-// ───────────── 3-D MODEL ─────────────
+                    case .model3d:
+                        VStack {
+                            Spacer()
+                            // For the demo buttons:
+                            Button {
+                                // Generate a demo cube
+                                let cubeModel = Model3DData.generateCube(size: 2.0)
 
-                case .model3d:
-                    ZStack {
-                        Spacer()
-                        // For the demo buttons:
+                                // Convert to Python code and store as content
+                                let pythonCode = cubeModel.toPythonCode()
+                                windowTypeManager.updateWindowContent(id, content: pythonCode)
 
-                        VStack(spacing: 20) {
-                            Image(systemName: "cube.transparent.fill")
-                                .font(.system(size: 80))
-                                .foregroundStyle(.linearGradient(
-                                    colors: [.orange, .pink],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
+                                // Store a marker that this is 3D content
+                                windowTypeManager.addWindowTag(id, tag: "3D-Cube")
+                            } label: {
+                                Label("Demo: Cube", systemImage: "cube")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(.green.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                            VStack(spacing: 20) {
+                                Image(systemName: "cube.transparent.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.orange, .pink],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
 
-                            Text("3D Model Viewer")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
+                                Text("3D Model Viewer")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
 
-                            if let model3D = window.state.model3DData {
-                                VStack(spacing: 12) {
-                                    Text(model3D.title)
+                                if let model3D = window.state.model3DData {
+                                    VStack(spacing: 12) {
+                                        Text(model3D.title)
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+
+                                        HStack(spacing: 40) {
+                                            VStack {
+                                                Text("\(model3D.vertices.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Vertices")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text("\(model3D.faces.count)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Faces")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            VStack {
+                                                Text(model3D.modelType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
+                                                Text("Type")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .padding(.top)
+                                    }
+                                } else if window.state.usdzBookmark != nil {
+                                    Text("Imported USDZ Model")
                                         .font(.title2)
                                         .foregroundStyle(.secondary)
+                                }
 
-                                    HStack(spacing: 40) {
-                                        VStack {
-                                            Text("\(model3D.vertices.count)")
-                                                .font(.title)
-                                                .fontWeight(.semibold)
-                                            Text("Vertices")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        VStack {
-                                            Text("\(model3D.faces.count)")
-                                                .font(.title)
-                                                .fontWeight(.semibold)
-                                            Text("Faces")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        VStack {
-                                            Text(model3D.modelType)
-                                                .font(.title)
-                                                .fontWeight(.semibold)
-                                            Text("Type")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
+                                Text("This content is displayed in a volumetric window")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                                     .padding(.top)
+
+                                Button {
+                                    // Open the volumetric window (visionOS-safe)
+                                    openWindow(id: "volumetric-model3d", value: id)
+                                } label: {
+                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.orange.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    showFileImporter = true
+                                } label: {
+                                    Label("Import USDZ Model", systemImage: "square.and.arrow.down")
+                                        .font(.headline)
+                                        .padding()
+                                        .background(.blue.opacity(0.2))
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(40)
+
+                            Spacer()
+                        }
+                        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.usdz], allowsMultipleSelection: false) { result in
+                            if let url = try? result.get().first {
+                                Task {
+                                    do {
+                                        // Save the bookmark
+                                        let bookmark = try url.bookmarkData()
+                                        windowTypeManager.updateUSDZBookmark(for: id, bookmark: bookmark)
+
+                                        // For now, create a placeholder Model3DData
+                                        // In a real app, you would parse the USDZ file here
+                                        let placeholderModel = Model3DData(
+                                            title: url.lastPathComponent,
+                                            modelType: "usdz",
+                                            scale: 1.0
+                                        )
+
+                                        // Update the model data so the volumetric window can display it
+                                        windowTypeManager.updateWindowModel3D(id, modelData: placeholderModel)
+
+                                    } catch {
+                                        print("Failed to import USDZ: \(error)")
+                                    }
                                 }
                             }
-
-                            Text("This content is displayed in a volumetric window")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.top)
-
-                            Button {
-                                // Open the volumetric window (visionOS-safe)
-                                openWindow(id: "volumetric-model3d", value: id)
-                            } label: {
-                                Label("Open Volumetric View", systemImage: "view.3d")
-                                    .font(.headline)
-                                    .padding()
-                                    .background(.orange.opacity(0.2))
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                showFileImporter = true
-                            } label: {
-                                Label("Import USDZ Model", systemImage: "square.and.arrow.down")
-                                    .font(.headline)
-                                    .padding()
-                                    .background(.blue.opacity(0.2))
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
                         }
-                        .padding(40)
-
-                        Spacer()
-                    }
-                    .fileImporter(
-                        isPresented: $showFileImporter,
-                        allowedContentTypes: [.usdz],
-                        allowsMultipleSelection: false
-                    ) { result in
-                        do {
-                            guard let selectedURL = try result.get().first else { return }
-
-                            // Save the bookmark
-                            let bookmark = try selectedURL.bookmarkData()
-                            windowTypeManager.updateUSDZBookmark(for: id, bookmark: bookmark)
-
-                            // Start security-scoped access
-                            guard selectedURL.startAccessingSecurityScopedResource() else {
-                                throw NSError(domain: "AccessError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not access the file."])
-                            }
-                            defer { selectedURL.stopAccessingSecurityScopedResource() }
-
-                            // Read the file data while scoped
-                            let data = try Data(contentsOf: selectedURL)
-
-                            // Create a temporary file in the app's sandbox (no scope needed)
-                            let tempDirectory = FileManager.default.temporaryDirectory
-                            let tempURL = tempDirectory.appendingPathComponent(selectedURL.lastPathComponent)
-
-                            // Write the data to the temp URL
-                            try data.write(to: tempURL)
-
-                            // Update the temp URL in window state
-                            windowTypeManager.updateUSDZTempURL(for: id, tempURL: tempURL)
-
-                            // Open the volumetric window to display the model
-                            openWindow(id: "volumetric-model3d", value: id)
-                        } catch {
-                            print("Failed to import USDZ: \(error.localizedDescription)")
-                        }
-                    }
                     // ───────────── POINT CLOUD ─────────────
                     case .pointcloud:
                         VStack {

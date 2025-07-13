@@ -1039,11 +1039,11 @@ extension WindowTypeManager {
          }
      }
 
-    /*func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
+     func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
          updateWindowState(windowID) { state in
              state.pointCloudBookmark = bookmark
          }
-     }*/
+     }
 
      func getWindowSafely(for id: Int) -> NewWindowID? {
          return getWindow(for: id)
