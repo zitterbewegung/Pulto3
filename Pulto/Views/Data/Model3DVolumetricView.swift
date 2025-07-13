@@ -8,74 +8,112 @@ struct Model3DVolumetricView: View {
     @State private var rootEntity = Entity()
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var modelEntity: Entity?
+    @State private var autoRotate = true
+    @State private var showWireframe = false
+    @State private var modelScale: Float = 1.0
 
     var body: some View {
-        RealityView { content in
-            content.add(rootEntity)
-        }
-        .overlay(alignment: .center) {
-            if isLoading {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Loading 3D Model...")
-                        .font(.headline)
-                        .padding(.top)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(12)
-            } else if let error = errorMessage {
-                VStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.orange)
-                    Text("Error loading model:")
-                        .font(.headline)
-                    Text(error)
-                        .font(.caption)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(12)
+        VStack(spacing: 0) {
+            controlsView
+            
+            RealityView { content in
+                content.add(rootEntity)
             }
-        }
-        .overlay(alignment: .topLeading) {
-            if !isLoading && errorMessage == nil {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(modelData.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    HStack {
-                        Label("\(modelData.vertices.count) vertices", systemImage: "point.3.connected.trianglepath.dotted")
-                        Label("\(modelData.faces.count) faces", systemImage: "square.grid.3x3")
+            .overlay(alignment: .center) {
+                if isLoading {
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading 3D Model...")
+                            .font(.headline)
+                            .padding(.top)
                     }
-                    .font(.caption)
-
-                    Text("Type: \(modelData.modelType)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                } else if let error = errorMessage {
+                    VStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+                        Text("Error:")
+                            .font(.headline)
+                        Text(error)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(12)
-                .padding()
             }
-        }
-        .onAppear {
-            if modelData.modelType == "usdz" {
-                if let textMesh = try? MeshResource.generateText("Loading USDZ...") {
-                    let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
-                    let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
-                    rootEntity.addChild(textEntity)
-                }
-            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        guard let model = modelEntity else { return }
+                        let rotationY = Float(value.translation.width * 0.01)
+                        let rotationX = Float(value.translation.height * 0.01)
+                        model.transform.rotation = simd_quatf(angle: rotationY, axis: [0, 1, 0]) * simd_quatf(angle: rotationX, axis: [1, 0, 0])
+                    }
+            )
         }
         .task {
             await loadModel()
         }
+        .onChange(of: modelScale) { _, newScale in
+            updateModelScale(newScale)
+        }
+        .onChange(of: autoRotate) { _, shouldRotate in
+            toggleAutoRotation(shouldRotate)
+        }
+    }
+    
+    private var controlsView: some View {
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(modelData.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    HStack(spacing: 16) {
+                        Label("\(modelData.vertices.count)", systemImage: "point.3.connected.trianglepath.dotted")
+                        Label("\(modelData.faces.count)", systemImage: "square.grid.3x3")
+                        Label(modelData.modelType.uppercased(), systemImage: "cube.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Button(action: { autoRotate.toggle() }) {
+                            Image(systemName: autoRotate ? "pause.circle" : "play.circle")
+                                .foregroundColor(autoRotate ? .orange : .blue)
+                        }
+                        .help("Toggle auto-rotation")
+                        
+                        Button(action: { showWireframe.toggle() }) {
+                            Image(systemName: showWireframe ? "square.grid.3x3" : "cube.fill")
+                                .foregroundColor(showWireframe ? .purple : .blue)
+                        }
+                        .help("Toggle wireframe")
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Label("Scale", systemImage: "plus.magnifyingglass")
+                            .font(.caption2)
+                        Slider(value: $modelScale, in: 0.1...3.0, step: 0.1)
+                            .frame(width: 100)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(.regularMaterial)
     }
     
     @MainActor
@@ -83,55 +121,61 @@ struct Model3DVolumetricView: View {
         isLoading = true
         errorMessage = nil
         
-        // Clear existing children
         rootEntity.children.removeAll()
 
-        // Add lighting
-        let light = PointLight()
-        light.light.intensity = 1000
-        light.position = SIMD3<Float>(0, 1, 1)
-        rootEntity.addChild(light)
-
-        // Add ambient light
-        let ambientLight = Entity()
-        ambientLight.components.set(DirectionalLightComponent(
-            color: .white,
-            intensity: 300
-        ))
-        rootEntity.addChild(ambientLight)
+        setupLighting()
 
         do {
             if modelData.modelType == "usdz" {
                 await loadUSDZModel()
-            } else if modelData.modelType == "cube" {
-                loadCubeModel()
-            } else if modelData.modelType == "sphere" {
-                loadSphereModel()
-            } else if !modelData.vertices.isEmpty && !modelData.faces.isEmpty {
-                try loadCustomMesh()
             } else {
-                // Fallback to a cube if no data
-                print("No model data available, showing fallback cube")
-                loadFallbackCube()
+                loadProceduralModel()
             }
+            
+            await finalizeModelSetup()
             
             isLoading = false
         } catch {
             print("Error loading model: \(error)")
-            await MainActor.run {
-                errorMessage = "Failed to load model: \(error.localizedDescription)"
-                // Show fallback cube on error
-                loadFallbackCube()
-                isLoading = false
-            }
+            errorMessage = "Failed to load model: \(error.localizedDescription)"
+            loadFallbackModel()
+            isLoading = false
         }
+    }
+    
+    private func setupLighting() {
+        let ambientLight = Entity()
+        ambientLight.components.set(DirectionalLightComponent(
+            color: .white,
+            intensity: 500
+        ))
+        ambientLight.position = SIMD3<Float>(0, 5, 5)
+        ambientLight.look(at: SIMD3<Float>(0, 0, 0), from: ambientLight.position, relativeTo: nil)
+        rootEntity.addChild(ambientLight)
+        
+        let fillLight = Entity()
+        fillLight.components.set(DirectionalLightComponent(
+            color: .white,
+            intensity: 300
+        ))
+        fillLight.position = SIMD3<Float>(-3, 2, 3)
+        fillLight.look(at: SIMD3<Float>(0, 0, 0), from: fillLight.position, relativeTo: nil)
+        rootEntity.addChild(fillLight)
+        
+        let pointLight = Entity()
+        pointLight.components.set(PointLightComponent(
+            color: .white,
+            intensity: 1000
+        ))
+        pointLight.position = SIMD3<Float>(2, 2, 2)
+        rootEntity.addChild(pointLight)
     }
     
     private func loadUSDZModel() async {
         guard let bookmark = windowManager.getWindowSafely(for: windowID)?.state.usdzBookmark else {
             await MainActor.run {
-                print("No USDZ bookmark available, showing fallback cube")
-                loadFallbackCube()
+                print("No USDZ bookmark available, loading procedural model")
+                loadProceduralModel()
             }
             return
         }
@@ -139,150 +183,197 @@ struct Model3DVolumetricView: View {
         do {
             var isStale = false
             let url = try URL(resolvingBookmarkData: bookmark, bookmarkDataIsStale: &isStale)
-
-            if isStale {
-                // Recreate bookmark if stale
-                let newBookmark = try url.bookmarkData()
-                await MainActor.run {
-                    windowManager.updateUSDZBookmark(for: windowID, bookmark: newBookmark)
-                }
-            }
-
+            
             guard url.startAccessingSecurityScopedResource() else {
                 throw NSError(domain: "SecurityScope", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to access security scoped resource"])
             }
             
             defer { url.stopAccessingSecurityScopedResource() }
 
-            let modelEntity = try await ModelEntity(contentsOf: url)
-
+            let loadedEntity = try await ModelEntity(contentsOf: url)
+            
             await MainActor.run {
-                // Apply transformations from modelData
-                modelEntity.scale = SIMD3<Float>(repeating: Float(modelData.scale))
-                modelEntity.position = SIMD3<Float>(
-                    Float(modelData.position.x),
-                    Float(modelData.position.y),
-                    Float(modelData.position.z)
-                )
-
-                // Apply rotation if needed
-                modelEntity.orientation = simd_quatf(
-                    angle: Float(modelData.rotation.x * .pi / 180),
-                    axis: SIMD3<Float>(1, 0, 0)
-                ) * simd_quatf(
-                    angle: Float(modelData.rotation.y * .pi / 180),
-                    axis: SIMD3<Float>(0, 1, 0)
-                ) * simd_quatf(
-                    angle: Float(modelData.rotation.z * .pi / 180),
-                    axis: SIMD3<Float>(0, 0, 1)
-                )
-
-                rootEntity.addChild(modelEntity)
+                let container = Entity()
+                container.addChild(loadedEntity)
+                
+                container.scale = SIMD3<Float>(repeating: 2.0)
+                container.position = SIMD3<Float>(0, 0, 0)
+                
+                rootEntity.addChild(container)
+                modelEntity = container
+                
                 print("Successfully loaded USDZ model: \(url.lastPathComponent)")
             }
         } catch {
             await MainActor.run {
-                print("Failed to load USDZ model, showing fallback cube: \(error)")
-                loadFallbackCube()
+                print("Failed to load USDZ model: \(error)")
+                loadProceduralModel()
             }
         }
     }
     
-    private func loadCubeModel() {
-        let mesh = MeshResource.generateBox(size: Float(modelData.scale))
-        let material = SimpleMaterial(color: .orange, roughness: 0.5, isMetallic: true)
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-
-        modelEntity.position = SIMD3<Float>(
-            Float(modelData.position.x),
-            Float(modelData.position.y),
-            Float(modelData.position.z)
-        )
-
-        rootEntity.addChild(modelEntity)
-        print("Loaded cube model")
-    }
-    
-    private func loadSphereModel() {
-        let mesh = MeshResource.generateSphere(radius: Float(modelData.scale))
-        let material = SimpleMaterial(color: .green, roughness: 0.3, isMetallic: true)
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-
-        modelEntity.position = SIMD3<Float>(
-            Float(modelData.position.x),
-            Float(modelData.position.y),
-            Float(modelData.position.z)
-        )
-
-        rootEntity.addChild(modelEntity)
-        print("Loaded sphere model")
-    }
-    
-    private func loadCustomMesh() throws {
-        var descr = MeshDescriptor()
-        let positions = modelData.vertices.map { vertex in
-            SIMD3<Float>(Float(vertex.x), Float(vertex.y), Float(vertex.z))
+    private func loadProceduralModel() {
+        let container = Entity()
+        
+        if modelData.modelType == "cube" {
+            let mesh = MeshResource.generateBox(size: 2.0)
+            let material = SimpleMaterial(color: .orange, roughness: 0.3, isMetallic: true)
+            let entity = ModelEntity(mesh: mesh, materials: [material])
+            container.addChild(entity)
+            
+        } else if modelData.modelType == "sphere" {
+            let mesh = MeshResource.generateSphere(radius: 1.5)
+            let material = SimpleMaterial(color: .green, roughness: 0.3, isMetallic: true)
+            let entity = ModelEntity(mesh: mesh, materials: [material])
+            container.addChild(entity)
+            
+        } else if !modelData.vertices.isEmpty && !modelData.faces.isEmpty {
+            if let customEntity = createCustomMeshEntity() {
+                container.addChild(customEntity)
+            } else {
+                createDecoratedFallback(in: container)
+            }
+        } else {
+            createDecoratedFallback(in: container)
         }
-        descr.positions = MeshBuffer(positions)
-
-        let material = SimpleMaterial(color: .blue, roughness: 0.5, isMetallic: false)
-
-        var triangles: [UInt32] = []
-        for face in modelData.faces {
-            if face.vertices.count >= 3 {
-                for i in 1..<(face.vertices.count - 1) {
-                    triangles.append(UInt32(face.vertices[0]))
-                    triangles.append(UInt32(face.vertices[i]))
-                    triangles.append(UInt32(face.vertices[i + 1]))
+        
+        container.position = SIMD3<Float>(0, 0, 0)
+        rootEntity.addChild(container)
+        modelEntity = container
+        
+        print("Loaded procedural model of type: \(modelData.modelType)")
+    }
+    
+    private func createCustomMeshEntity() -> ModelEntity? {
+        do {
+            var descr = MeshDescriptor()
+            
+            let positions = modelData.vertices.map { vertex in
+                SIMD3<Float>(Float(vertex.x), Float(vertex.y), Float(vertex.z))
+            }
+            descr.positions = MeshBuffer(positions)
+            
+            var triangles: [UInt32] = []
+            for face in modelData.faces {
+                if face.vertices.count >= 3 {
+                    for i in 1..<(face.vertices.count - 1) {
+                        triangles.append(UInt32(face.vertices[0]))
+                        triangles.append(UInt32(face.vertices[i]))
+                        triangles.append(UInt32(face.vertices[i + 1]))
+                    }
                 }
             }
+            
+            if !triangles.isEmpty {
+                descr.primitives = .triangles(triangles)
+                
+                let normalMesh = try MeshResource.generate(from: [descr])
+                let material = SimpleMaterial(color: .cyan, roughness: 0.4, isMetallic: false)
+                let entity = ModelEntity(mesh: normalMesh, materials: [material])
+                
+                entity.scale = SIMD3<Float>(repeating: 2.0)
+                
+                return entity
+            }
+        } catch {
+            print("Failed to create custom mesh: \(error)")
         }
-
-        descr.primitives = .triangles(triangles)
-
-        let mesh = try MeshResource.generate(from: [descr])
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-        modelEntity.scale = SIMD3<Float>(repeating: Float(modelData.scale))
-        modelEntity.position = SIMD3<Float>(
-            Float(modelData.position.x),
-            Float(modelData.position.y),
-            Float(modelData.position.z)
-        )
-
-        rootEntity.addChild(modelEntity)
-        print("Loaded custom mesh model")
+        
+        return nil
     }
     
-    private func loadFallbackCube() {
-        // Create a simple fallback cube
-        let mesh = MeshResource.generateBox(size: 1.0)
-        let material = SimpleMaterial(color: .gray, roughness: 0.5, isMetallic: false)
-        let cubeEntity = ModelEntity(mesh: mesh, materials: [material])
+    private func createDecoratedFallback(in container: Entity) {
+        let mainMesh = MeshResource.generateBox(size: 1.5)
+        let mainMaterial = SimpleMaterial(color: .blue, roughness: 0.3, isMetallic: true)
+        let mainEntity = ModelEntity(mesh: mainMesh, materials: [mainMaterial])
+        container.addChild(mainEntity)
         
-        // Add a text entity to indicate this is a fallback
-        if let textMesh = try? MeshResource.generateText("Fallback Cube", extrusionDepth: 0.1) {
+        for i in 0..<6 {
+            let angle = Float(i) * .pi / 3
+            let smallMesh = MeshResource.generateBox(size: 0.3)
+            let smallMaterial = SimpleMaterial(color: .orange, roughness: 0.3, isMetallic: true)
+            let smallEntity = ModelEntity(mesh: smallMesh, materials: [smallMaterial])
+            
+            let radius: Float = 2.0
+            smallEntity.position = SIMD3<Float>(
+                radius * cos(angle),
+                0,
+                radius * sin(angle)
+            )
+            container.addChild(smallEntity)
+        }
+        
+        if let textMesh = try? MeshResource.generateText(modelData.title, extrusionDepth: 0.1) {
+            let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
+            let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
+            textEntity.position = SIMD3<Float>(0, 2.5, 0)
+            textEntity.scale = SIMD3<Float>(repeating: 0.2)
+            container.addChild(textEntity)
+        }
+    }
+    
+    private func loadFallbackModel() {
+        let container = Entity()
+        
+        let mesh = MeshResource.generateSphere(radius: 1.0)
+        let material = SimpleMaterial(color: .red, roughness: 0.5, isMetallic: false)
+        let entity = ModelEntity(mesh: mesh, materials: [material])
+        container.addChild(entity)
+        
+        if let textMesh = try? MeshResource.generateText("Error Loading Model", extrusionDepth: 0.1) {
             let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
             let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
             textEntity.position = SIMD3<Float>(0, 1.5, 0)
-            textEntity.scale = SIMD3<Float>(repeating: 0.3)
-            rootEntity.addChild(textEntity)
+            textEntity.scale = SIMD3<Float>(repeating: 0.15)
+            container.addChild(textEntity)
         }
-
-        // Add some rotation animation to make it more interesting
-        let rotationAnimation = FromToByAnimation(
-            name: "rotation",
-            from: Transform(rotation: simd_quatf(angle: 0, axis: [0, 1, 0])),
-            to: Transform(rotation: simd_quatf(angle: .pi * 2, axis: [0, 1, 0])),
-            duration: 4.0,
-            timing: .linear,
-            isAdditive: false
-        )
         
-        if let animation = try? AnimationResource.generate(with: rotationAnimation) {
-            cubeEntity.playAnimation(animation.repeat())
+        rootEntity.addChild(container)
+        modelEntity = container
+    }
+    
+    private func finalizeModelSetup() async {
+        guard let model = modelEntity else { return }
+        
+        updateModelScale(modelScale)
+        
+        if autoRotate {
+            toggleAutoRotation(true)
         }
-
-        rootEntity.addChild(cubeEntity)
-        print("Loaded fallback cube")
+        
+        model.components.set(InputTargetComponent())
+        
+        let bounds = model.visualBounds(relativeTo: nil)
+        let size = bounds.max - bounds.min
+        let collisionShape = ShapeResource.generateBox(size: size)
+        model.components.set(CollisionComponent(shapes: [collisionShape]))
+        
+        print("Model setup finalized - Model should now be visible")
+    }
+    
+    private func updateModelScale(_ scale: Float) {
+        guard let model = modelEntity else { return }
+        model.scale = SIMD3<Float>(repeating: scale)
+    }
+    
+    private func toggleAutoRotation(_ enabled: Bool) {
+        guard let model = modelEntity else { return }
+        
+        if enabled {
+            let rotationAnimation = FromToByAnimation(
+                name: "autoRotation",
+                from: Transform(rotation: simd_quatf(angle: 0, axis: [0, 1, 0])),
+                to: Transform(rotation: simd_quatf(angle: .pi * 2, axis: [0, 1, 0])),
+                duration: 8.0,
+                timing: .linear,
+                isAdditive: false
+            )
+            
+            if let animation = try? AnimationResource.generate(with: rotationAnimation) {
+                model.playAnimation(animation.repeat())
+            }
+        } else {
+            model.stopAllAnimations()
+        }
     }
 }

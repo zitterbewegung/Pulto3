@@ -3,9 +3,8 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/13/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 //
 //  WindowTypeManager.swift
@@ -23,7 +22,7 @@ import Charts
 class WindowTypeManager: ObservableObject {
 
     static let shared = WindowTypeManager()
-    @Published var activeWindowID: Int? = nil        // ← NEW
+    @Published var activeWindowID: Int? = nil        // NEW
     @Published private var windows: [Int: NewWindowID] = [:]
     @Published private var openWindowIDs: Set<Int> = []
     @Published var selectedProject: Project? = nil
@@ -78,19 +77,17 @@ class WindowTypeManager: ObservableObject {
 
     func getWindowSafely(for id: Int) -> NewWindowID? {
         guard let window = windows[id] else {
-            print("⚠️ Warning: Window #\(id) not found in WindowTypeManager")
+            print(" Warning: Window #\(id) not found in WindowTypeManager")
             return nil
         }
 
         // If window exists in manager but not marked as open, it might have been closed
         if !openWindowIDs.contains(id) {
-            print("ℹ️ Info: Window #\(id) exists in manager but is not marked as open")
+            print(" Info: Window #\(id) exists in manager but is not marked as open")
         }
 
         return window
     }
-
-    
 
     // Add these functions to WindowTypeManager class
     private func parseModel3DDataFromContent(_ content: String) throws -> Model3DData? {
@@ -193,6 +190,24 @@ class WindowTypeManager: ObservableObject {
         }
     }
 
+    func getWindowChartData(for id: Int) -> ChartData? {
+        return windows[id]?.state.chartData
+    }
+
+    // Chart3D data methods
+    func updateWindowChart3DData(_ id: Int, chart3DData: Chart3DData) {
+        windows[id]?.state.chart3DData = chart3DData
+        windows[id]?.state.lastModified = Date()
+
+        // Auto-set template to custom if not already set
+        if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .custom
+        }
+    }
+
+    func getWindowChart3DData(for id: Int) -> Chart3DData? {
+        return windows[id]?.state.chart3DData
+    }
 
     // New point cloud methods
     func updateWindowPointCloud(_ id: Int, pointCloud: PointCloudData) {
@@ -209,12 +224,6 @@ class WindowTypeManager: ObservableObject {
         return windows[id]?.state.pointCloudData
     }
 
-
-    func getWindowChartData(for id: Int) -> ChartData? {
-        return windows[id]?.state.chartData
-    }
-
-    // Add this method to WindowTypeManager
     func importAndRestoreEnvironment(
         fileURL: URL,
         clearExisting: Bool = false,
@@ -886,7 +895,6 @@ class WindowTypeManager: ObservableObject {
         return windows[id]?.state.dataFrameData
     }
 
-
     func removeWindow(_ id: Int) {
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
@@ -995,6 +1003,7 @@ class WindowTypeManager: ObservableObject {
             return generateModel3DCellContent(for: window)
         }
     }
+
     private func generateChartCellContent(for window: NewWindowID) -> String {
         if let chartData = window.state.chartData {
             return chartData.toEnhancedPythonCode()
