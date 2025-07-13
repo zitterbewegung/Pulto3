@@ -354,7 +354,7 @@ class WorkspaceManager: ObservableObject {
         // Generate enhanced notebook with workspace metadata
         let notebookJSON = generateEnhancedNotebook(metadata: metadata, windowManager: windowManager)
         
-        try notebookJSON.write(to: fileURL, atomically: true, encoding: .utf8)
+        try notebookJSON.write(to: fileURL, atomically: true, encoding: String.Encoding.utf8)
         
         return fileURL
     }
@@ -378,34 +378,42 @@ class WorkspaceManager: ObservableObject {
             createJupyterCell(from: window)
         }
         
+        let kernelspec: [String: Any] = [
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+        ]
+        
+        let languageInfo: [String: Any] = [
+            "name": "python",
+            "version": "3.8.0"
+        ]
+        
+        let visionOSExport: [String: Any] = [
+            "export_date": ISO8601DateFormatter().string(from: Date()),
+            "total_windows": windowManager.getAllWindows().count,
+            "window_types": Array(Set(windowManager.getAllWindows().map { $0.windowType.rawValue })),
+            "export_templates": Array(Set(windowManager.getAllWindows().map { $0.state.exportTemplate.rawValue })),
+            "all_tags": Array(Set(windowManager.getAllWindows().flatMap { $0.state.tags }))
+        ]
+        
+        let workspaceMetadataDict: [String: Any] = [
+            "id": metadata.id.uuidString,
+            "name": metadata.name,
+            "description": metadata.description,
+            "category": metadata.category.rawValue,
+            "is_template": metadata.isTemplate,
+            "created_date": ISO8601DateFormatter().string(from: metadata.createdDate),
+            "modified_date": ISO8601DateFormatter().string(from: Date()),
+            "tags": metadata.tags,
+            "version": metadata.version
+        ]
+        
         let notebookMetadata: [String: Any] = [
-            "kernelspec": [
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3"
-            ],
-            "language_info": [
-                "name": "python",
-                "version": "3.8.0"
-            ],
-            "visionos_export": [
-                "export_date": ISO8601DateFormatter().string(from: Date()),
-                "total_windows": windowManager.getAllWindows().count,
-                "window_types": Array(Set(windowManager.getAllWindows().map { $0.windowType.rawValue })),
-                "export_templates": Array(Set(windowManager.getAllWindows().map { $0.state.exportTemplate.rawValue })),
-                "all_tags": Array(Set(windowManager.getAllWindows().flatMap { $0.state.tags }))
-            ],
-            "workspace_metadata": [
-                "id": metadata.id.uuidString,
-                "name": metadata.name,
-                "description": metadata.description,
-                "category": metadata.category.rawValue,
-                "is_template": metadata.isTemplate,
-                "created_date": ISO8601DateFormatter().string(from: metadata.createdDate),
-                "modified_date": ISO8601DateFormatter().string(from: Date()),
-                "tags": metadata.tags,
-                "version": metadata.version
-            ]
+            "kernelspec": kernelspec,
+            "language_info": languageInfo,
+            "visionos_export": visionOSExport,
+            "workspace_metadata": workspaceMetadataDict
         ]
         
         let notebook: [String: Any] = [
