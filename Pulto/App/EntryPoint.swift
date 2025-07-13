@@ -81,9 +81,44 @@ struct EntryPoint: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+        WindowGroup(id: "modelViewer", for: URL.self) { $modelURL in
+                    if let url = modelURL {
+                        ThreeDModelViewerView(modelURL: url)
+                    }
+                }
+        .defaultSize(width: 800, height: 600, depth: 400)
 
+        WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
+            // The only check you need is to safely unwrap the optional window ID.
+            if let id = id {
+                // The view now handles all its own logic. Just give it the ID
+                // and the window manager environment object.
+                Model3DVolumetricView(windowID: id)
+                    .environmentObject(windowManager)
+            } else {
+                // Optional: A fallback view if the ID is somehow nil.
+                Text("Invalid Window ID")
+            }
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
+    
         // 3-D model volume
-
+        // In your App's body, add this WindowGroup (assuming this file is part of the app or move to App file)
+        /*WindowGroup(id: "volumetric-model3d", for: Int.self) { $windowID in
+            if let windowID = windowID {
+                ModelViewerView(windowID: windowID)
+            }
+        }
+        .windowStyle(.volumetric)
+         .defaultSize(width: 1, height: 1, depth: 1, in: .meters)*/
+        //.defaultWindowPlacement(<#T##makePlacement: (WindowLayoutRoot, WindowPlacementContext) -> WindowPlacement##(WindowLayoutRoot, WindowPlacementContext) -> WindowPlacement##(_ content: WindowLayoutRoot, _ context: WindowPlacementContext) -> WindowPlacement#>)
+        //.defaultWindowPlacement { content, context in
+        //    VolumetricWindowPlacement(.head) {
+        //        SIMD3<Float>(0, 0, -1)
+        //    }
+        //}
+        /*
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
             if let id = id, let win = windowManager.getWindow(for: id) {
                 if let modelData = win.state.model3DData {
@@ -125,9 +160,10 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.8, height: 0.8, depth: 0.8, in: .meters)
-
+        .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
+         */
         // 3-D chart volume
+        
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
             if
                 let id = id,
