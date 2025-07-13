@@ -3,7 +3,7 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/9/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -462,29 +462,6 @@ struct Model3DImportView: View {
 
     private func createModel3DFromFile(_ file: ModelFile) async throws -> Model3DData {
         Model3DData(title: file.name, modelType: "imported")
-    }
-}
-
-// MARK: - Supporting Types
-
-struct ModelFile: Identifiable {
-    let id = UUID()
-    let url: URL
-    let name: String
-    let size: Int64
-    var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
-    }
-}
-
-enum ModelImportError: LocalizedError {
-    case invalidURL, unsupportedFormat, fileNotFound
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL:       return "The provided URL is not valid."
-        case .unsupportedFormat:return "The model format is not supported."
-        case .fileNotFound:     return "Could not locate that file."
-        }
     }
 }
 

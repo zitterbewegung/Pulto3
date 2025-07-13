@@ -179,7 +179,7 @@ extension Model3DData {
         var model = Model3DData(title: name, modelType: "fbx")
         
         // Create a simplified humanoid figure
-        // Head
+        // Head - use existing generateSphere method
         let headVertices = generateSphere(radius: 0.5, segments: 8).vertices.map { vertex in
             Vertex3D(x: vertex.x, y: vertex.y + 2.0, z: vertex.z)
         }
@@ -407,36 +407,6 @@ extension Model3DData {
         model.materials = [
             Material3D(name: "root_node", color: "red", metallic: 0.2, roughness: 0.6, transparency: 0.0),
             Material3D(name: "child_node", color: "green", metallic: 0.2, roughness: 0.6, transparency: 0.0)
-        ]
-        
-        return model
-    }
-    
-    static func generateSphere(radius: Double, segments: Int) -> Model3DData {
-        var model = Model3DData(title: "Sphere", modelType: "generated")
-        
-        let vertices: [Vertex3D] = []
-        let faces: [Face3D] = []
-        
-        model.vertices = vertices
-        model.faces = faces
-        model.materials = [
-            Material3D(name: "sphere_material", color: "blue", metallic: 0.5, roughness: 0.7, transparency: 0.0)
-        ]
-        
-        return model
-    }
-    
-    static func generateCube(size: Double) -> Model3DData {
-        var model = Model3DData(title: "Cube", modelType: "generated")
-        
-        let vertices: [Vertex3D] = []
-        let faces: [Face3D] = []
-        
-        model.vertices = vertices
-        model.faces = faces
-        model.materials = [
-            Material3D(name: "cube_material", color: "black", metallic: 0.2, roughness: 0.8, transparency: 0.0)
         ]
         
         return model

@@ -713,30 +713,3 @@ class Model3DImporter {
         return nil
     }
 }
-
-// MARK: - ModelFile and ModelImportError
-
-struct ModelFile: Identifiable {
-    let id = UUID()
-    let url: URL
-    let name: String
-    let size: Int64
-    
-    var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
-    }
-}
-
-enum ModelImportError: LocalizedError {
-    case invalidURL, unsupportedFormat, fileNotFound, parsingFailed, conversionRequired
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL: return "The provided URL is not valid."
-        case .unsupportedFormat: return "The model format is not supported."
-        case .fileNotFound: return "Could not locate that file."
-        case .parsingFailed: return "Failed to parse the model file."
-        case .conversionRequired: return "This format requires conversion to USDZ for optimal display."
-        }
-    }
-}
