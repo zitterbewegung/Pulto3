@@ -832,8 +832,8 @@ enum StandardWindowType: String, CaseIterable {
     case charts     = "Charts"
     case dataFrame  = "Data Table"
     case metrics    = "Metrics"
-    case spatial    = "Spatial"
     case pointCloud = "Point Cloud"
+    case spatial    = "Spatial"
     case model3d    = "3D Model"
 
     var displayName: String { rawValue }
@@ -876,8 +876,8 @@ enum StandardWindowType: String, CaseIterable {
         case .charts:     return .charts
         case .dataFrame:  return .column
         case .metrics:    return .volume
-        case .spatial:    return .spatial
-        case .pointCloud: return .pointcloud
+        case .spatial:    return .pointcloud
+        case .pointCloud: return .spatial
         case .model3d:    return .model3d
         }
     }
@@ -994,7 +994,6 @@ struct WindowRow: View {
                     Text("•").foregroundStyle(.tertiary)
                     Text("\(Int(window.position.width))×\(Int(window.position.height))")
                         .fontDesign(.monospaced)
-
                     if !isActuallyOpen {
                         Text("• Not Open").foregroundStyle(.orange)
                     }
