@@ -831,10 +831,10 @@ struct EnvironmentActionCard: View {
 enum StandardWindowType: String, CaseIterable {
     case charts     = "Charts"
     case dataFrame  = "Data Table"
-    case metrics    = "Metrics"
-    case pointCloud = "Point Cloud"
-    case spatial    = "Spatial"
     case model3d    = "3D Model"
+    case pointCloud = "Point Cloud"
+    // case metrics    = "Metrics"  // Hidden
+    // case spatial    = "Spatial"  // Hidden
 
     var displayName: String { rawValue }
 
@@ -842,10 +842,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "chart.line.uptrend.xyaxis"
         case .dataFrame:  return "tablecells"
-        case .metrics:    return "gauge"
-        case .spatial:    return "rectangle.3.group"
-        case .pointCloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
+        case .pointCloud: return "circle.grid.3x3"
+        // case .metrics:    return "gauge"  // Hidden
+        // case .spatial:    return "rectangle.3.group"  // Hidden
         }
     }
 
@@ -853,10 +853,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .blue
         case .dataFrame:  return .green
-        case .metrics:    return .orange
-        case .spatial:    return .purple
-        case .pointCloud: return .cyan
         case .model3d:    return .red
+        case .pointCloud: return .cyan
+        // case .metrics:    return .orange  // Hidden
+        // case .spatial:    return .purple  // Hidden
         }
     }
 
@@ -864,10 +864,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "Charts and graphs"
         case .dataFrame:  return "Tabular data viewer"
-        case .metrics:    return "Performance metrics"
-        case .spatial:    return "Spatial editor"
-        case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
+        case .pointCloud: return "3D point clouds"
+        // case .metrics:    return "Performance metrics"  // Hidden
+        // case .spatial:    return "Spatial editor"  // Hidden
         }
     }
 
@@ -875,10 +875,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .charts
         case .dataFrame:  return .column
-        case .metrics:    return .volume
-        case .spatial:    return .pointcloud
-        case .pointCloud: return .spatial
         case .model3d:    return .model3d
+        case .pointCloud: return .spatial
+        // case .metrics:    return .volume  // Hidden
+        // case .spatial:    return .pointcloud  // Hidden
         }
     }
 }

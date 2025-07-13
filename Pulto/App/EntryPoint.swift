@@ -86,7 +86,6 @@ struct EntryPoint: App {
         .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
 
         // 3-D model volume
-
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
             if let id = id, let win = windowManager.getWindow(for: id) {
                 if let modelData = win.state.model3DData {
