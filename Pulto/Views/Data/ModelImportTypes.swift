@@ -179,7 +179,7 @@ extension Model3DData {
         var model = Model3DData(title: name, modelType: "fbx")
         
         // Create a simplified humanoid figure
-        // Head - use existing generateSphere method
+        // Head - use existing generateSphere method from OpenWindowView.swift
         let headVertices = generateSphere(radius: 0.5, segments: 8).vertices.map { vertex in
             Vertex3D(x: vertex.x, y: vertex.y + 2.0, z: vertex.z)
         }
@@ -377,7 +377,7 @@ extension Model3DData {
         var model = Model3DData(title: name, modelType: "scn")
         
         // Create a hierarchical scene representation
-        // Root node (cube) - use existing generateCube method
+        // Root node (cube) - use existing generateCube method from OpenWindowView.swift
         let rootCube = generateCube(size: 1.0)
         model.vertices.append(contentsOf: rootCube.vertices)
         model.faces.append(contentsOf: rootCube.faces)

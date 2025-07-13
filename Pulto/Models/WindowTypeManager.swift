@@ -18,6 +18,12 @@ import SwiftUI
 import Foundation
 import Charts
 
+// Notification names for project events
+extension Notification.Name {
+    static let projectSelected = Notification.Name("projectSelected")
+    static let projectCleared = Notification.Name("projectCleared")
+}
+
 // Enhanced window manager with export capabilities and lifecycle management
 class WindowTypeManager: ObservableObject {
 
@@ -33,11 +39,17 @@ class WindowTypeManager: ObservableObject {
     func setSelectedProject(_ project: Project) {
         selectedProject = project
         objectWillChange.send()
+        
+        // Notify that a project has been selected - can be used to trigger 3D content creation
+        NotificationCenter.default.post(name: .projectSelected, object: project)
     }
 
     func clearSelectedProject() {
         selectedProject = nil
         objectWillChange.send()
+        
+        // Notify that project has been cleared
+        NotificationCenter.default.post(name: .projectCleared, object: nil)
     }
 
     func getNextWindowID() -> Int {
