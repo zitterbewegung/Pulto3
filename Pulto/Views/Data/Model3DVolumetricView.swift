@@ -92,6 +92,14 @@ struct Model3DVolumetricView: View {
         light.position = SIMD3<Float>(0, 1, 1)
         rootEntity.addChild(light)
 
+        // Add ambient light
+        let ambientLight = Entity()
+        ambientLight.components.set(DirectionalLightComponent(
+            color: .white,
+            intensity: 300
+        ))
+        rootEntity.addChild(ambientLight)
+
         do {
             if modelData.modelType == "usdz" {
                 await loadUSDZModel()
@@ -102,14 +110,18 @@ struct Model3DVolumetricView: View {
             } else if !modelData.vertices.isEmpty && !modelData.faces.isEmpty {
                 try loadCustomMesh()
             } else {
-                // Fallback to a simple cube if no data
-                loadFallbackModel()
+                // Fallback to a cube if no data
+                print("No model data available, showing fallback cube")
+                loadFallbackCube()
             }
             
             isLoading = false
         } catch {
+            print("Error loading model: \(error)")
             await MainActor.run {
-                errorMessage = error.localizedDescription
+                errorMessage = "Failed to load model: \(error.localizedDescription)"
+                // Show fallback cube on error
+                loadFallbackCube()
                 isLoading = false
             }
         }
@@ -118,7 +130,8 @@ struct Model3DVolumetricView: View {
     private func loadUSDZModel() async {
         guard let bookmark = windowManager.getWindowSafely(for: windowID)?.state.usdzBookmark else {
             await MainActor.run {
-                errorMessage = "No USDZ file available"
+                print("No USDZ bookmark available, showing fallback cube")
+                loadFallbackCube()
             }
             return
         }
@@ -165,10 +178,12 @@ struct Model3DVolumetricView: View {
                 )
 
                 rootEntity.addChild(modelEntity)
+                print("Successfully loaded USDZ model: \(url.lastPathComponent)")
             }
         } catch {
             await MainActor.run {
-                errorMessage = "Failed to load USDZ: \(error.localizedDescription)"
+                print("Failed to load USDZ model, showing fallback cube: \(error)")
+                loadFallbackCube()
             }
         }
     }
@@ -185,6 +200,7 @@ struct Model3DVolumetricView: View {
         )
 
         rootEntity.addChild(modelEntity)
+        print("Loaded cube model")
     }
     
     private func loadSphereModel() {
@@ -199,6 +215,7 @@ struct Model3DVolumetricView: View {
         )
 
         rootEntity.addChild(modelEntity)
+        print("Loaded sphere model")
     }
     
     private func loadCustomMesh() throws {
@@ -233,22 +250,39 @@ struct Model3DVolumetricView: View {
         )
 
         rootEntity.addChild(modelEntity)
+        print("Loaded custom mesh model")
     }
     
-    private func loadFallbackModel() {
+    private func loadFallbackCube() {
+        // Create a simple fallback cube
         let mesh = MeshResource.generateBox(size: 1.0)
         let material = SimpleMaterial(color: .gray, roughness: 0.5, isMetallic: false)
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
+        let cubeEntity = ModelEntity(mesh: mesh, materials: [material])
         
         // Add a text entity to indicate this is a fallback
-        if let textMesh = try? MeshResource.generateText("No Model Data", extrusionDepth: 0.1) {
+        if let textMesh = try? MeshResource.generateText("Fallback Cube", extrusionDepth: 0.1) {
             let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
             let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
             textEntity.position = SIMD3<Float>(0, 1.5, 0)
-            textEntity.scale = SIMD3<Float>(repeating: 0.5)
+            textEntity.scale = SIMD3<Float>(repeating: 0.3)
             rootEntity.addChild(textEntity)
         }
 
-        rootEntity.addChild(modelEntity)
+        // Add some rotation animation to make it more interesting
+        let rotationAnimation = FromToByAnimation(
+            name: "rotation",
+            from: Transform(rotation: simd_quatf(angle: 0, axis: [0, 1, 0])),
+            to: Transform(rotation: simd_quatf(angle: .pi * 2, axis: [0, 1, 0])),
+            duration: 4.0,
+            timing: .linear,
+            isAdditive: false
+        )
+        
+        if let animation = try? AnimationResource.generate(with: rotationAnimation) {
+            cubeEntity.playAnimation(animation.repeat())
+        }
+
+        rootEntity.addChild(cubeEntity)
+        print("Loaded fallback cube")
     }
 }
