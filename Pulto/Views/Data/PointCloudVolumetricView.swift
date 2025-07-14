@@ -6,14 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
-//
-//  VolumetricWindows.swift
-//  UnderstandingVisionos
-//
-//  Volumetric windows for 3D Model and Point Cloud visualization
-//
-
 import SwiftUI
 import RealityKit
 

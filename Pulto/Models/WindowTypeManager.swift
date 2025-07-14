@@ -6,14 +6,6 @@
 //  Copyright 2025 Apple. All rights reserved.
 //
 
-//
-//  WindowTypeManager.swift
-//  Pulto
-//
-//  Created by Joshua Herman on 6/20/25.
-//  Copyright 2025 Apple. All rights reserved.
-//
-
 import SwiftUI
 import Foundation
 import Charts

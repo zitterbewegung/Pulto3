@@ -218,7 +218,7 @@ struct SpatialEditorView: View {
     @StateObject private var windowManager = WindowTypeManager.shared
     @State private var selectedVisualizationType: VisualizationType = .pointCloud
     @State private var currentVisualization: VisualizationData
-    @State private var showControls = true
+    @State private var showControls = false
     @State private var showImportSheet = false
     @State private var showCodeSidebar = false
     @State private var generatedCode = ""
@@ -261,11 +261,11 @@ struct SpatialEditorView: View {
         HStack(spacing: 0) {
             // Main Content
             VStack(spacing: 12) {
-                headerView
+                //headerView
 
                 if showControls {
                     VStack(spacing: 12) {
-                        visualizationTypeSelectorEnhanced
+                        //visualizationTypeSelectorEnhanced
                         controlsForCurrentType
                     }
                     .transition(.asymmetric(
@@ -279,8 +279,8 @@ struct SpatialEditorView: View {
 
                 if showControls {
                     VStack(spacing: 12) {
-                        statisticsView
-                        exportControlsView
+                        //statisticsView
+                        //exportControlsView
                     }
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.95)),
@@ -1787,4 +1787,7 @@ struct ExportButton: View {
             isHovered = hovering
         }
     }
+}
+#Preview{
+    SpatialEditorView()
 }

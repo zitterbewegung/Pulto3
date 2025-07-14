@@ -154,7 +154,7 @@ struct EnvironmentView: View {
     @State private var showFileImporter    = false
     @State private var showSettings        = false
     @State private var showAppleSignIn     = false
-    @State private var showWelcome         = true
+    @State private var showWelcome         = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -865,7 +865,7 @@ enum StandardWindowType: String, CaseIterable {
         case .charts:     return "Charts and graphs"
         case .dataFrame:  return "Tabular data viewer"
         case .metrics:    return "Performance metrics"
-        case .spatial:    return "Spatial editor"
+        case .spatial:    return "3D Charts"
         case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
         }
@@ -876,8 +876,8 @@ enum StandardWindowType: String, CaseIterable {
         case .charts:     return .charts
         case .dataFrame:  return .column
         case .metrics:    return .volume
-        case .spatial:    return .pointcloud
-        case .pointCloud: return .spatial
+        case .spatial:    return .spatial
+        case .pointCloud: return .pointcloud
         case .model3d:    return .model3d
         }
     }

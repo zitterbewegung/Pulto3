@@ -117,14 +117,6 @@ extension WindowTypeManager {
         }
     }
 
-    func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
-        if var window = windows[windowID] {
-            window.state.pointCloudBookmark = bookmark
-            window.state.lastModified = Date()
-            windows[windowID] = window
-            objectWillChange.send()
-        }
-    }
 
     // Helper method to check if window has 3D content
     func windowHas3DContent(_ windowID: Int) -> Bool {
@@ -1036,12 +1028,6 @@ extension WindowTypeManager {
     func updateUSDZBookmark(for windowID: Int, bookmark: Data) {
          updateWindowState(windowID) { state in
              state.usdzBookmark = bookmark
-         }
-     }
-
-     func updatePointCloudBookmark(for windowID: Int, bookmark: Data) {
-         updateWindowState(windowID) { state in
-             state.pointCloudBookmark = bookmark
          }
      }
 
