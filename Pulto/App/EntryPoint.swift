@@ -28,9 +28,9 @@ struct EntryPoint: App {
     init() {
         setupProjectNotifications()
         
-        // Start auto-save system
-        Task { @MainActor in
-            autoSaveManager.startAutoSave()
+        // Start auto-save system on main thread
+        DispatchQueue.main.async {
+            AutoSaveManager.shared.startAutoSave()
         }
     }
 
