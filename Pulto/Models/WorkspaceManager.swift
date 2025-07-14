@@ -128,7 +128,6 @@ enum WorkspaceCategory: String, CaseIterable, Codable {
 
 // MARK: - Workspace Manager
 
-@MainActor
 class WorkspaceManager: ObservableObject {
     static let shared = WorkspaceManager()
     

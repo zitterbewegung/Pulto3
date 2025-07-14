@@ -20,15 +20,7 @@ struct SettingsView: View {
     @AppStorage("enableNotifications") private var enableNotifications: Bool = true
     @AppStorage("themePreference") private var themePreference: String = "Auto"
     
-    // New auto-save settings
-    @AppStorage("autoSaveOnFocusLoss") private var autoSaveOnFocusLoss: Bool = true
-    @AppStorage("autoSaveOnMovement") private var autoSaveOnMovement: Bool = true
-    @AppStorage("jupyterServerAutoSave") private var jupyterServerAutoSave: Bool = false
-    @AppStorage("saveToLocalFiles") private var saveToLocalFiles: Bool = true
-    @AppStorage("autoSaveRetryCount") private var autoSaveRetryCount: Int = 3
-    
     @State private var selectedTab: SettingsTab = .general
-    @StateObject private var autoSaveManager = AutoSaveManager.shared
     
     enum SettingsTab: String, CaseIterable {
         case general = "General"
@@ -235,55 +227,17 @@ struct SettingsView: View {
                         Toggle("Auto-save after every window action", isOn: $autoSaveEnabled)
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .onChange(of: autoSaveEnabled) { _, newValue in
-                                autoSaveManager.updateSettings(autoSaveEnabled: newValue)
-                            }
                         
                         if autoSaveEnabled {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 4)
-                                
-                                Toggle("Save on window focus loss", isOn: $autoSaveOnFocusLoss)
-                                    .font(.caption)
-                                    .padding(.leading, 4)
-                                
-                                Toggle("Save on window movement", isOn: $autoSaveOnMovement)
-                                    .font(.caption)
-                                    .padding(.leading, 4)
-                            }
+                            Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 4)
                         }
                     }
                 }
                 
                 if autoSaveEnabled {
-                    SettingsSection("Auto-Save Destinations") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Toggle("Save to local files", isOn: $saveToLocalFiles)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .onChange(of: saveToLocalFiles) { _, newValue in
-                                    autoSaveManager.updateSettings(saveToLocalFiles: newValue)
-                                }
-                            
-                            Toggle("Save to Jupyter server", isOn: $jupyterServerAutoSave)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .onChange(of: jupyterServerAutoSave) { _, newValue in
-                                    autoSaveManager.updateSettings(jupyterServerAutoSave: newValue)
-                                }
-                            
-                            if jupyterServerAutoSave {
-                                Text("Uses server URL: \(defaultJupyterServerURL)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 4)
-                            }
-                        }
-                    }
-                    
                     SettingsSection("Auto-Save Interval") {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
@@ -306,45 +260,6 @@ struct SettingsView: View {
                             Text("How often to automatically save workspace changes")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    SettingsSection("Auto-Save Status") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Status:")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                
-                                Spacer()
-                                
-                                if autoSaveManager.isAutoSaving {
-                                    HStack {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                        Text("Saving...")
-                                            .font(.caption)
-                                    }
-                                } else {
-                                    Text("Ready")
-                                        .font(.caption)
-                                        .foregroundStyle(.green)
-                                }
-                            }
-                            
-                            if let lastSaveTime = autoSaveManager.lastSaveTime {
-                                Text("Last save: \(lastSaveTime.formatted())")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Button("Manual Save Now") {
-                                Task {
-                                    await autoSaveManager.triggerManualSave()
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
                         }
                     }
                 }
@@ -520,13 +435,6 @@ struct SettingsView: View {
         defaultWindowSize = "Medium"
         enableNotifications = true
         themePreference = "Auto"
-        
-        // Reset new auto-save settings
-        autoSaveOnFocusLoss = true
-        autoSaveOnMovement = true
-        jupyterServerAutoSave = false
-        saveToLocalFiles = true
-        autoSaveRetryCount = 3
     }
     
     private func exportSettings() {

@@ -91,8 +91,7 @@ struct UserProfileButton: View {
             .padding(.vertical,   12)
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
@@ -114,8 +113,7 @@ struct SettingsButton: View {
                 .padding(.vertical,   12)
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
@@ -145,8 +143,7 @@ struct EnvironmentView: View {
     @Environment(\.openWindow) private var openWindow
     @StateObject private var windowManager    = WindowTypeManager.shared
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @StateObject private var autoSaveManager  = AutoSaveManager.shared
-    
+
     // UI State
     @State private var selectedTab: ProjectTab = .workspace
     @StateObject private var viewModel         = PultoHomeViewModel()
@@ -160,96 +157,81 @@ struct EnvironmentView: View {
     @State private var showWelcome         = true
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                HeaderView(viewModel: viewModel,
-                           onLoginTap:    { closeAllSheets(); showAppleSignIn = true },
-                           onSettingsTap: { closeAllSheets(); showSettings    = true })
-                    .padding(.horizontal)
-                    .padding(.top)
+        VStack(spacing: 0) {
+            HeaderView(viewModel: viewModel,
+                       onLoginTap:    { closeAllSheets(); showAppleSignIn = true },
+                       onSettingsTap: { closeAllSheets(); showSettings    = true })
+                .padding(.horizontal)
+                .padding(.top)
 
-                // Auto-save Status (commented out temporarily)
-                // if selectedTab == .workspace {
-                //     AutoSaveStatusView()
-                //         .padding(.horizontal)
-                //         .padding(.top, 8)
-                // }
-                
-                // Tab Selection
-                TabView(selection: $selectedTab) {
+            TabView(selection: $selectedTab) {
+                Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
                     WorkspaceTab(
                         showWorkspaceDialog: $showWorkspaceDialog,
                         showTemplateGallery: $showTemplateGallery,
                         showNotebookImport:  $showNotebookImport,
                         loadWorkspace:       loadWorkspace
                     )
-                    .tag(ProjectTab.workspace)
-                    
+                }
+
+                Tab("Create", systemImage: "plus.circle.fill", value: .create) {
                     CreateTab(createWindow: createStandardWindow)
-                        .tag(ProjectTab.create)
-                    
+                }
+
+                Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
                     DataTab(
                         showFileImporter: $showFileImporter,
                         createBlankTable: createBlankDataTable
                     )
-                        .tag(ProjectTab.data)
-                    
+                }
+
+                Tab("Active", systemImage: "rectangle.stack.fill", value: .active) {
                     ActiveWindowsTab(
                         windowManager:  windowManager,
                         openWindow:     { openWindow(value: $0) },
                         closeWindow:    { windowManager.removeWindow($0) },
                         closeAllWindows: clearAllWindowsWithConfirmation
                     )
-                        .tag(ProjectTab.active)
                 }
-                .tabViewStyle(.sidebarAdaptable)
             }
-            .navigationTitle("Pulto Environment")
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                // Initialize auto-save system
-                autoSaveManager.startAutoSave()
-            }
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 32))
-            .padding(20)
-            .task {
-                await viewModel.loadInitialData()
-                checkFirstLaunch()
-            }
-
-            // ══════════ Sheets ══════════
-            .sheet(isPresented: $showWorkspaceDialog) {
-                WorkspaceDialog(isPresented: $showWorkspaceDialog,
-                                windowManager: windowManager)
-            }
-            .sheet(isPresented: $showTemplateGallery) {
-                TemplateView()
-                    .frame(minWidth: 800, minHeight: 600)
-            }
-            .sheet(isPresented: $showNotebookImport) {
-                NotebookImportDialog(isPresented: $showNotebookImport,
-                                     windowManager: windowManager)
-            }
-            .sheet(isPresented: $showWelcome) {
-                WelcomeSheet(isPresented: $showWelcome)
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsSheet(isPresented: $showSettings)
-            }
-            .sheet(isPresented: $showAppleSignIn) {
-                AppleSignInView(isPresented: $showAppleSignIn)
-                    .frame(width: 700, height: 800)
-            }
-            .fileImporter(
-                isPresented: $showFileImporter,
-                allowedContentTypes: supportedFileTypes,
-                allowsMultipleSelection: false,
-                onCompletion: handleFileImport
-            )
+            .tabViewStyle(.sidebarAdaptable)
         }
-        .preferredColorScheme(.dark)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .padding(20)
+        .task {
+            await viewModel.loadInitialData()
+            checkFirstLaunch()
+        }
+
+        // ══════════ Sheets ══════════
+        .sheet(isPresented: $showWorkspaceDialog) {
+            WorkspaceDialog(isPresented: $showWorkspaceDialog,
+                            windowManager: windowManager)
+        }
+        .sheet(isPresented: $showTemplateGallery) {
+            TemplateView()
+                .frame(minWidth: 800, minHeight: 600)
+        }
+        .sheet(isPresented: $showNotebookImport) {
+            NotebookImportDialog(isPresented: $showNotebookImport,
+                                 windowManager: windowManager)
+        }
+        .sheet(isPresented: $showWelcome) {
+            WelcomeSheet(isPresented: $showWelcome)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet(isPresented: $showSettings)
+        }
+        .sheet(isPresented: $showAppleSignIn) {
+            AppleSignInView(isPresented: $showAppleSignIn)
+                .frame(width: 700, height: 800)
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: supportedFileTypes,
+            allowsMultipleSelection: false,
+            onCompletion: handleFileImport
+        )
     }
 
     // MARK: - Settings Sheet
@@ -701,8 +683,7 @@ struct ActiveWindowsTab: View {
                                         }
                                         .padding(.horizontal, 12)
                                         .padding(.vertical,   8)
-                                        .background(.regularMaterial)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
                             }
@@ -779,8 +760,7 @@ struct ActiveWindowsTab: View {
                                         }
                                         .padding(.horizontal, 12)
                                         .padding(.vertical,   8)
-                                        .background(.regularMaterial)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
                             }
@@ -840,8 +820,7 @@ struct EnvironmentActionCard: View {
             .padding(.horizontal, 16)
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
@@ -852,10 +831,10 @@ struct EnvironmentActionCard: View {
 enum StandardWindowType: String, CaseIterable {
     case charts     = "Charts"
     case dataFrame  = "Data Table"
-    case model3d    = "3D Model"
-    case pointCloud = "Point Cloud"
     // case metrics    = "Metrics"  // Hidden
+    case pointCloud = "Point Cloud"
     // case spatial    = "Spatial"  // Hidden
+    case model3d    = "3D Model"
 
     var displayName: String { rawValue }
 
@@ -863,10 +842,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "chart.line.uptrend.xyaxis"
         case .dataFrame:  return "tablecells"
-        case .model3d:    return "cube"
-        case .pointCloud: return "circle.grid.3x3"
         // case .metrics:    return "gauge"  // Hidden
         // case .spatial:    return "rectangle.3.group"  // Hidden
+        case .pointCloud: return "circle.grid.3x3"
+        case .model3d:    return "cube"
         }
     }
 
@@ -874,10 +853,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .blue
         case .dataFrame:  return .green
-        case .model3d:    return .red
-        case .pointCloud: return .cyan
         // case .metrics:    return .orange  // Hidden
         // case .spatial:    return .purple  // Hidden
+        case .pointCloud: return .cyan
+        case .model3d:    return .red
         }
     }
 
@@ -885,10 +864,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "Charts and graphs"
         case .dataFrame:  return "Tabular data viewer"
-        case .model3d:    return "3D model viewer"
-        case .pointCloud: return "3D point clouds"
         // case .metrics:    return "Performance metrics"  // Hidden
         // case .spatial:    return "Spatial editor"  // Hidden
+        case .pointCloud: return "3D point clouds"
+        case .model3d:    return "3D model viewer"
         }
     }
 
@@ -896,10 +875,10 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .charts
         case .dataFrame:  return .column
-        case .model3d:    return .model3d
-        case .pointCloud: return .spatial
         // case .metrics:    return .volume  // Hidden
         // case .spatial:    return .pointcloud  // Hidden
+        case .pointCloud: return .spatial
+        case .model3d:    return .model3d
         }
     }
 }
@@ -932,8 +911,7 @@ struct WindowTypeCard: View {
             .padding()
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: 12)
@@ -978,8 +956,7 @@ struct WorkspaceRow: View {
             .padding()
         }
         .buttonStyle(.plain)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
         .scaleEffect(isHovered ? 1.01 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
@@ -1047,8 +1024,7 @@ struct WindowRow: View {
             }
         }
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
         .overlay {
             if !isActuallyOpen {
                 RoundedRectangle(cornerRadius: 8)
@@ -1077,8 +1053,7 @@ struct FormatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -1099,8 +1074,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -1228,8 +1202,7 @@ struct WelcomeSheet: View {
             }
         }
         .frame(width: 600, height: 700)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
     }
 }
 
@@ -1258,8 +1231,7 @@ struct ProTip: View {
             }
         }
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

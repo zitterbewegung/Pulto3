@@ -30,7 +30,6 @@ extension Notification.Name {
 }
 
 // Enhanced window manager with export capabilities and lifecycle management
-@MainActor
 class WindowTypeManager: ObservableObject {
 
     static let shared = WindowTypeManager()
@@ -44,6 +43,7 @@ class WindowTypeManager: ObservableObject {
 
     func setSelectedProject(_ project: Project) {
         selectedProject = project
+        objectWillChange.send()
         
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
@@ -51,6 +51,7 @@ class WindowTypeManager: ObservableObject {
 
     func clearSelectedProject() {
         selectedProject = nil
+        objectWillChange.send()
         
         // Notify that project has been cleared
         NotificationCenter.default.post(name: .projectCleared, object: nil)
@@ -63,8 +64,9 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
+        objectWillChange.send()
         
-        // Notify focus gained
+        // Notify focus gained for auto-save
         NotificationCenter.default.post(
             name: .windowFocusGained,
             object: nil,
@@ -74,8 +76,9 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
+        objectWillChange.send()
         
-        // Notify window closed
+        // Notify window closed for auto-save
         NotificationCenter.default.post(
             name: .windowClosed,
             object: nil,
@@ -92,6 +95,7 @@ class WindowTypeManager: ObservableObject {
         for windowID in windowsToRemove {
             windows.removeValue(forKey: windowID)
         }
+        objectWillChange.send()
     }
 
     func getAllWindows(onlyOpen: Bool = false) -> [NewWindowID] {
@@ -531,6 +535,7 @@ class WindowTypeManager: ObservableObject {
     func clearAllWindows() {
         windows.removeAll()
         openWindowIDs.removeAll()
+        objectWillChange.send()
     }
 
     // MARK: - Utility Methods
@@ -881,7 +886,7 @@ class WindowTypeManager: ObservableObject {
         let oldPosition = windows[id]?.position
         windows[id]?.position = position
         
-        // Notify position changed if it actually changed
+        // Notify position changed if it actually changed (for auto-save)
         if oldPosition != position {
             NotificationCenter.default.post(
                 name: .windowPositionChanged,
@@ -891,16 +896,12 @@ class WindowTypeManager: ObservableObject {
         }
     }
 
-    func updateWindowState(_ id: Int, state: WindowState) {
-        windows[id]?.state = state
-    }
-
     func updateWindowContent(_ id: Int, content: String) {
         let oldContent = windows[id]?.state.content
         windows[id]?.state.content = content
         windows[id]?.state.lastModified = Date()
         
-        // Notify content changed if it actually changed
+        // Notify content changed if it actually changed (for auto-save)
         if oldContent != content {
             NotificationCenter.default.post(
                 name: .windowContentChanged,
@@ -908,6 +909,10 @@ class WindowTypeManager: ObservableObject {
                 userInfo: ["windowID": id, "content": content]
             )
         }
+    }
+
+    func updateWindowState(_ id: Int, state: WindowState) {
+        windows[id]?.state = state
     }
 
     func updateWindowTemplate(_ id: Int, template: ExportTemplate) {

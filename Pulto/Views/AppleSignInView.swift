@@ -51,7 +51,6 @@ struct UserPreferences: Codable {
 }
 
 // MARK: - Authentication Manager
-@MainActor
 class AuthenticationManager: NSObject, ObservableObject {
     static let shared = AuthenticationManager()
     
@@ -65,9 +64,7 @@ class AuthenticationManager: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        Task {
-            await checkExistingAuthentication()
-        }
+        checkExistingAuthentication()
     }
     
     func signInWithApple() {
@@ -98,35 +95,30 @@ class AuthenticationManager: NSObject, ObservableObject {
         print("✅ Successfully signed out")
     }
     
-    private func checkExistingAuthentication() async {
+    private func checkExistingAuthentication() {
         // Check if user data exists in UserDefaults
         if let userData = UserDefaults.standard.data(forKey: userDefaultsKey),
            let user = try? JSONDecoder().decode(AppUser.self, from: userData) {
             
             // Verify the user still has valid Apple ID credentials
             let provider = ASAuthorizationAppleIDProvider()
-            
-            await withCheckedContinuation { continuation in
-                provider.getCredentialState(forUserID: user.id) { credentialState, error in
-                    continuation.resume()
-                    
-                    Task { @MainActor in
-                        switch credentialState {
-                        case .authorized:
-                            self.currentUser = user
-                            self.isSignedIn = true
-                            self.updateLastActiveDate()
-                            print("✅ User is still authorized")
-                        case .revoked, .notFound:
-                            self.signOut()
-                            print("⚠️ User authorization revoked or not found")
-                        case .transferred:
-                            self.signOut()
-                            print("⚠️ User authorization transferred")
-                        @unknown default:
-                            self.signOut()
-                            print("⚠️ Unknown authorization state")
-                        }
+            provider.getCredentialState(forUserID: user.id) { [weak self] credentialState, error in
+                DispatchQueue.main.async {
+                    switch credentialState {
+                    case .authorized:
+                        self?.currentUser = user
+                        self?.isSignedIn = true
+                        self?.updateLastActiveDate()
+                        print("✅ User is still authorized")
+                    case .revoked, .notFound:
+                        self?.signOut()
+                        print("⚠️ User authorization revoked or not found")
+                    case .transferred:
+                        self?.signOut()
+                        print("⚠️ User authorization transferred")
+                    @unknown default:
+                        self?.signOut()
+                        print("⚠️ Unknown authorization state")
                     }
                 }
             }
@@ -202,7 +194,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 // MARK: - ASAuthorizationControllerDelegate
 extension AuthenticationManager: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        Task { @MainActor in
+        DispatchQueue.main.async {
             self.isLoading = false
             
             if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
@@ -218,7 +210,7 @@ extension AuthenticationManager: ASAuthorizationControllerDelegate {
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        Task { @MainActor in
+        DispatchQueue.main.async {
             self.isLoading = false
             
             if let authError = error as? ASAuthorizationError {
@@ -302,6 +294,7 @@ struct AppleSignInView: View {
     @State private var animateWelcome = false
     @State private var animateFeatures = false
     @Environment(\.dismiss) private var dismiss
+    
     let isPresented: Binding<Bool>?
     
     init() {
@@ -343,21 +336,16 @@ struct AppleSignInView: View {
                 Text(authManager.errorMessage ?? "Unknown error occurred")
             }
             .onChange(of: authManager.errorMessage) { _, errorMessage in
-                if errorMessage != nil && !showingErrorAlert {
-                    showingErrorAlert = true
-                }
+                showingErrorAlert = errorMessage != nil
             }
             .onChange(of: authManager.isSignedIn) { _, isSignedIn in
                 if isSignedIn {
                     // Auto-dismiss after a short delay to show success
-                    Task {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        await MainActor.run {
-                            if let isPresented = isPresented {
-                                isPresented.wrappedValue = false
-                            } else {
-                                dismiss()
-                            }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if let isPresented = isPresented {
+                            isPresented.wrappedValue = false
+                        } else {
+                            dismiss()
                         }
                     }
                 }

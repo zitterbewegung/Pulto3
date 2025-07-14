@@ -3,8 +3,9 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/9/25.
-//  Copyright 2025 Apple. All rights reserved.
+//  Copyright © 2025 Apple. All rights reserved.
 //
+
 
 //
 //  VolumetricWindows.swift
@@ -165,17 +166,13 @@ struct PointCloudVolumetricView: View {
         .onAppear {
             model.colorMode = colorMode
         }
-        .onChange(of: colorMode) { _, newValue in
-            Task { @MainActor in
-                model.colorMode = newValue
-                model.needsUpdate = true
-            }
+        .onChange(of: colorMode) { newValue in
+            model.colorMode = newValue
+            model.needsUpdate = true
         }
-        .onChange(of: pointSize) { _, newValue in
-            Task { @MainActor in
-                model.pointSize = newValue
-                model.needsUpdate = true
-            }
+        .onChange(of: pointSize) { newValue in
+            model.pointSize = newValue
+            model.needsUpdate = true
         }
     }
     
@@ -379,12 +376,10 @@ extension UIColor {
         case "black": self.init(red: 0, green: 0, blue: 0, alpha: 1)
         case "gray", "grey": self.init(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
         case "lightblue": self.init(red: 0.7, green: 0.85, blue: 1, alpha: 1)
-        case "teal": self.init(red: 0, green: 0.5, blue: 0.5, alpha: 1)
         default: return nil
         }
     }
 }
-
 extension Model3DData {
     static func generateTestPyramid() -> Model3DData {
         let vertices = [

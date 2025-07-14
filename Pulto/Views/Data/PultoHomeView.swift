@@ -164,53 +164,6 @@ final class PultoHomeViewModel: ObservableObject {
     }
 }
 
-// MARK: - Color Extensions for Codable Support
-extension Color {
-    func toString() -> String {
-        switch self {
-        case .blue: return "blue"
-        case .green: return "green"
-        case .purple: return "purple"
-        case .orange: return "orange"
-        case .red: return "red"
-        case .yellow: return "yellow"
-        case .pink: return "pink"
-        case .cyan: return "cyan"
-        case .mint: return "mint"
-        case .indigo: return "indigo"
-        case .teal: return "teal"
-        case .brown: return "brown"
-        case .gray: return "gray"
-        case .black: return "black"
-        case .white: return "white"
-        case .clear: return "clear"
-        default: return "blue" // fallback
-        }
-    }
-    
-    static func fromString(_ string: String) -> Color {
-        switch string.lowercased() {
-        case "blue": return .blue
-        case "green": return .green
-        case "purple": return .purple
-        case "orange": return .orange
-        case "red": return .red
-        case "yellow": return .yellow
-        case "pink": return .pink
-        case "cyan": return .cyan
-        case "mint": return .mint
-        case "indigo": return .indigo
-        case "teal": return .teal
-        case "brown": return .brown
-        case "gray": return .gray
-        case "black": return .black
-        case "white": return .white
-        case "clear": return .clear
-        default: return .blue // fallback
-        }
-    }
-}
-
 // MARK: - Models
 struct UserStats {
     let totalProjects: Int
@@ -408,7 +361,34 @@ struct VisionOSButtonStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
-
+/*
+// MARK: - VisionOS Window Component
+struct VisionOSWindow<Content: View>: View {
+    let content: Content
+    let depth: CGFloat
+    
+    init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
+        self.content = content()
+        self.depth = depth
+    }
+    
+    var body: some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .scaleEffect(depth > 0 ? 1.0 + (depth * 0.02) : 1.0)
+    }
+}
+*/
 // MARK: - Main View
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
@@ -560,7 +540,7 @@ struct PultoHomeView: View {
     }
 
     private func openRecentProject(_ project: Project) {
-        Task { @MainActor in
+        Task {
             // Update the project's last modified date
             await viewModel.updateProjectLastModified(project.id)
             
@@ -575,7 +555,129 @@ struct PultoHomeView: View {
         }
     }
 }
+/*
+// MARK: - Header View
+struct HeaderView: View {
+    @ObservedObject var viewModel: PultoHomeViewModel
+    let onLoginTap: () -> Void
+    let onSettingsTap: () -> Void
 
+    var body: some View {
+        VisionOSWindow(depth: 1) {
+            HStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Pulto")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("Spatial Data Visualization Platform")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 16) {
+                    SettingsButton(onTap: onSettingsTap)
+
+                    UserProfileButton(
+                        userName: viewModel.userName,
+                        isLoggedIn: viewModel.isUserLoggedIn,
+                        onTap: onLoginTap
+                    )
+                }
+            }
+            .padding(24)
+        }
+    }
+}
+
+// MARK: - User Profile Button
+struct UserProfileButton: View {
+    let userName: String
+    let isLoggedIn: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 16) {
+                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
+                    .font(.title)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.blue)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isLoggedIn ? userName : "Sign In")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    if isLoggedIn {
+                        Text("View Profile")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+struct SettingsButton: View {
+    let onTap: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button {
+            onTap()
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.title)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.plain)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+ */
 // MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
@@ -907,6 +1009,53 @@ struct LoginView: View {
         .sheet(isPresented: $showingAppleSignIn) {
             AppleSignInView()
                 .frame(width: 600, height: 700)
+        }
+    }
+}
+
+// MARK: - Color Extensions for Codable Support
+extension Color {
+    func toString() -> String {
+        switch self {
+        case .blue: return "blue"
+        case .green: return "green"
+        case .purple: return "purple"
+        case .orange: return "orange"
+        case .red: return "red"
+        case .yellow: return "yellow"
+        case .pink: return "pink"
+        case .cyan: return "cyan"
+        case .mint: return "mint"
+        case .indigo: return "indigo"
+        case .teal: return "teal"
+        case .brown: return "brown"
+        case .gray: return "gray"
+        case .black: return "black"
+        case .white: return "white"
+        case .clear: return "clear"
+        default: return "blue" // fallback
+        }
+    }
+    
+    static func fromString(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "blue": return .blue
+        case "green": return .green
+        case "purple": return .purple
+        case "orange": return .orange
+        case "red": return .red
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "mint": return .mint
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "brown": return .brown
+        case "gray": return .gray
+        case "black": return .black
+        case "white": return .white
+        case "clear": return .clear
+        default: return .blue // fallback
         }
     }
 }

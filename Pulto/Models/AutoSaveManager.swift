@@ -2,7 +2,7 @@
 //  AutoSaveManager.swift
 //  Pulto
 //
-//  Comprehensive auto-save system for window focus and movement changes
+//  Auto-save system for window focus and movement changes
 //
 
 import Foundation
@@ -60,7 +60,6 @@ class AutoSaveManager: ObservableObject {
     // MARK: - Dependencies
     private let windowManager: WindowTypeManager
     private let workspaceManager: WorkspaceManager
-    private let jupyterClient: JupyterAPIClient
     private let windowFocusTracker: WindowFocusTracker
     private let windowMovementDebouncer: WindowMovementDebouncer
     
@@ -75,7 +74,6 @@ class AutoSaveManager: ObservableObject {
     private init() {
         self.windowManager = WindowTypeManager.shared
         self.workspaceManager = WorkspaceManager.shared
-        self.jupyterClient = JupyterAPIClient()
         self.windowFocusTracker = WindowFocusTracker()
         self.windowMovementDebouncer = WindowMovementDebouncer()
         
@@ -87,7 +85,7 @@ class AutoSaveManager: ObservableObject {
     func startAutoSave() {
         guard autoSaveEnabled else { return }
         
-        print(" AutoSaveManager: Starting auto-save system")
+        print("🔄 AutoSaveManager: Starting auto-save system")
         
         // Start interval timer
         startIntervalTimer()
@@ -96,11 +94,11 @@ class AutoSaveManager: ObservableObject {
         windowFocusTracker.startTracking()
         windowMovementDebouncer.startTracking()
         
-        print(" AutoSaveManager: Auto-save system started")
+        print("✅ AutoSaveManager: Auto-save system started")
     }
     
     func stopAutoSave() {
-        print(" AutoSaveManager: Stopping auto-save system")
+        print("⏹️ AutoSaveManager: Stopping auto-save system")
         
         intervalTimer?.invalidate()
         intervalTimer = nil
@@ -113,7 +111,7 @@ class AutoSaveManager: ObservableObject {
             await processSaveQueue()
         }
         
-        print(" AutoSaveManager: Auto-save system stopped")
+        print("✅ AutoSaveManager: Auto-save system stopped")
     }
     
     func triggerManualSave() async {
@@ -235,7 +233,7 @@ class AutoSaveManager: ObservableObject {
         
         isAutoSaving = true
         
-        print(" AutoSaveManager: Processing save event: \(event)")
+        print("💾 AutoSaveManager: Processing save event: \(event)")
         
         var results: [AutoSaveResult] = []
         
@@ -261,9 +259,9 @@ class AutoSaveManager: ObservableObject {
         // Log results
         for result in results {
             if result.success {
-                print(" AutoSaveManager: Saved to \(result.destination)")
+                print("✅ AutoSaveManager: Saved to \(result.destination)")
             } else {
-                print(" AutoSaveManager: Failed to save to \(result.destination): \(result.error?.localizedDescription ?? "Unknown error")")
+                print("❌ AutoSaveManager: Failed to save to \(result.destination): \(result.error?.localizedDescription ?? "Unknown error")")
             }
         }
         
@@ -343,77 +341,15 @@ class AutoSaveManager: ObservableObject {
     }
     
     private func saveToJupyterServer(event: AutoSaveEvent) async throws -> URL {
-        // Generate notebook content
-        let notebookJSON = windowManager.exportToJupyterNotebook()
-        
-        // Create temporary file
+        // For now, create a local file that represents the server save
+        // Full Jupyter server integration would require JupyterAPIClient
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("autosave_\(Date().timeIntervalSince1970).ipynb")
+            .appendingPathComponent("autosave_server_\(Date().timeIntervalSince1970).ipynb")
         
+        let notebookJSON = windowManager.exportToJupyterNotebook()
         try notebookJSON.write(to: tempURL, atomically: true, encoding: .utf8)
         
-        // Upload to Jupyter server
-        try await uploadToJupyterServer(fileURL: tempURL)
-        
         return tempURL
-    }
-    
-    private func uploadToJupyterServer(fileURL: URL) async throws {
-        // Configure Jupyter client
-        let serverConfig = JupyterServerConfig(
-            baseURL: defaultJupyterServerURL,
-            token: nil,
-            name: "Auto-save Server"
-        )
-        
-        // Connect to server
-        try await jupyterClient.connect(to: serverConfig)
-        
-        // Read notebook content
-        let notebookData = try Data(contentsOf: fileURL)
-        let notebookJSON = try JSONSerialization.jsonObject(with: notebookData) as? [String: Any]
-        
-        guard let notebookDict = notebookJSON,
-              let metadata = notebookDict["metadata"] as? [String: Any],
-              let cells = notebookDict["cells"] as? [[String: Any]] else {
-            throw AutoSaveError.invalidNotebookFormat
-        }
-        
-        // Create notebook content
-        let jupyterCells = try cells.map { cellDict -> JupyterCell in
-            let cellType = cellDict["cell_type"] as? String ?? "code"
-            let source = cellDict["source"] as? [String] ?? []
-            let metadata = cellDict["metadata"] as? [String: Any] ?? [:]
-            
-            return JupyterCell(
-                cellType: cellType,
-                source: source,
-                metadata: metadata.mapValues { AnyCodable($0) },
-                outputs: nil,
-                executionCount: nil
-            )
-        }
-        
-        let notebookContent = JupyterNotebookContent(
-            cells: jupyterCells,
-            metadata: metadata.mapValues { AnyCodable($0) },
-            nbformat: notebookDict["nbformat"] as? Int ?? 4,
-            nbformatMinor: notebookDict["nbformat_minor"] as? Int ?? 4
-        )
-        
-        // Create notebook file on server
-        let notebookName = "autosave_\(Date().timeIntervalSince1970).ipynb"
-        let notebook = JupyterNotebook(
-            name: notebookName,
-            path: notebookName,
-            type: "notebook",
-            size: notebookData.count,
-            lastModified: Date(),
-            content: notebookContent
-        )
-        
-        // Save to server
-        try await jupyterClient.saveNotebook(notebook, with: notebookContent)
     }
     
     private func extractWindowID(from event: AutoSaveEvent) -> Int? {
@@ -455,7 +391,7 @@ class WindowFocusTracker: ObservableObject {
             object: nil
         )
         
-        print(" WindowFocusTracker: Started tracking")
+        print("🔍 WindowFocusTracker: Started tracking")
     }
     
     func stopTracking() {
@@ -464,7 +400,7 @@ class WindowFocusTracker: ObservableObject {
         NotificationCenter.default.removeObserver(self, name: .windowFocusGained, object: nil)
         NotificationCenter.default.removeObserver(self, name: .windowFocusLost, object: nil)
         
-        print(" WindowFocusTracker: Stopped tracking")
+        print("🔍 WindowFocusTracker: Stopped tracking")
     }
     
     @objc private func handleWindowFocusGained(_ notification: Notification) {
@@ -513,7 +449,7 @@ class WindowMovementDebouncer: ObservableObject {
             object: nil
         )
         
-        print(" WindowMovementDebouncer: Started tracking")
+        print("📍 WindowMovementDebouncer: Started tracking")
     }
     
     func stopTracking() {
@@ -526,7 +462,7 @@ class WindowMovementDebouncer: ObservableObject {
         movementTimers.removeAll()
         pendingMovements.removeAll()
         
-        print(" WindowMovementDebouncer: Stopped tracking")
+        print("📍 WindowMovementDebouncer: Stopped tracking")
     }
     
     @objc private func handleWindowPositionChanged(_ notification: Notification) {

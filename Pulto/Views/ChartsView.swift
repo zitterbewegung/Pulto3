@@ -94,14 +94,10 @@ struct ChartsView: View {
             generateChartsCode()
         }
         .onChange(of: selectedVisualizationType) { _, _ in
-            Task { @MainActor in
-                generateChartsCode()
-            }
+            generateChartsCode()
         }
         .onChange(of: visualizationSettings) { _, _ in
-            Task { @MainActor in
-                generateChartsCode()
-            }
+            generateChartsCode()
         }
         .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
     }
@@ -154,11 +150,8 @@ struct ChartsView: View {
             #endif
             
             showingCopySuccess = true
-            Task {
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-                await MainActor.run {
-                    showingCopySuccess = false
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                showingCopySuccess = false
             }
         }
     }
