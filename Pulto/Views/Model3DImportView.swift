@@ -16,7 +16,7 @@ struct Model3DImportView: View {
     @Environment(\.openWindow) private var openWindow
     
     @State private var importMode: ImportMode = .file
-    @State private var selectedFiles: [ModelFile] = []
+    @State private var selectedFiles: [Model3DFile] = []
     @State private var modelURL: String = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -242,7 +242,11 @@ struct Model3DImportView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
                     generateButton("Sphere", "sphere.fill", .blue) { generateSphere() }
                     generateButton("Cube", "cube.fill", .orange) { generateCube() }
-                    generateButton("Cylinder", "cylinder.fill", .green) { generateCylinder() }
+                    generateButton("Cylinder", "cylinder.fill", .green) { 
+                        previewModel = Model3DData.generateCylinder(radius: 1.0, height: 2.0, segments: 24)
+                        modelTitle = "Generated Cylinder"
+                        modelDescription = "Procedurally generated cylinder"
+                    }
                     generateButton("Torus", "circle.fill", .purple) { generateTorus() }
                     generateButton("Pyramid", "triangle.fill", .red) { generatePyramid() }
                     generateButton("Complex", "gear", .pink) { generateComplexShape() }
@@ -323,9 +327,8 @@ struct Model3DImportView: View {
                                     .lineLimit(1)
                                 
                                 HStack {
-                                    Text(file.formattedSize)
-                                    Text("•")
-                                    Text(file.format.rawValue.uppercased())
+                                    Text("File Size: \(file.size) bytes")
+                                    Text("Format: \(file.format)")
                                 }
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -638,7 +641,7 @@ struct Model3DImportView: View {
         }
     }
     
-    private func loadModelPreview(_ file: ModelFile) {
+    private func loadModelPreview(_ file: Model3DFile) {
         guard !isLoading else { return }
         
         Task {
@@ -687,12 +690,6 @@ struct Model3DImportView: View {
         previewModel = Model3DData.generateCube(size: 2.0)
         modelTitle = "Generated Cube"
         modelDescription = "Procedurally generated cube with 2.0 unit sides"
-    }
-    
-    private func generateCylinder() {
-        previewModel = Model3DData.generateCylinder(radius: 1.0, height: 2.0, segments: 24)
-        modelTitle = "Generated Cylinder"
-        modelDescription = "Procedurally generated cylinder"
     }
     
     private func generateTorus() {

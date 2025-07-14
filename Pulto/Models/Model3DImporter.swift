@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 
 // MARK: - Model File Structure
 
-struct ModelFile: Identifiable, Codable {
+struct Model3DFile: Identifiable {
     let id = UUID()
     let url: URL
     let name: String
@@ -83,6 +83,28 @@ class Model3DImporter {
             }
         }
         
+        var isNativelySupported: Bool {
+            switch self {
+            case .usdz: return true
+            case .obj, .stl, .ply: return false // Need conversion
+            case .dae, .fbx, .gltf, .glb, .x3d, .threejs: return false // Need conversion
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .usdz: return "cube.fill"
+            case .obj: return "pyramid"
+            case .stl: return "gyroscope"
+            case .ply: return "dot.radiowaves.left.and.right"
+            case .dae: return "triangle"
+            case .fbx: return "square.3.layers.3d"
+            case .gltf, .glb: return "cube.transparent"
+            case .x3d: return "cube.transparent.fill"
+            case .threejs: return "diamond"
+            }
+        }
+        
         var utType: UTType {
             switch self {
             case .usdz: return .usdz
@@ -96,6 +118,24 @@ class Model3DImporter {
             case .x3d: return UTType("public.x3d")!
             case .threejs: return .json
             }
+        }
+    }
+    
+    // MARK: - Format Info Structure
+    
+    struct FormatInfo {
+        let format: SupportedFormat
+        let isNativelySupported: Bool
+        let icon: String
+        let displayName: String
+        let color: Color
+        
+        init(format: SupportedFormat) {
+            self.format = format
+            self.isNativelySupported = format.isNativelySupported
+            self.icon = format.icon
+            self.displayName = format.displayName
+            self.color = format.color
         }
     }
     
@@ -133,10 +173,23 @@ class Model3DImporter {
     // MARK: - Static Properties
     
     static let supportedTypes: [UTType] = SupportedFormat.allCases.map { $0.utType }
+    static let supportedContentTypes: [UTType] = supportedTypes
+    
+    // MARK: - Static Methods
+    
+    static func getFormatInfo(for url: URL) -> FormatInfo {
+        let pathExtension = url.pathExtension.lowercased()
+        let format = SupportedFormat(rawValue: pathExtension) ?? .obj
+        return FormatInfo(format: format)
+    }
+    
+    static func createModel3DFromFile(_ file: Model3DFile) async throws -> Model3DData {
+        return try await importFromFile(file)
+    }
     
     // MARK: - File Creation
     
-    static func createModelFile(from url: URL) -> ModelFile? {
+    static func createModelFile(from url: URL) -> Model3DFile? {
         do {
             let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey, .contentTypeKey])
             
@@ -147,7 +200,7 @@ class Model3DImporter {
                 return nil
             }
             
-            return ModelFile(url: url, name: name, size: size, format: format)
+            return Model3DFile(url: url, name: name, size: size, format: format)
         } catch {
             print("Error creating model file: \(error)")
             return nil
@@ -156,7 +209,7 @@ class Model3DImporter {
     
     // MARK: - Import Methods
     
-    static func importFromFile(_ file: ModelFile, progressHandler: @escaping (Double) -> Void = { _ in }) async throws -> Model3DData {
+    static func importFromFile(_ file: Model3DFile, progressHandler: @escaping (Double) -> Void = { _ in }) async throws -> Model3DData {
         progressHandler(0.1)
         
         guard file.url.startAccessingSecurityScopedResource() else {
@@ -225,7 +278,7 @@ class Model3DImporter {
         
         progressHandler(0.8)
         
-        let modelFile = ModelFile(
+        let modelFile = Model3DFile(
             url: tempURL,
             name: url.lastPathComponent,
             size: Int64(data.count),
@@ -483,7 +536,6 @@ class Model3DImporter {
         var model = Model3DData(title: url.lastPathComponent, modelType: "gltf")
         model = Model3DData.generateTorus(majorRadius: 2.0, minorRadius: 0.5, segments: 16)
         model.title = url.lastPathComponent
-        model.modelType = url.pathExtension.lowercased()
         
         progressHandler(1.0)
         return model
@@ -611,56 +663,6 @@ class Model3DImporter {
 // MARK: - Model3DData Extensions for Generation
 
 extension Model3DData {
-    static func generateCylinder(radius: Double = 1.0, height: Double = 2.0, segments: Int = 24) -> Model3DData {
-        var vertices: [Vertex3D] = []
-        var faces: [Face3D] = []
-        
-        let halfHeight = height / 2.0
-        
-        // Bottom center
-        vertices.append(Vertex3D(x: 0, y: -halfHeight, z: 0))
-        // Top center
-        vertices.append(Vertex3D(x: 0, y: halfHeight, z: 0))
-        
-        // Bottom and top rings
-        for i in 0..<segments {
-            let angle = Double(i) * 2.0 * .pi / Double(segments)
-            let x = radius * cos(angle)
-            let z = radius * sin(angle)
-            
-            // Bottom ring
-            vertices.append(Vertex3D(x: x, y: -halfHeight, z: z))
-            // Top ring
-            vertices.append(Vertex3D(x: x, y: halfHeight, z: z))
-        }
-        
-        // Generate faces
-        for i in 0..<segments {
-            let next = (i + 1) % segments
-            
-            let bottomCurrent = 2 + i * 2
-            let bottomNext = 2 + next * 2
-            let topCurrent = 2 + i * 2 + 1
-            let topNext = 2 + next * 2 + 1
-            
-            // Bottom face
-            faces.append(Face3D(vertices: [0, bottomNext, bottomCurrent], materialIndex: 0))
-            
-            // Top face
-            faces.append(Face3D(vertices: [1, topCurrent, topNext], materialIndex: 0))
-            
-            // Side faces
-            faces.append(Face3D(vertices: [bottomCurrent, bottomNext, topNext, topCurrent], materialIndex: 0))
-        }
-        
-        var model = Model3DData(title: "Generated Cylinder", modelType: "cylinder")
-        model.vertices = vertices
-        model.faces = faces
-        model.materials = [Material3D(name: "default", color: "green")]
-        
-        return model
-    }
-    
     static func generateTorus(majorRadius: Double = 2.0, minorRadius: Double = 0.5, segments: Int = 24) -> Model3DData {
         var vertices: [Vertex3D] = []
         var faces: [Face3D] = []
