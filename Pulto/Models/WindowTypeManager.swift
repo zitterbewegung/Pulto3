@@ -25,6 +25,7 @@ extension Notification.Name {
 }
 
 // Enhanced window manager with export capabilities and lifecycle management
+@MainActor
 class WindowTypeManager: ObservableObject {
 
     static let shared = WindowTypeManager()
@@ -38,7 +39,6 @@ class WindowTypeManager: ObservableObject {
 
     func setSelectedProject(_ project: Project) {
         selectedProject = project
-        objectWillChange.send()
         
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
@@ -46,7 +46,6 @@ class WindowTypeManager: ObservableObject {
 
     func clearSelectedProject() {
         selectedProject = nil
-        objectWillChange.send()
         
         // Notify that project has been cleared
         NotificationCenter.default.post(name: .projectCleared, object: nil)
@@ -59,12 +58,10 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
-        objectWillChange.send()
     }
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
-        objectWillChange.send()
     }
 
     func isWindowActuallyOpen(_ id: Int) -> Bool {
@@ -76,7 +73,6 @@ class WindowTypeManager: ObservableObject {
         for windowID in windowsToRemove {
             windows.removeValue(forKey: windowID)
         }
-        objectWillChange.send()
     }
 
     func getAllWindows(onlyOpen: Bool = false) -> [NewWindowID] {
@@ -516,7 +512,6 @@ class WindowTypeManager: ObservableObject {
     func clearAllWindows() {
         windows.removeAll()
         openWindowIDs.removeAll()
-        objectWillChange.send()
     }
 
     // MARK: - Utility Methods

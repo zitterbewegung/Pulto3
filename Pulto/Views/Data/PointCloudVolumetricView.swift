@@ -3,9 +3,8 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/9/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 //
 //  VolumetricWindows.swift
@@ -166,13 +165,17 @@ struct PointCloudVolumetricView: View {
         .onAppear {
             model.colorMode = colorMode
         }
-        .onChange(of: colorMode) { newValue in
-            model.colorMode = newValue
-            model.needsUpdate = true
+        .onChange(of: colorMode) { _, newValue in
+            Task { @MainActor in
+                model.colorMode = newValue
+                model.needsUpdate = true
+            }
         }
-        .onChange(of: pointSize) { newValue in
-            model.pointSize = newValue
-            model.needsUpdate = true
+        .onChange(of: pointSize) { _, newValue in
+            Task { @MainActor in
+                model.pointSize = newValue
+                model.needsUpdate = true
+            }
         }
     }
     

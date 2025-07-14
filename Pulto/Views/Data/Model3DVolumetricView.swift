@@ -62,10 +62,14 @@ struct Model3DVolumetricView: View {
             await loadModel()
         }
         .onChange(of: modelScale) { _, newScale in
-            updateModelScale(newScale)
+            Task { @MainActor in
+                updateModelScale(newScale)
+            }
         }
         .onChange(of: autoRotate) { _, shouldRotate in
-            toggleAutoRotation(shouldRotate)
+            Task { @MainActor in
+                toggleAutoRotation(shouldRotate)
+            }
         }
     }
     

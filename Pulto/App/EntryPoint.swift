@@ -126,8 +126,8 @@ struct EntryPoint: App {
                 .environmentObject(windowManager)
             }
         }
-        .windowStyle(.volumetric)
-        .defaultSize(width: 15, height: 15, depth: 15, in: .meters)
+        //.windowStyle(.volumetric)
+        //.defaultSize(width: 15, height: 15, depth: 15, in: .meters)
 
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
@@ -168,11 +168,10 @@ struct EntryPoint: App {
         ) { notification in
             if let project = notification.object as? Project {
                 // Create 3D content when a project is selected
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    Task { @MainActor in
-                        let windowManager = WindowTypeManager.shared
-                        self.createDemo3DWindowForProject()
-                    }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    let windowManager = WindowTypeManager.shared
+                    self.createDemo3DWindowForProject()
                 }
             }
         }
@@ -239,8 +238,11 @@ struct EntryPoint: App {
         openWindow(id: "volumetric-model3d", value: modelWindowID)
         
         // Delay the chart window slightly so they don't overlap
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            openWindow(id: "volumetric-chart3d", value: chartWindowID)
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await MainActor.run {
+                openWindow(id: "volumetric-chart3d", value: chartWindowID)
+            }
         }
         #endif
     }
@@ -372,7 +374,8 @@ struct ProjectAwareEnvironmentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .projectSelected)) { notification in
                 if let project = notification.object as? Project {
                     // Create 3D content when a project is selected
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)
                         createDemo3DWindowForProject()
                     }
                 }
@@ -383,6 +386,7 @@ struct ProjectAwareEnvironmentView: View {
             }
     }
     
+    @MainActor
     private func createDemo3DWindowForProject() {
         // Only create 3D demo windows if there's an active project
         guard windowManager.selectedProject != nil else {
@@ -424,7 +428,8 @@ struct ProjectAwareEnvironmentView: View {
         openWindow(id: "volumetric-model3d", value: modelWindowID)
         
         // Delay the chart window slightly so they don't overlap
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
         }
         #endif
@@ -507,7 +512,7 @@ struct ProjectAwareEnvironmentView: View {
     private func handleSharedURL(_ url: URL) {
         guard url.pathExtension.lowercased() == "csv" else { return }
 
-        Task {
+        Task { @MainActor in
             do {
                 let text = try String(contentsOf: url)
                 guard let csv = CSVParser.parse(text) else { return }
