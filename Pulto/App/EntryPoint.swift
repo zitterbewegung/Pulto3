@@ -249,10 +249,11 @@ struct EntryPoint: App {
     private func handle3DModelImport(_ url: URL) {
         Task {
             do {
-                guard let modelFile = Model3DImporter.createModelFile(from: url) else {
-                    print("Could not create model file from URL: \(url)")
-                    return
-                }
+                // Create ModelFile directly
+                let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey])
+                let name = resourceValues.name ?? url.lastPathComponent
+                let size = Int64(resourceValues.fileSize ?? 0)
+                let modelFile = ModelFile(url: url, name: name, size: size)
                 
                 let model3D = try await Model3DImporter.importFromFile(modelFile)
                 
@@ -646,10 +647,11 @@ struct EntryPoint: App {
         private func handle3DModelImport(_ url: URL) {
             Task {
                 do {
-                    guard let modelFile = Model3DImporter.createModelFile(from: url) else {
-                        print("Could not create model file from URL: \(url)")
-                        return
-                    }
+                    // Create ModelFile directly
+                    let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey])
+                    let name = resourceValues.name ?? url.lastPathComponent
+                    let size = Int64(resourceValues.fileSize ?? 0)
+                    let modelFile = ModelFile(url: url, name: name, size: size)
                     
                     let model3D = try await Model3DImporter.importFromFile(modelFile)
                     

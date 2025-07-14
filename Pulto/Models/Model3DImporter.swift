@@ -1,7 +1,6 @@
 //
 //  Model3DImporter.swift
 //  Pulto3
-//
 //  Comprehensive 3D Model Import System
 //
 
@@ -10,29 +9,6 @@ import SwiftUI
 import RealityKit
 import SceneKit
 import UniformTypeIdentifiers
-
-// MARK: - Model File Structure
-
-struct Model3DFile: Identifiable {
-    let id = UUID()
-    let url: URL
-    let name: String
-    let size: Int64
-    let format: Model3DImporter.SupportedFormat
-    let createdDate: Date
-    
-    var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
-    }
-    
-    init(url: URL, name: String, size: Int64, format: Model3DImporter.SupportedFormat) {
-        self.url = url
-        self.name = name
-        self.size = size
-        self.format = format
-        self.createdDate = Date()
-    }
-}
 
 // MARK: - Model3D Importer
 
@@ -183,24 +159,18 @@ class Model3DImporter {
         return FormatInfo(format: format)
     }
     
-    static func createModel3DFromFile(_ file: Model3DFile) async throws -> Model3DData {
+    static func createModel3DFromFile(_ file: ModelFile) async throws -> Model3DData {
         return try await importFromFile(file)
     }
     
-    // MARK: - File Creation
-    
-    static func createModelFile(from url: URL) -> Model3DFile? {
+    static func createModelFile(from url: URL) -> ModelFile? {
         do {
-            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey, .contentTypeKey])
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey])
             
             let name = resourceValues.name ?? url.lastPathComponent
             let size = Int64(resourceValues.fileSize ?? 0)
             
-            guard let format = SupportedFormat(rawValue: url.pathExtension.lowercased()) else {
-                return nil
-            }
-            
-            return Model3DFile(url: url, name: name, size: size, format: format)
+            return ModelFile(url: url, name: name, size: size)
         } catch {
             print("Error creating model file: \(error)")
             return nil
@@ -209,7 +179,7 @@ class Model3DImporter {
     
     // MARK: - Import Methods
     
-    static func importFromFile(_ file: Model3DFile, progressHandler: @escaping (Double) -> Void = { _ in }) async throws -> Model3DData {
+    static func importFromFile(_ file: ModelFile, progressHandler: @escaping (Double) -> Void = { _ in }) async throws -> Model3DData {
         progressHandler(0.1)
         
         guard file.url.startAccessingSecurityScopedResource() else {
@@ -222,25 +192,27 @@ class Model3DImporter {
         
         progressHandler(0.3)
         
-        switch file.format {
-        case .usdz:
+        switch file.url.pathExtension.lowercased() {
+        case "usdz":
             return try await importUSDZ(from: file.url, progressHandler: progressHandler)
-        case .obj:
+        case "obj":
             return try await importOBJ(from: file.url, progressHandler: progressHandler)
-        case .stl:
+        case "stl":
             return try await importSTL(from: file.url, progressHandler: progressHandler)
-        case .ply:
+        case "ply":
             return try await importPLY(from: file.url, progressHandler: progressHandler)
-        case .dae:
+        case "dae":
             return try await importCollada(from: file.url, progressHandler: progressHandler)
-        case .fbx:
+        case "fbx":
             return try await importFBX(from: file.url, progressHandler: progressHandler)
-        case .gltf, .glb:
+        case "gltf", "glb":
             return try await importGLTF(from: file.url, progressHandler: progressHandler)
-        case .x3d:
+        case "x3d":
             return try await importX3D(from: file.url, progressHandler: progressHandler)
-        case .threejs:
+        case "json":
             return try await importThreeJS(from: file.url, progressHandler: progressHandler)
+        default:
+            throw ImportError.unsupportedFormat(file.url.pathExtension)
         }
     }
     
@@ -259,9 +231,6 @@ class Model3DImporter {
         
         // Determine format from URL
         let pathExtension = url.pathExtension.lowercased()
-        guard let format = SupportedFormat(rawValue: pathExtension) else {
-            throw ImportError.unsupportedFormat(pathExtension)
-        }
         
         progressHandler(0.7)
         
@@ -278,11 +247,10 @@ class Model3DImporter {
         
         progressHandler(0.8)
         
-        let modelFile = Model3DFile(
+        let modelFile = ModelFile(
             url: tempURL,
             name: url.lastPathComponent,
-            size: Int64(data.count),
-            format: format
+            size: Int64(data.count)
         )
         
         return try await importFromFile(modelFile, progressHandler: progressHandler)
@@ -814,3 +782,8 @@ extension Model3DData {
         return model
     }
 }
+
+// Removed: 
+// Existing model importing helper methods and error handling, 
+// ModelFile structure, 
+// Model3DImporter instance methods other than static ones.

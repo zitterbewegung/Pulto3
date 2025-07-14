@@ -16,7 +16,7 @@ struct Model3DImportView: View {
     @Environment(\.openWindow) private var openWindow
     
     @State private var importMode: ImportMode = .file
-    @State private var selectedFiles: [Model3DFile] = []
+    @State private var selectedFiles: [ModelFile] = []
     @State private var modelURL: String = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -327,8 +327,8 @@ struct Model3DImportView: View {
                                     .lineLimit(1)
                                 
                                 HStack {
-                                    Text("File Size: \(file.size) bytes")
-                                    Text("Format: \(file.format)")
+                                    Text("File Size: \(file.formattedSize)")
+                                    Text("Format: \(file.url.pathExtension.uppercased())")
                                 }
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -587,7 +587,14 @@ struct Model3DImportView: View {
         switch result {
         case .success(let urls):
             selectedFiles = urls.compactMap { url in
-                Model3DImporter.createModelFile(from: url)
+                do {
+                    let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .nameKey])
+                    let name = resourceValues.name ?? url.lastPathComponent
+                    let size = Int64(resourceValues.fileSize ?? 0)
+                    return ModelFile(url: url, name: name, size: size)
+                } catch {
+                    return nil
+                }
             }
             if let first = selectedFiles.first {
                 loadModelPreview(first)
@@ -641,7 +648,7 @@ struct Model3DImportView: View {
         }
     }
     
-    private func loadModelPreview(_ file: Model3DFile) {
+    private func loadModelPreview(_ file: ModelFile) {
         guard !isLoading else { return }
         
         Task {
