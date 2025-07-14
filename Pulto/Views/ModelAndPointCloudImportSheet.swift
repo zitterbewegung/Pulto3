@@ -232,3 +232,11 @@ private func parseModel(_ url: URL) async throws -> Model3DData {
         throw FileImportError.badFormat
     }
 }
+
+#Preview("Point Cloud Import Sheet") {
+    PointCloudImportSheet()
+}
+
+#Preview("3D Model Import Sheet") {
+    Model3DImportSheet()
+}
