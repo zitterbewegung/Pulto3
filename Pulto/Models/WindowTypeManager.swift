@@ -22,6 +22,11 @@ import Charts
 extension Notification.Name {
     static let projectSelected = Notification.Name("projectSelected")
     static let projectCleared = Notification.Name("projectCleared")
+    static let windowFocusGained = Notification.Name("windowFocusGained")
+    static let windowFocusLost = Notification.Name("windowFocusLost")
+    static let windowPositionChanged = Notification.Name("windowPositionChanged")
+    static let windowContentChanged = Notification.Name("windowContentChanged")
+    static let windowClosed = Notification.Name("windowClosed")
 }
 
 // Enhanced window manager with export capabilities and lifecycle management
@@ -58,10 +63,24 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
+        
+        // Notify focus gained
+        NotificationCenter.default.post(
+            name: .windowFocusGained,
+            object: nil,
+            userInfo: ["windowID": id]
+        )
     }
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
+        
+        // Notify window closed
+        NotificationCenter.default.post(
+            name: .windowClosed,
+            object: nil,
+            userInfo: ["windowID": id]
+        )
     }
 
     func isWindowActuallyOpen(_ id: Int) -> Bool {
@@ -859,7 +878,17 @@ class WindowTypeManager: ObservableObject {
     }
 
     func updateWindowPosition(_ id: Int, position: WindowPosition) {
+        let oldPosition = windows[id]?.position
         windows[id]?.position = position
+        
+        // Notify position changed if it actually changed
+        if oldPosition != position {
+            NotificationCenter.default.post(
+                name: .windowPositionChanged,
+                object: nil,
+                userInfo: ["windowID": id, "position": position]
+            )
+        }
     }
 
     func updateWindowState(_ id: Int, state: WindowState) {
@@ -867,8 +896,18 @@ class WindowTypeManager: ObservableObject {
     }
 
     func updateWindowContent(_ id: Int, content: String) {
+        let oldContent = windows[id]?.state.content
         windows[id]?.state.content = content
         windows[id]?.state.lastModified = Date()
+        
+        // Notify content changed if it actually changed
+        if oldContent != content {
+            NotificationCenter.default.post(
+                name: .windowContentChanged,
+                object: nil,
+                userInfo: ["windowID": id, "content": content]
+            )
+        }
     }
 
     func updateWindowTemplate(_ id: Int, template: ExportTemplate) {

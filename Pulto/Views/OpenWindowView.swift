@@ -30,7 +30,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     }
 }
 
-struct WindowPosition: Codable, Hashable {
+struct WindowPosition: Codable, Hashable, Equatable {
     var x, y, z: Double
     var width, height: Double
     var depth: Double?
@@ -40,6 +40,15 @@ struct WindowPosition: Codable, Hashable {
         (self.x, self.y, self.z) = (x, y, z)
         (self.width, self.height) = (width, height)
         self.depth = depth
+    }
+
+    static func == (lhs: WindowPosition, rhs: WindowPosition) -> Bool {
+        return lhs.x == rhs.x &&
+               lhs.y == rhs.y &&
+               lhs.z == rhs.z &&
+               lhs.width == rhs.width &&
+               lhs.height == rhs.height &&
+               lhs.depth == rhs.depth
     }
 }
 
