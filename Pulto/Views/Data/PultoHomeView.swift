@@ -164,6 +164,53 @@ final class PultoHomeViewModel: ObservableObject {
     }
 }
 
+// MARK: - Color Extensions for Codable Support
+extension Color {
+    func toString() -> String {
+        switch self {
+        case .blue: return "blue"
+        case .green: return "green"
+        case .purple: return "purple"
+        case .orange: return "orange"
+        case .red: return "red"
+        case .yellow: return "yellow"
+        case .pink: return "pink"
+        case .cyan: return "cyan"
+        case .mint: return "mint"
+        case .indigo: return "indigo"
+        case .teal: return "teal"
+        case .brown: return "brown"
+        case .gray: return "gray"
+        case .black: return "black"
+        case .white: return "white"
+        case .clear: return "clear"
+        default: return "blue" // fallback
+        }
+    }
+    
+    static func fromString(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "blue": return .blue
+        case "green": return .green
+        case "purple": return .purple
+        case "orange": return .orange
+        case "red": return .red
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "mint": return .mint
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "brown": return .brown
+        case "gray": return .gray
+        case "black": return .black
+        case "white": return .white
+        case "clear": return .clear
+        default: return .blue // fallback
+        }
+    }
+}
+
 // MARK: - Models
 struct UserStats {
     let totalProjects: Int
