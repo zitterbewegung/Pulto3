@@ -128,7 +128,7 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 15, height: 15, depth: 15, in: .meters)
+        .defaultSize(width: 1.5, height: 1.5, depth: 1.5, in: .meters)
 
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
