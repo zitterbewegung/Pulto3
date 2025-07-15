@@ -126,7 +126,7 @@ struct VisionOSWindow<Content: View>: View {
     let content: Content
 
     init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
-        self.depth   = depth
+        self.depth    = depth
         self.content = content()
     }
 
@@ -151,10 +151,10 @@ struct EnvironmentView: View {
     @State private var showWorkspaceDialog = false
     @State private var showTemplateGallery = false
     @State private var showNotebookImport  = false
-    @State private var showFileImporter    = false
-    @State private var showSettings        = false
-    @State private var showAppleSignIn     = false
-    @State private var showWelcome         = false
+    @State private var showFileImporter     = false
+    @State private var showSettings          = false
+    @State private var showAppleSignIn      = false
+    @State private var showWelcome           = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -400,7 +400,10 @@ struct EnvironmentView: View {
 
     private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
-         .image, .usdz, .threeDContent, .data]
+         .usdz]
+
+        //[.commaSeparatedText, .tabSeparatedText, .json, .plainText,
+        // .image, .usdz, .threeDContent, .data]
     }
 }
 
@@ -497,9 +500,9 @@ struct CreateTab: View {
                 Text("Create an new Visualization")
                     .font(.title2)
                     .fontWeight(.semibold)
-                //Text("Choose a visualization type for your data")
-                //    .font(.body)
-                //    .foregroundStyle(.secondary)
+                Text("Choose a visualization type for your data")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: [
                     GridItem(.flexible()), GridItem(.flexible())
@@ -831,9 +834,9 @@ struct EnvironmentActionCard: View {
 enum StandardWindowType: String, CaseIterable {
     case charts     = "Charts"
     case dataFrame  = "Data Table"
-    case metrics    = "Metrics"
+    //case metrics    = "Metrics"
     case pointCloud = "Point Cloud"
-    case spatial    = "Spatial"
+    //case spatial    = "Spatial"
     case model3d    = "3D Model"
 
     var displayName: String { rawValue }
@@ -842,8 +845,8 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "chart.line.uptrend.xyaxis"
         case .dataFrame:  return "tablecells"
-        case .metrics:    return "gauge"
-        case .spatial:    return "rectangle.3.group"
+        //case .metrics:    return "gauge"
+        //case .spatial:    return "rectangle.3.group"
         case .pointCloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
         }
@@ -853,8 +856,8 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .blue
         case .dataFrame:  return .green
-        case .metrics:    return .orange
-        case .spatial:    return .purple
+        //case .metrics:    return .orange
+        //case .spatial:    return .purple
         case .pointCloud: return .cyan
         case .model3d:    return .red
         }
@@ -864,8 +867,8 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return "Charts and graphs"
         case .dataFrame:  return "Tabular data viewer"
-        case .metrics:    return "Performance metrics"
-        case .spatial:    return "3D Charts"
+        //case .metrics:    return "Performance metrics"
+        //case .spatial:    return "3D Charts"
         case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
         }
@@ -875,8 +878,8 @@ enum StandardWindowType: String, CaseIterable {
         switch self {
         case .charts:     return .charts
         case .dataFrame:  return .column
-        case .metrics:    return .volume
-        case .spatial:    return .spatial
+        //case .metrics:    return .volume
+        //case .spatial:    return .spatial
         case .pointCloud: return .pointcloud
         case .model3d:    return .model3d
         }

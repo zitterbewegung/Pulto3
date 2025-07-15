@@ -1694,7 +1694,7 @@ struct NewWindow: View {
                 Divider()
 
                 // Display the appropriate view based on window type with restored data
-                Group {
+                HStack {
                     switch window.windowType {
                     // ───────────── 3-D MODEL ─────────────
                     case .model3d:
@@ -1845,11 +1845,11 @@ struct NewWindow: View {
                                         endPoint: .bottomTrailing
                                     ))
 
-                                Text("Point Cloud Viewer")
+                                Text("Chart 3D Viewer")
                                     .font(.largeTitle)
                                     .fontWeight(.bold)
 
-                                if let pointCloud = window.state.pointCloudData {
+                                if let pointCloud = window.state.chart3DData {
                                     VStack(spacing: 12) {
                                         Text(pointCloud.title)
                                             .font(.title2)
@@ -1857,18 +1857,18 @@ struct NewWindow: View {
 
                                         HStack(spacing: 40) {
                                             VStack {
-                                                Text("\(pointCloud.totalPoints)")
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
+                                                //Text("\(pointCloud.totalPoints)")
+                                                //    .font(.title)
+                                                //    .fontWeight(.semibold)
                                                 Text("Points")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
                                             }
 
                                             VStack {
-                                                Text(pointCloud.demoType)
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
+                                                 //Text(pointCloud.demoType)
+                                                 //   .font(.title)
+                                                 //   .fontWeight(.semibold)
                                                 Text("Type")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
@@ -1877,7 +1877,7 @@ struct NewWindow: View {
                                         .padding(.top)
                                     }
                                 } else if window.state.pointCloudBookmark != nil {
-                                    Text("Imported Point Cloud")
+                                    Text("Imported 3D Chart")
                                         .font(.title2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1889,9 +1889,9 @@ struct NewWindow: View {
 
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-pointcloud", value: id)
+                                    openWindow(id: "volumetric-chart3d", value: id)
                                 } label: {
-                                    Label("Open Volumetric View", systemImage: "view.3d")
+                                    Label("Open Chart3D View", systemImage: "view.3d")
                                         .font(.headline)
                                         .padding()
                                         .background(.purple.opacity(0.2))

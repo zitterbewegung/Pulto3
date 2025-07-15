@@ -210,7 +210,7 @@ struct NotebookImportDialog: View {
             }
             .buttonStyle(.borderedProminent)
         }
-        .frame(maxWidth: .infinity, maxHeight: 200)
+        .frame(maxWidth: .infinity, maxHeight: 300)
     }
 
     private var notebookListView: some View {
@@ -225,7 +225,7 @@ struct NotebookImportDialog: View {
                     }
                 }
             }
-            .frame(maxHeight: 300)
+            .frame(maxHeight: 500)
         }
     }
 
