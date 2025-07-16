@@ -1,9 +1,10 @@
-/*
-See the LICENSE.txt file for this sample's licensing information.
-
-Abstract:
-The app's main entry point
-*/
+//
+//  EntryPoint.swift
+//  Pulto3
+//
+//  Created by Joshua Herman on 7/16/25.
+//  Copyright © 2025 Apple. All rights reserved.
+//
 
 import SwiftUI
 import RealityKit
@@ -178,7 +179,7 @@ struct EntryPoint: App {
                 }
             }
         }
-        
+
         // Listen for project cleared notifications
         NotificationCenter.default.addObserver(
             forName: .projectCleared,
@@ -200,7 +201,7 @@ struct EntryPoint: App {
             print("No project selected - skipping 3D demo window creation")
             return
         }
-        
+
         createDemo3DWindow()
     }
 
@@ -211,7 +212,7 @@ struct EntryPoint: App {
         let modelWindowID = windowManager.getNextWindowID()
         let modelPosition = WindowPosition(x: -200, y: 0, z: -100, width: 800, height: 600)
         let modelWindow = windowManager.createWindow(.model3d, id: modelWindowID, position: modelPosition)
-        
+
         // Try to load the Pulto USDZ file first, fallback to demo cube
         if let pultoModel = loadPultoUSDZModel() {
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: pultoModel)
@@ -224,22 +225,22 @@ struct EntryPoint: App {
             windowManager.updateWindowContent(modelWindowID, content: "Demo 3D cube - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Demo")
         }
-        
+
         // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
         let chartWindow = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
-        
+
         // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
         windowManager.updateWindowChart3DData(chartWindowID, chart3DData: demo3DChart)
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
-        
+
         // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
-        
+
         // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
@@ -253,39 +254,39 @@ struct EntryPoint: App {
             print("Pulto USDZ file not found in bundle")
             return nil
         }
-        
+
         let fileURL = URL(fileURLWithPath: bundlePath)
-        
+
         do {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0
             print("Found Pulto USDZ file: \(bundlePath) (\(fileSize) bytes)")
-            
+
             // Create a model representation for the USDZ file
             // Since we can't directly parse USDZ, we'll create a placeholder that represents it
             var model = Model3DData(title: "Pulto Model", modelType: "usdz")
-            
+
             // Create a sophisticated sphere to represent the Pulto planet
             let radius = 2.0
             let segments = 32 // High detail for the planet
-            
+
             // Generate vertices for a detailed sphere
             for i in 0...segments {
                 let phi = Double(i) * .pi / Double(segments)
                 for j in 0..<(segments * 2) {
                     let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
-                    
+
                     // Add some surface variation to make it more planet-like
                     let variation = 0.1 * sin(phi * 3) * cos(theta * 4)
                     let actualRadius = radius + variation
-                    
+
                     let x = actualRadius * sin(phi) * cos(theta)
                     let y = actualRadius * cos(phi)
                     let z = actualRadius * sin(phi) * sin(theta)
-                    
+
                     model.vertices.append(Model3DData.Vertex3D(x: x, y: y, z: z))
                 }
             }
-            
+
             // Generate faces for the sphere
             for i in 0..<segments {
                 for j in 0..<(segments * 2) {
@@ -293,7 +294,7 @@ struct EntryPoint: App {
                     let next = i * (segments * 2) + (j + 1) % (segments * 2)
                     let currentNext = (i + 1) * (segments * 2) + j
                     let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
-                    
+
                     if i < segments {
                         // Create triangular faces for better detail
                         model.faces.append(Model3DData.Face3D(vertices: [current, next, nextNext], materialIndex: 0))
@@ -301,20 +302,20 @@ struct EntryPoint: App {
                     }
                 }
             }
-            
+
             // Create materials that represent Pulto's appearance
             model.materials = [
                 Model3DData.Material3D(
-                    name: "pulto_surface", 
-                    color: "teal", 
-                    metallic: 0.3, 
-                    roughness: 0.7, 
+                    name: "pulto_surface",
+                    color: "teal",
+                    metallic: 0.3,
+                    roughness: 0.7,
                     transparency: 0.0
                 )
             ]
-            
+
             return model
-            
+
         } catch {
             print("Error accessing Pulto USDZ file: \(error)")
             return nil
@@ -366,7 +367,7 @@ struct EntryPoint: App {
 struct ProjectAwareEnvironmentView: View {
     @ObservedObject var windowManager: WindowTypeManager
     @Environment(\.openWindow) private var openWindow
-    
+
     var body: some View {
         EnvironmentView()
             .environmentObject(windowManager)
@@ -384,19 +385,19 @@ struct ProjectAwareEnvironmentView: View {
                 windowManager.cleanupClosedWindows()
             }
     }
-    
+
     private func createDemo3DWindowForProject() {
         // Only create 3D demo windows if there's an active project
         guard windowManager.selectedProject != nil else {
             print("No project selected - skipping 3D demo window creation")
             return
         }
-        
+
         // Create a 3D model window
         let modelWindowID = windowManager.getNextWindowID()
         let modelPosition = WindowPosition(x: -200, y: 0, z: -100, width: 800, height: 600)
         let modelWindow = windowManager.createWindow(.model3d, id: modelWindowID, position: modelPosition)
-        
+
         // Try to load the Pulto USDZ file first, fallback to demo cube
         if let pultoModel = loadPultoUSDZModel() {
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: pultoModel)
@@ -409,68 +410,68 @@ struct ProjectAwareEnvironmentView: View {
             windowManager.updateWindowContent(modelWindowID, content: "Demo 3D cube - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Demo")
         }
-        
+
         // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
         let chartWindow = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
-        
+
         // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
         windowManager.updateWindowChart3DData(chartWindowID, chart3DData: demo3DChart)
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
-        
+
         // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
-        
+
         // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
         }
         #endif
     }
-    
+
     private func loadPultoUSDZModel() -> Model3DData? {
         // Try to find and load the Pulto USDZ file
         guard let bundlePath = Bundle.main.path(forResource: "Pluto_1_2374", ofType: "usdz") else {
             print("Pulto USDZ file not found in bundle")
             return nil
         }
-        
+
         let fileURL = URL(fileURLWithPath: bundlePath)
-        
+
         do {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0
             print("Found Pulto USDZ file: \(bundlePath) (\(fileSize) bytes)")
-            
+
             // Create a model representation for the USDZ file
             // Since we can't directly parse USDZ, we'll create a placeholder that represents it
             var model = Model3DData(title: "Pulto Model", modelType: "usdz")
-            
+
             // Create a sophisticated sphere to represent the Pulto planet
             let radius = 2.0
             let segments = 32 // High detail for the planet
-            
+
             // Generate vertices for a detailed sphere
             for i in 0...segments {
                 let phi = Double(i) * .pi / Double(segments)
                 for j in 0..<(segments * 2) {
                     let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
-                    
+
                     // Add some surface variation to make it more planet-like
                     let variation = 0.1 * sin(phi * 3) * cos(theta * 4)
                     let actualRadius = radius + variation
-                    
+
                     let x = actualRadius * sin(phi) * cos(theta)
                     let y = actualRadius * cos(phi)
                     let z = actualRadius * sin(phi) * sin(theta)
-                    
+
                     model.vertices.append(Model3DData.Vertex3D(x: x, y: y, z: z))
                 }
             }
-            
+
             // Generate faces for the sphere
             for i in 0..<segments {
                 for j in 0..<(segments * 2) {
@@ -478,7 +479,7 @@ struct ProjectAwareEnvironmentView: View {
                     let next = i * (segments * 2) + (j + 1) % (segments * 2)
                     let currentNext = (i + 1) * (segments * 2) + j
                     let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
-                    
+
                     if i < segments {
                         // Create triangular faces for better detail
                         model.faces.append(Model3DData.Face3D(vertices: [current, next, nextNext], materialIndex: 0))
@@ -486,26 +487,26 @@ struct ProjectAwareEnvironmentView: View {
                     }
                 }
             }
-            
+
             // Create materials that represent Pulto's appearance
             model.materials = [
                 Model3DData.Material3D(
-                    name: "pulto_surface", 
-                    color: "teal", 
-                    metallic: 0.3, 
-                    roughness: 0.7, 
+                    name: "pulto_surface",
+                    color: "teal",
+                    metallic: 0.3,
+                    roughness: 0.7,
                     transparency: 0.0
                 )
             ]
-            
+
             return model
-            
+
         } catch {
             print("Error accessing Pulto USDZ file: \(error)")
             return nil
         }
     }
-    
+
     private func handleSharedURL(_ url: URL) {
         guard url.pathExtension.lowercased() == "csv" else { return }
 

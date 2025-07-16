@@ -353,6 +353,7 @@ struct PointCloudPreview: View {
     @State private var rotationAngle = 0.0
     @State private var showFileImporter = false
     @State private var importedPoints: [(x: Double, y: Double, z: Double, intensity: Double?)] = []
+    let windowID: Int
 
     let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube", "Imported"]
 
@@ -519,7 +520,7 @@ struct PointCloudPreview: View {
 
 // MARK: - Preview Provider
 #Preview {
-    PointCloudPreview()
+    PointCloudPreview(windowID: 1)
         .frame(width: 600, height: 800)
 }
 
@@ -540,4 +541,18 @@ struct PointCloudPreview: View {
  // Generate visualization code
  let pythonCode = ChartDataExtractor.generateJupyterPythonCode(sphereChart)
  let plotlyCode = ChartDataExtractor.generateJupyterPlotlyCode(sphereChart)
+ */
+/*
+ Demo data
+ x,y,z,intensity
+ -6.546342442212422,-4.179903666068734,6.298714628531242,
+ -2.019376912037411,-6.147036408083054,7.624700668539823,
+ 9.59621907909937,-2.2192208519935686,-1.7284785784053573,
+ 8.716651471147433,-1.189249275314604,4.75454238509943,
+ 4.362438263364272,-7.8615570443755045,-4.3777909082510105,
+ -4.4427639844136015,-2.0944798486744487,-8.710625829542561,
+ -0.6746971176831776,0.3812547298886156,-9.969926209873751,
+ 7.655368516294206,1.6789262084001224,6.211001502694926,
+ 4.423516297334105,-4.471041172543755,-7.774464251679221,
+ 2.5149683123126407,9.193033413950568,-3.0270564973339558,
  */

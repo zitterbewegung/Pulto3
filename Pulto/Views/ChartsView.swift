@@ -82,7 +82,7 @@ struct ChartsView: View {
                     .keyboardShortcut("w", modifiers: .command)
                 }
             }
-            
+
             // Code Sidebar
             if showCodeSidebar {
                 CodeSidebarView(code: generatedCode)
@@ -101,12 +101,12 @@ struct ChartsView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
     }
-    
+
     // Code Sidebar View
     private struct CodeSidebarView: View {
         let code: String
         @State private var showingCopySuccess = false
-        
+
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
                 // Header
@@ -114,9 +114,9 @@ struct ChartsView: View {
                     Label("Charts Code", systemImage: "chart.bar")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    
+
                     Spacer()
-                    
+
                     Button(action: copyCode) {
                         Image(systemName: showingCopySuccess ? "checkmark" : "doc.on.doc")
                             .foregroundStyle(showingCopySuccess ? .green : .blue)
@@ -124,10 +124,10 @@ struct ChartsView: View {
                     .animation(.easeInOut, value: showingCopySuccess)
                 }
                 .padding()
-                .background(.regularMaterial)
-                
+                .background(.gray)
+
                 Divider()
-                
+
                 // Code content
                 ScrollView {
                     Text(code)
@@ -140,7 +140,7 @@ struct ChartsView: View {
             }
             .background(.regularMaterial)
         }
-        
+
         private func copyCode() {
             #if os(macOS)
             NSPasteboard.general.clearContents()
@@ -148,14 +148,14 @@ struct ChartsView: View {
             #else
             UIPasteboard.general.string = code
             #endif
-            
+
             showingCopySuccess = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 showingCopySuccess = false
             }
         }
     }
-    
+
     // Generate charts code function
     private func generateChartsCode() {
         var code = """
@@ -181,14 +181,14 @@ struct ChartsView: View {
         }
         
         """
-        
+
         switch selectedVisualizationType {
         case .twoDimensional:
             code += """
             # 2D Data Visualization
             
             # Create sample heatmap data
-            x = np.linspace(-2, 2, 20)
+            x = np.linspace(-2, 2,20)
             y = np.linspace(-2, 2, 20)
             X, Y = np.meshgrid(x, y)
             Z = np.sin(X * 0.3) * np.cos(Y * 0.3)
@@ -223,7 +223,7 @@ struct ChartsView: View {
             plt.tight_layout()
             plt.show()
             """
-            
+
         case .threeDimensional:
             code += """
             # 3D Model Visualization
@@ -241,7 +241,7 @@ struct ChartsView: View {
                     ax.plot_surface(X + center[0], Y + center[1], 
                                   np.ones_like(X) * (z + center[2]), alpha=0.6)
                 for y in r:
-                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1]), 
+                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1], 
                                   Y + center[2], alpha=0.6)
                 for x in r:
                     ax.plot_surface(np.ones_like(X) * (x + center[0]), X + center[1], 
@@ -269,7 +269,7 @@ struct ChartsView: View {
             if settings['show_axes']:
                 ax.plot([0, 3], [0, 0], [0, 0], 'r-', linewidth=3, label='X')
                 ax.plot([0, 0], [0, 3], [0, 0], 'g-', linewidth=3, label='Y') 
-                ax.plot([0, 0], [0, 0], [0, 3], 'b-', linewidth=3, label='Z')
+                ax.plot([0, 0], [0, 0, [0, 3], 'b-', linewidth=3, label='Z')
                 ax.legend()
             
             ax.set_xlabel('X')
@@ -280,7 +280,7 @@ struct ChartsView: View {
             plt.tight_layout()
             plt.show()
             """
-            
+
         case .pointCloud:
             code += """
             # Point Cloud Visualization
@@ -384,14 +384,13 @@ struct ChartsView: View {
             print(f"X range: [{np.min(points[:, 0]):.2f}, {np.max(points[:, 0]):.2f}]")
             print(f"Z range: [{np.min(points[:, 2]):.2f}, {np.max(points[:, 2]):.2f}]")
             print(f"Intensity range: [{np.min(points[:, 3]):.2f}, {np.max(points[:, 3]):.2f}]")
-            
             # Classification breakdown
             for i in range(4):
                 count = np.sum(points[:, 4] == i)
                 print(f"Class {i}: {count} points ({count/len(points)*100:.1f}%)")
             """
         }
-        
+
         code += """
         
         # Export options (uncomment to use)
@@ -403,7 +402,7 @@ struct ChartsView: View {
         print("\\nVisualization complete!")
         print("Settings used:", settings)
         """
-        
+
         generatedCode = code
     }
 }
@@ -512,7 +511,7 @@ struct VisualizationView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Close Window (⌘W)")
+                    .help("Close Window (â��W)")
                     .padding()
                 }
                 Spacer()
@@ -555,6 +554,7 @@ struct ControlPanelView: View {
                             Text("Height").tag(ColorMode.height)
                             Text("Intensity").tag(ColorMode.intensity)
                             Text("Classification").tag(ColorMode.classification)
+                            Text("RGB").tag(ColorMode.rgb)
                         }
                         .pickerStyle(.segmented)
 
@@ -591,9 +591,9 @@ struct ControlPanelView: View {
                             StatRow(label: "Objects", value: "7")
                             StatRow(label: "Memory", value: "8 MB")
                         case .pointCloud:
-                            StatRow(label: "Points", value: "16 400")
-                            StatRow(label: "Memory", value: "64 MB")
-                            StatRow(label: "Density", value: "2.5k/m²")
+                            StatRow(label: "Points", value: "36")
+                            StatRow(label: "Memory", value: "0.1 MB")
+                            StatRow(label: "Density", value: "N/A")
                         }
                         StatRow(label: "FPS", value: "60")
                     }
@@ -683,15 +683,15 @@ struct ViewControlsOverlay: View {
             ControlButton(icon: "arrow.up.left.and.arrow.down.right", id: "fit", hoveredControl: $hoveredControl) {
                 // Fit to view action
             }
-            
+
             ControlButton(icon: "camera", id: "camera", hoveredControl: $hoveredControl) {
                 // Reset camera action
             }
-            
+
             ControlButton(icon: "ruler", id: "ruler", hoveredControl: $hoveredControl) {
                 // Measure action
             }
-            
+
             ControlButton(icon: "slider.horizontal.3", id: "filters", hoveredControl: $hoveredControl) {
                 // Filters action
             }
@@ -706,11 +706,11 @@ struct ControlButton: View {
     let id: String
     @Binding var hoveredControl: String?
     let action: () -> Void
-    
+
     var isHovered: Bool {
         hoveredControl == id
     }
-    
+
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
@@ -860,6 +860,8 @@ struct TwoDimensionalView: View {
             } else {
                 return .orange
             }
+        case .rgb:
+            return baseColor // Not applicable for 2D, fallback
         }
     }
 
@@ -1007,8 +1009,8 @@ struct PointCloudView: View {
 
                         context.fill(
                             Path(ellipseIn: CGRect(
-                                x: projectedX - pointSize/2,
-                                y: projectedY - pointSize/2,
+                                x: projectedX - pointSize / 2,
+                                y: projectedY - pointSize / 2,
                                 width: pointSize,
                                 height: pointSize
                             )),
@@ -1046,54 +1048,65 @@ struct PointCloudView: View {
     }
 
     func generatePointCloudData() -> [PointCloudPoint] {
-        var points: [PointCloudPoint] = []
+        let rawData: [[Double]] = [
+            [13.32, 12.84, 3.06, 1.0, 255.0, 243.0, 245.0],
+            [13.44, 12.84, 3.06, 1.0, 255.0, 244.0, 242.0],
+            [13.56, 12.84, 3.024, 0.988235, 252.0, 232.0, 218.0],
+            [13.68, 12.84, 3.0, 0.980392, 250.0, 222.0, 199.0],
+            [13.8, 12.84, 3.0, 0.980392, 250.0, 222.0, 196.0],
+            [13.92, 12.84, 2.94, 0.960784, 245.0, 205.0, 181.0],
+            [13.32, 12.96, 3.048, 0.996078, 254.0, 240.0, 240.0],
+            [13.44, 12.96, 3.036, 0.992157, 253.0, 232.0, 220.0],
+            [13.56, 12.96, 2.976, 0.972549, 248.0, 217.0, 195.0],
+            [13.68, 12.96, 2.94, 0.960784, 245.0, 207.0, 182.0],
+            [13.8, 12.96, 2.928, 0.956863, 244.0, 199.0, 175.0],
+            [13.92, 12.96, 2.916, 0.952941, 243.0, 173.0, 147.0],
+            [13.32, 13.08, 3.06, 1.0, 255.0, 236.0, 225.0],
+            [13.44, 13.08, 2.976, 0.972549, 248.0, 217.0, 195.0],
+            [13.56, 13.08, 2.94, 0.960784, 245.0, 197.0, 168.0],
+            [13.68, 13.08, 2.94, 0.960784, 245.0, 185.0, 157.0],
+            [13.8, 13.08, 2.916, 0.952941, 243.0, 169.0, 149.0],
+            [13.92, 13.08, 2.796, 0.913725, 233.0, 144.0, 121.0],
+            [13.32, 13.2, 3.024, 0.988235, 252.0, 228.0, 206.0],
+            [13.44, 13.2, 2.928, 0.956863, 244.0, 207.0, 178.0],
+            [13.56, 13.2, 2.952, 0.964706, 246.0, 190.0, 155.0],
+            [13.68, 13.2, 2.892, 0.945098, 241.0, 161.0, 133.0],
+            [13.8, 13.2, 2.856, 0.933333, 238.0, 144.0, 115.0],
+            [13.92, 13.2, 2.556, 0.835294, 213.0, 119.0, 99.0],
+            [13.32, 13.32, 2.964, 0.968627, 247.0, 215.0, 189.0],
+            [13.44, 13.32, 2.916, 0.952941, 243.0, 198.0, 169.0],
+            [13.56, 13.32, 2.976, 0.972549, 248.0, 181.0, 148.0],
+            [13.68, 13.32, 2.784, 0.909804, 232.0, 144.0, 116.0],
+            [13.8, 13.32, 2.664, 0.870588, 222.0, 124.0, 101.0],
+            [13.92, 13.32, 2.484, 0.811765, 207.0, 105.0, 86.0],
+            [13.32, 13.44, 2.94, 0.960784, 245.0, 197.0, 166.0],
+            [13.44, 13.44, 2.94, 0.960784, 245.0, 191.0, 161.0],
+            [13.56, 13.44, 2.952, 0.964706, 246.0, 170.0, 139.0],
+            [13.68, 13.44, 2.64, 0.862745, 220.0, 128.0, 104.0],
+            [13.8, 13.44, 2.472, 0.807843, 206.0, 110.0, 92.0],
+            [13.92, 13.44, 2.412, 0.788235, 201.0, 89.0, 72.0]
+        ]
 
-        // Generate a sample terrain-like point cloud
-        for x in stride(from: -2.0, to: 2.0, by: 0.1) {
-            for z in stride(from: -2.0, to: 2.0, by: 0.1) {
-                // Create height variation
-                let height = sin(x * 2) * cos(z * 2) * 0.5 +
-                             sin(x * 5) * sin(z * 5) * 0.1 +
-                             Double.random(in: -0.05...0.05)
+        let count = Double(rawData.count)
+        let sumX = rawData.reduce(0.0) { $0 + $1[0] }
+        let sumY = rawData.reduce(0.0) { $0 + $1[1] }
+        let sumZ = rawData.reduce(0.0) { $0 + $1[2] }
+        let meanX = sumX / count
+        let meanY = sumY / count
+        let meanZ = sumZ / count
 
-                // Calculate intensity based on height
-                let intensity = (height + 1) / 2
-
-                // Classification based on regions
-                let classification = if sqrt(x*x + z*z) < 0.5 {
-                    0 // Center region
-                } else if abs(x) > 1.5 || abs(z) > 1.5 {
-                    2 // Outer region
-                } else {
-                    1 // Middle region
-                }
-
-                points.append(PointCloudPoint(
-                    x: x,
-                    y: height,
-                    z: z,
-                    intensity: intensity,
-                    classification: classification
-                ))
-            }
+        return rawData.map { data in
+            PointCloudPoint(
+                x: data[0] - meanX,
+                y: data[1] - meanY,
+                z: data[2] - meanZ,
+                intensity: data[3],
+                classification: 0,
+                red: data[4] / 255.0,
+                green: data[5] / 255.0,
+                blue: data[6] / 255.0
+            )
         }
-
-        // Add some scattered elevated points
-        for _ in 0..<100 {
-            let x = Double.random(in: -2...2)
-            let z = Double.random(in: -2...2)
-            let y = Double.random(in: 0.5...1.5)
-
-            points.append(PointCloudPoint(
-                x: x,
-                y: y,
-                z: z,
-                intensity: Double.random(in: 0.3...1.0),
-                classification: 3
-            ))
-        }
-
-        return points
     }
 
     func rotatePoint(_ point: PointCloudPoint, angle: Double) -> PointCloudPoint {
@@ -1105,7 +1118,10 @@ struct PointCloudView: View {
             y: point.y,
             z: point.x * sinAngle + point.z * cosAngle,
             intensity: point.intensity,
-            classification: point.classification
+            classification: point.classification,
+            red: point.red,
+            green: point.green,
+            blue: point.blue
         )
     }
 
@@ -1124,6 +1140,8 @@ struct PointCloudView: View {
             case 3: return .purple
             default: return .gray
             }
+        case .rgb:
+            return Color(red: point.red, green: point.green, blue: point.blue)
         }
     }
 
@@ -1177,7 +1195,7 @@ struct PointCloudView: View {
             lineWidth: 2
         )
 
-        // Y-axis (green) – vertical, no rotation
+        // Y-axis (green) â�� vertical, no rotation
         context.stroke(
             Path { path in
                 path.move(to: CGPoint(x: centerX, y: centerY))
@@ -1209,6 +1227,9 @@ struct PointCloudPoint {
     let z: Double
     let intensity: Double
     let classification: Int
+    let red: Double
+    let green: Double
+    let blue: Double
 }
 
 // MARK: - Data Models
@@ -1219,11 +1240,11 @@ struct Dataset: Identifiable {
     var pointCount: Int {
         switch type {
         case .twoDimensional:
-            return Int.random(in: 400...2_000)     // Grid cells or scatter points
+            return Int.random(in: 400...2000)     // Grid cells or scatter points
         case .threeDimensional:
-            return Int.random(in: 1_000...50_000) // Vertices
+            return Int.random(in: 1000...50000) // Vertices
         case .pointCloud:
-            return Int.random(in: 100_000...5_000_000) // Point-cloud points
+            return Int.random(in: 100000...5000000) // Point-cloud points
         }
     }
 }
@@ -1240,7 +1261,7 @@ struct VisualizationSettings: Equatable {
 }
 
 enum ColorMode: Equatable {
-    case height, intensity, classification
+    case height, intensity, classification, rgb
 }
 
 enum Quality: Equatable {
