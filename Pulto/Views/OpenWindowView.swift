@@ -25,6 +25,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     var jupyterCellType: String {
         switch self {
         case .charts, .column, .volume, .pointcloud, .model3d: "code"
+        //case .charts, .column, .volume, .model3d: "code"
         case .spatial: "spatial"
         }
     }

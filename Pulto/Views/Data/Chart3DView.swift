@@ -483,8 +483,29 @@ private extension URL {
     }
 }
 
+
+// Customize the surface styles for a sinc function
+/*
+import SwiftUI
+import Charts
+
+struct Chart3DView: View {
+  var body: some View {
+    Chart3D {
+      SurfacePlot(x: "X", y: "Y", z: "Z") { x, z in
+        let h = hypot(x, z)
+        return sin(h) / h
+      }
+      .foregroundStyle(.normalBased)
+    }
+    .chartXScale(domain: -10...10, range: -0.5...0.5)
+    .chartZScale(domain: -10...10, range: -0.5...0.5)
+    .chartYScale(domain: -0.23...1, range: -0.5...0.5)
+  }
+}
 #Preview("Sample 3-D Chart", traits: .fixedLayout(width: 400, height: 300)) {
-    Chart3DView(dataURL: .previewSampleChartDataURL())
+    Chart3DView()
         .glassBackgroundEffect()   // optional translucent frame
         .padding()
 }
+*/
