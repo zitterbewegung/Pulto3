@@ -1091,6 +1091,8 @@ extension WindowType {
         case .volume:     return "gauge"
         case .spatial: return "circle.grid.3x3"
         case .model3d:    return "cube"
+        case .pointcloud:  return "circle.grid.3x3.fill"
+
         }
     }
 }

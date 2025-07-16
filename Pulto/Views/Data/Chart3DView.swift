@@ -283,7 +283,7 @@ struct Chart3DView: View {
             // Calculate color based on mode
             let color = getPointColor(
                 point: point,
-                normalizedPoint: SIMD3<Float>(normalizedX, normalizedY, normalizedZ),
+                normalizedPoint: SIMD3<Float>(Float(normalizedX), Float(normalizedY), Float(normalizedZ)),
                 index: index
             )
 

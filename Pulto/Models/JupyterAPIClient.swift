@@ -263,7 +263,7 @@ struct AnyCodable: Codable {
 // MARK: - Jupyter API Client with Remote Execution
 
 @MainActor
-class JupyterAPIClient: ObservableObject {
+class JupyterAPIClient: ObservableObject, Identifiable {
     @Published var isConnected = false
     @Published var isConnecting = false
     @Published var connectionError: String?

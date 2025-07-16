@@ -748,26 +748,55 @@ struct NotebookImportDialog: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var importActionsView: some View {
-        HStack(spacing: 12) {
-            Button("Cancel Import") {
-                selectedNotebook = nil
-                notebookAnalysis = nil
-                notebookCells = []
-                importResult = nil
-            }
-            .buttonStyle(.bordered)
-            .disabled(isImporting)
+    private func performJupyterImport() {
+            guard let notebook = selectedJupyterNotebook else { return }
 
-            Spacer()
+            isImporting = true
 
-            Button("Import Windows") {
-                performImport()
+            let manager = windowManager
+            let shouldClearWindows = clearExistingWindows
+
+            Task {
+                do {
+                    if shouldClearWindows {
+                        await MainActor.run {
+                            manager.clearAllWindows()
+                        }
+                    }
+
+                    // Convert Jupyter notebook to local file for import
+                    if let notebookFile = jupyterClient.convertToNotebookFile(notebook) {
+                        let result = try manager.importFromGenericNotebook(fileURL: notebookFile.url)
+
+                        // Open each restored window visually
+                        await MainActor.run {
+                            for window in result.restoredWindows {
+                                 // Fix: Ensure the underlying object is Identifiable AND that its ID is Codable.
+                                if let identifiable = window.base as? any Identifiable,
+                                   let codableID = identifiable.id as? (any Hashable & Codable) {
+                                    openWindow(value: codableID)
+                                }
+                            }
+
+                            self.importResult = result
+                            self.isImporting = false
+                        }
+                    } else {
+                        throw ImportError.fileReadError
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.importResult = ImportResult(
+                            restoredWindows: [],
+                            errors: [ImportError.fileReadError],
+                            originalMetadata: nil,
+                            idMapping: [:]
+                        )
+                        self.isImporting = false
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(isImporting || notebookAnalysis?.windowCells == 0)
         }
-    }
 
     private func errorView(_ error: String) -> some View {
         VStack(spacing: 12) {
@@ -995,46 +1024,54 @@ struct NotebookImportDialog: View {
         }
     }
 
-    private func performImport() {
-        guard let notebook = selectedNotebook else { return }
+    private func performJupyterImport() {
+            guard let notebook = selectedJupyterNotebook else { return }
 
-        isImporting = true
+            isImporting = true
 
-        let manager = windowManager
-        let shouldClearWindows = clearExistingWindows
+            let manager = windowManager
+            let shouldClearWindows = clearExistingWindows
 
-        Task {
-            do {
-                if shouldClearWindows {
+            Task {
+                do {
+                    if shouldClearWindows {
+                        await MainActor.run {
+                            manager.clearAllWindows()
+                        }
+                    }
+
+                    // Convert Jupyter notebook to local file for import
+                    if let notebookFile = jupyterClient.convertToNotebookFile(notebook) {
+                        let result = try manager.importFromGenericNotebook(fileURL: notebookFile.url)
+
+                        // Open each restored window visually
+                        await MainActor.run {
+                            for window in result.restoredWindows {
+                                // Fix: Cast the AnyHashable's base to `any Identifiable` to access the id property.
+                                if let identifiable = window.base as? any Identifiable {
+                                    openWindow(value: identifiable.id)
+                                }
+                            }
+
+                            self.importResult = result
+                            self.isImporting = false
+                        }
+                    } else {
+                        throw ImportError.fileReadError
+                    }
+                } catch {
                     await MainActor.run {
-                        manager.clearAllWindows()
+                        self.importResult = ImportResult(
+                            restoredWindows: [],
+                            errors: [ImportError.fileReadError],
+                            originalMetadata: nil,
+                            idMapping: [:]
+                        )
+                        self.isImporting = false
                     }
-                }
-
-                let result = try manager.importFromGenericNotebook(fileURL: notebook.url)
-
-                // Open each restored window visually
-                await MainActor.run {
-                    for window in result.restoredWindows {
-                        openWindow(value: window.id)
-                    }
-
-                    self.importResult = result
-                    self.isImporting = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.importResult = ImportResult(
-                        restoredWindows: [],
-                        errors: [ImportError.fileReadError],
-                        originalMetadata: nil,
-                        idMapping: [:]
-                    )
-                    self.isImporting = false
                 }
             }
         }
-    }
 
     private func formatDate(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
@@ -1116,52 +1153,6 @@ struct NotebookImportDialog: View {
         }
     }
     
-    private func performJupyterImport() {
-        guard let notebook = selectedJupyterNotebook else { return }
-
-        isImporting = true
-
-        let manager = windowManager
-        let shouldClearWindows = clearExistingWindows
-
-        Task {
-            do {
-                if shouldClearWindows {
-                    await MainActor.run {
-                        manager.clearAllWindows()
-                    }
-                }
-
-                // Convert Jupyter notebook to local file for import
-                if let notebookFile = jupyterClient.convertToNotebookFile(notebook) {
-                    let result = try manager.importFromGenericNotebook(fileURL: notebookFile.url)
-
-                    // Open each restored window visually
-                    await MainActor.run {
-                        for window in result.restoredWindows {
-                            openWindow(value: window.id)
-                        }
-
-                        self.importResult = result
-                        self.isImporting = false
-                    }
-                } else {
-                    throw ImportError.fileReadError
-                }
-            } catch {
-                await MainActor.run {
-                    self.importResult = ImportResult(
-                        restoredWindows: [],
-                        errors: [ImportError.fileReadError],
-                        originalMetadata: nil,
-                        idMapping: [:]
-                    )
-                    self.isImporting = false
-                }
-            }
-        }
-    }
-
     // MARK: - Supporting Views
 
     struct StatBox: View {

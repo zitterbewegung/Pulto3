@@ -435,8 +435,11 @@ struct EnhancedNotebookChartsView: View {
                         createdDate: Date()
                     )
 
+                    // Cast back from AnyHashable to NewWindowID
                     for window in importResult.restoredWindows {
-                        openWindow(id: window.windowType.rawValue, value: window.id)
+                        if let newWindow = window as? NewWindowID {
+                            openWindow(id: newWindow.windowType.rawValue, value: newWindow.id)
+                        }
                     }
                 } else {
                     self.result = "No windows found to restore"

@@ -519,16 +519,12 @@ extension WindowTypeManager {
         for (type, wins) in Dictionary(grouping: newWindows, by: \.windowType) {
             let dataCount = wins.filter { window in
                 switch window.windowType {
-                case .charts:
-                    return window.state.chartData != nil
-                case .spatial, .pointcloud:
+                case .spatial:
                     return window.state.pointCloudData != nil
                 case .column:
                     return window.state.dataFrameData != nil
-                case .volume:
-                    return window.state.volumeData != nil
-                case .model3d:
-                    return window.state.model3DData != nil
+                default:
+                    return true
                 }
             }.count
             md += "\n| \(type.rawValue) | \(wins.count) | \(dataCount)/\(wins.count) |"
@@ -651,6 +647,19 @@ extension WindowTypeManager {
             replaceWindow(window)
         }
     }
+    /// Alternative: If updateWindow doesn't exist, use this approach
+     func updateChart3DForWindow(_ windowID: Int, chart3DData: Chart3DData?) {
+         // Find the window
+         guard let window = getWindow(for: windowID) else { return }
+
+         // Create updated state
+         var updatedState = window.state
+         updatedState.chart3DData = chart3DData
+         updatedState.lastModified = Date()
+
+         // Use existing update method (adjust based on your actual WindowTypeManager implementation)
+         updateWindowState(windowID, state: updatedState)
+     }
     /// Updates an existing `NewWindowID` in the underlying store via KVC, avoiding
     /// direct access to the private `windows` array.
     /// - Note: This relies on `WindowTypeManager` inheriting from `NSObject` so that

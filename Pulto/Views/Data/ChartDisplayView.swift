@@ -10,7 +10,7 @@ struct Point2D: Identifiable {
     let y: Double
 }
 
-struct Point3D: Codable, Hashable {
+struct ChartPoint3D: Codable, Hashable {
     let x: Float
     let y: Float
     let z: Float
@@ -29,7 +29,7 @@ class ChartModel {
 
     var is3D: Bool = false
     var data2D: [Point2D] = []
-    var data3D: [Point3D] = []
+    var data3D: [ChartPoint3D] = []
 }
 
 // The view for importing the file
@@ -60,7 +60,7 @@ struct ImportView: View {
 
                     var dim: Int? = nil
                     var tempData2D: [Point2D] = []
-                    var tempData3D: [Point3D] = []
+                    var tempData3D: [ChartPoint3D] = []
 
                     for line in lines {
                         let valueStrs = line.components(separatedBy: ",")
@@ -82,7 +82,7 @@ struct ImportView: View {
                         if dim == 2 {
                             tempData2D.append(Point2D(x: values[0], y: values[1]))
                         } else if dim == 3 {
-                            tempData3D.append(Point3D(x: Float(values[0]), y: Float(values[1]), z: Float(values[2])))
+                            tempData3D.append(ChartPoint3D(x: Float(values[0]), y: Float(values[1]), z: Float(values[2])))
                         }
                     }
 
