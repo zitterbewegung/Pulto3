@@ -274,12 +274,16 @@ class WorkspaceManager: ObservableObject {
         }
         
         let importResult = try windowManager.importFromGenericNotebook(fileURL: fileURL)
-        print("📥 WorkspaceManager: Imported \(importResult.restoredWindows.count) windows from notebook")
+        
+        // Convert back to NewWindowID from AnyHashable
+        let restoredWindows = importResult.restoredWindows.compactMap { $0 as? NewWindowID }
+        
+        print("📥 WorkspaceManager: Imported \(restoredWindows.count) windows from notebook")
         
         // Open windows with visual feedback
         var openedWindows: [NewWindowID] = []
         
-        for window in importResult.restoredWindows {
+        for window in restoredWindows {
             await MainActor.run {
                 print("🪟 WorkspaceManager: Opening window #\(window.id) (\(window.windowType.displayName))")
                 openWindow(window.id)
@@ -295,7 +299,7 @@ class WorkspaceManager: ObservableObject {
         
         return EnvironmentRestoreResult(
             importResult: importResult,
-            openedWindows: openedWindows,
+            openedWindows: openedWindows.map { $0 as AnyHashable },
             failedWindows: []
         )
     }
@@ -474,11 +478,10 @@ class WorkspaceManager: ObservableObject {
     }
     
     private func generateCellContent(for window: NewWindowID) -> String {
-        // This would call the existing WindowTypeManager methods
         switch window.windowType {
         case .charts:
             return generateChartCellContent(for: window)
-        case .spatial, .pointcloud:
+        case .spatial:
             return generateSpatialCellContent(for: window)
         case .column:
             return generateDataFrameCellContent(for: window)
@@ -486,10 +489,11 @@ class WorkspaceManager: ObservableObject {
             return generateVolumeCellContent(for: window)
         case .model3d:
             return generateModel3DCellContent(for: window)
+        case .pointcloud:
+            return generateSpatialCellContent(for: window)
         }
     }
     
-    // Basic content generation (simplified versions)
     private func generateChartCellContent(for window: NewWindowID) -> String {
         let content = """
         # Chart Window #\(window.id) - \(window.windowType.displayName)
@@ -517,7 +521,7 @@ class WorkspaceManager: ObservableObject {
     
     private func generateDataFrameCellContent(for window: NewWindowID) -> String {
         if let dataFrame = window.state.dataFrameData {
-            return dataFrame.toPandasCode()
+            return dataFrame.toPythonCode()
         }
         
         let content = """

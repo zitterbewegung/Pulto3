@@ -3,7 +3,7 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/18/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -114,8 +114,11 @@ struct SimpleRestoreDialog: View {
                 let result = try windowManager.importFromGenericNotebook(fileURL: fileURL)
                 
                 await MainActor.run {
+                    // Convert AnyHashable back to NewWindowID
+                    let restoredWindows = result.restoredWindows.compactMap { $0 as? NewWindowID }
+                    
                     // Open the windows
-                    for window in result.restoredWindows {
+                    for window in restoredWindows {
                         openWindow(value: window.id)
                     }
                     
@@ -123,7 +126,7 @@ struct SimpleRestoreDialog: View {
                     let currentMaxID = windowManager.getAllWindows().map { $0.id }.max() ?? 0
                     nextWindowID = currentMaxID + 1
                     
-                    resultMessage = "✅ Restored \(result.restoredWindows.count) windows"
+                    resultMessage = " Restored \(restoredWindows.count) windows"
                     isLoading = false
                     
                     // Auto-close after 2 seconds
@@ -133,7 +136,7 @@ struct SimpleRestoreDialog: View {
                 }
             } catch {
                 await MainActor.run {
-                    resultMessage = "❌ Failed to restore: \(error.localizedDescription)"
+                    resultMessage = " Failed to restore: \(error.localizedDescription)"
                     isLoading = false
                 }
             }

@@ -1,14 +1,14 @@
-//
+// 
 //  Chart3DView.swift
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/10/25.
 //  Copyright 2025 Apple. All rights reserved.
 //
-
 import SwiftUI
 import RealityKit
 import Foundation
+
 
 struct Chart3DView: View {
     let dataURL: URL?  // Optional URL for the JSON data (defaults to iCloud or bundle)
@@ -45,7 +45,7 @@ struct Chart3DView: View {
                 let sphere = MeshResource.generateSphere(radius: 0.02)
                 let material = SimpleMaterial(color: .blue, isMetallic: false)
                 let pointEntity = ModelEntity(mesh: sphere, materials: [material])
-                pointEntity.position = SIMD3<Float>(point.x, point.y, point.z)
+                pointEntity.position = SIMD3<Float>(Float(point.x), Float(point.y), Float(point.z))
                 chartEntity.addChild(pointEntity)
             }
 
@@ -92,94 +92,11 @@ struct Chart3DView: View {
     }
 }
 
-// MARK: - Chart3D Support
 
-struct Chart3DData: Codable, Equatable, Hashable {
-    let title: String
-    let chartType: String
-    let points: [Point3D]
-
-    static func == (lhs: Chart3DData, rhs: Chart3DData) -> Bool {
-        lhs.title == rhs.title &&
-        lhs.chartType == rhs.chartType &&
-        lhs.points == rhs.points
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(title)
-        hasher.combine(chartType)
-        hasher.combine(points)
-    }
-
-    init(title: String = "3D Chart", chartType: String = "scatter", points: [Point3D] = []) {
-        self.title = title
-        self.chartType = chartType
-        self.points = points
-    }
-
-    static func defaultData() -> Chart3DData {
-        var points: [Point3D] = []
-        for _ in 0..<50 {
-            let x = Float.random(in: 0..<1)
-            let y = Float.random(in: 0..<1)
-            let z = Float(sin(x * 2 * .pi) + cos(y * 2 * .pi))
-            points.append(Point3D(x: x, y: y, z: z))
-        }
-        return Chart3DData(title: "Sample 3D Chart", chartType: "scatter", points: points)
-    }
-
-    // Generate mathematical surfaces
-    static func generateSurface(width: Int = 20, height: Int = 20, function: (Float, Float) -> Float) -> Chart3DData {
-        var points: [Point3D] = []
-        
-        for i in 0..<width {
-            for j in 0..<height {
-                let x = Float(i) / Float(width) * 4.0 - 2.0  // Range -2 to 2
-                let y = Float(j) / Float(height) * 4.0 - 2.0 // Range -2 to 2
-                let z = function(x, y)
-                points.append(Point3D(x: x, y: y, z: z))
-            }
-        }
-        
-        return Chart3DData(title: "3D Surface", chartType: "surface", points: points)
-    }
-
-    // Generate sample data patterns
-    static func generateWave() -> Chart3DData {
-        return generateSurface { x, y in
-            sin(x) * cos(y)
-        }
-    }
-
-    static func generateRipple() -> Chart3DData {
-        return generateSurface { x, y in
-            let r = sqrt(x*x + y*y)
-            return r > 0 ? sin(r * 3) / r : 1.0
-        }
-    }
-
-    static func generateParaboloid() -> Chart3DData {
-        return generateSurface { x, y in
-            (x*x + y*y) * 0.1
-        }
-    }
-}
-
-struct Point3D: Codable, Hashable {
-    let x: Float
-    let y: Float
-    let z: Float
-    
-    init(x: Float, y: Float, z: Float) {
-        self.x = x
-        self.y = y
-        self.z = z
-    }
-}
 
 // MARK: - Chart3DVolumetricView for visionOS
 
-struct Chart3DVolumetricView: View {
+ struct Chart3DVolumetricView: View {
     let windowID: Int
     let chartData: Chart3DData
     @EnvironmentObject var windowManager: WindowTypeManager
@@ -194,7 +111,7 @@ struct Chart3DVolumetricView: View {
         case height = "Height"
         case distance = "Distance"
         case uniform = "Uniform"
-        
+
         var icon: String {
             switch self {
             case .height: return "arrow.up.and.down"
@@ -208,7 +125,7 @@ struct Chart3DVolumetricView: View {
         VStack(spacing: 0) {
             // Controls overlay
             controlsHeaderView
-            
+
             // Main 3D visualization
             mainVisualizationView
         }
@@ -225,14 +142,14 @@ struct Chart3DVolumetricView: View {
             Task { await updateVisualization() }
         }
     }
-    
+
     private var controlsHeaderView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
                 Text(chartData.title)
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 HStack(spacing: 16) {
                     Label("\(chartData.points.count)", systemImage: "circle.grid.3x3")
                     Label(chartData.chartType, systemImage: "cube.transparent")
@@ -240,9 +157,9 @@ struct Chart3DVolumetricView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 8) {
                     Button(action: { showAxes.toggle() }) {
@@ -250,7 +167,7 @@ struct Chart3DVolumetricView: View {
                             .foregroundColor(showAxes ? .blue : .gray)
                     }
                     .help("Toggle axes")
-                    
+
                     Picker("Color Mode", selection: $colorMode) {
                         ForEach(ColorMode.allCases, id: \.self) { mode in
                             Label(mode.rawValue, systemImage: mode.icon).tag(mode)
@@ -259,7 +176,7 @@ struct Chart3DVolumetricView: View {
                     .pickerStyle(.menu)
                     .frame(width: 100)
                 }
-                
+
                 HStack(spacing: 8) {
                     Label("Size", systemImage: "circle")
                         .font(.caption2)
@@ -271,7 +188,7 @@ struct Chart3DVolumetricView: View {
         .padding()
         .background(.regularMaterial)
     }
-    
+
     private var mainVisualizationView: some View {
         RealityView { content in
             content.add(rootEntity)
@@ -304,35 +221,35 @@ struct Chart3DVolumetricView: View {
                 }
         )
     }
-    
+
     @MainActor
     private func loadChart() async {
         isLoading = true
         await updateVisualization()
         isLoading = false
     }
-    
+
     @MainActor
     private func updateVisualization() async {
         // Clear existing children
         rootEntity.children.removeAll()
-        
+
         // Add lighting
         let ambientLight = DirectionalLight()
         ambientLight.light.intensity = 500
         ambientLight.position = SIMD3<Float>(0, 2, 2)
         ambientLight.look(at: SIMD3<Float>(0, 0, 0), from: ambientLight.position, relativeTo: nil)
         rootEntity.addChild(ambientLight)
-        
+
         let fillLight = DirectionalLight()
         fillLight.light.intensity = 300
         fillLight.position = SIMD3<Float>(-2, 1, 1)
         fillLight.look(at: SIMD3<Float>(0, 0, 0), from: fillLight.position, relativeTo: nil)
         rootEntity.addChild(fillLight)
-        
+
         // Create 3D chart points
         await createChart3D()
-        
+
         // Add axes if enabled
         if showAxes {
             rootEntity.addChild(createAxis(color: .red, direction: .x))
@@ -340,7 +257,7 @@ struct Chart3DVolumetricView: View {
             rootEntity.addChild(createAxis(color: .blue, direction: .z))
         }
     }
-    
+
     private func createChart3D() async {
         // Find bounds for normalization
         let minX = chartData.points.map { $0.x }.min() ?? 0
@@ -349,38 +266,38 @@ struct Chart3DVolumetricView: View {
         let maxY = chartData.points.map { $0.y }.max() ?? 1
         let minZ = chartData.points.map { $0.z }.min() ?? 0
         let maxZ = chartData.points.map { $0.z }.max() ?? 1
-        
+
         let rangeX = max(maxX - minX, 0.001)
         let rangeY = max(maxY - minY, 0.001)
         let rangeZ = max(maxZ - minZ, 0.001)
-        
+
         // Create points with better visibility
         for (index, point) in chartData.points.enumerated() {
             let sphere = MeshResource.generateSphere(radius: max(pointSize, 0.03)) // Minimum size for visibility
-            
+
             // Normalize coordinates to [-2, 2] range for better spread
             let normalizedX = (point.x - minX) / rangeX * 4.0 - 2.0
             let normalizedY = (point.y - minY) / rangeY * 4.0 - 2.0
             let normalizedZ = (point.z - minZ) / rangeZ * 4.0 - 2.0
-            
+
             // Calculate color based on mode
             let color = getPointColor(
                 point: point,
                 normalizedPoint: SIMD3<Float>(normalizedX, normalizedY, normalizedZ),
                 index: index
             )
-            
+
             let material = SimpleMaterial(color: color, roughness: 0.3, isMetallic: false)
             let pointEntity = ModelEntity(mesh: sphere, materials: [material])
-            
-            pointEntity.position = SIMD3<Float>(normalizedX, normalizedY, normalizedZ)
-            
+
+            pointEntity.position = SIMD3<Float>(Float(normalizedX), Float(normalizedY), Float(normalizedZ))
+
             // Add some glow effect for better visibility
             pointEntity.components.set(OpacityComponent(opacity: 0.9))
-            
+
             rootEntity.addChild(pointEntity)
         }
-        
+
         // Add title text above the chart
         if let titleMesh = try? MeshResource.generateText(
             chartData.title,
@@ -392,7 +309,7 @@ struct Chart3DVolumetricView: View {
             titleEntity.scale = SIMD3<Float>(repeating: 0.2) // Larger scale
             rootEntity.addChild(titleEntity)
         }
-        
+
         // Add a ground plane for reference
         let groundMesh = MeshResource.generatePlane(width: 6.0, depth: 6.0)
         var groundMaterial = SimpleMaterial(color: .gray, roughness: 0.8, isMetallic: false)
@@ -401,18 +318,18 @@ struct Chart3DVolumetricView: View {
         groundEntity.position = SIMD3<Float>(0, -2.5, 0)
         rootEntity.addChild(groundEntity)
     }
-    
-    private func getPointColor(point: Point3D, normalizedPoint: SIMD3<Float>, index: Int) -> UIColor {
+
+    private func getPointColor(point: Chart3DData.Point3D, normalizedPoint: SIMD3<Float>, index: Int) -> UIColor {
         switch colorMode {
         case .height:
             let intensity = (normalizedPoint.y + 1.0) / 2.0 // 0 to 1
             return UIColor(hue: 0.7 - Double(intensity) * 0.5, saturation: 0.8, brightness: 0.9, alpha: 1.0)
-            
+
         case .distance:
             let distance = sqrt(normalizedPoint.x * normalizedPoint.x + normalizedPoint.y * normalizedPoint.y + normalizedPoint.z * normalizedPoint.z)
             let intensity = min(distance / 1.732, 1.0) // Normalize by max possible distance (sqrt(3))
             return UIColor(hue: Double(intensity) * 0.8, saturation: 0.9, brightness: 0.8, alpha: 1.0)
-            
+
         case .uniform:
             return .systemBlue
         }
@@ -433,7 +350,7 @@ struct Chart3DVolumetricView: View {
             direction == .z ? 0 : 0
         )
         axis.addChild(axisModel)
-        
+
         // Add axis label
         let labelText = direction == .x ? "X" : (direction == .y ? "Y" : "Z")
         if let labelMesh = try? MeshResource.generateText(labelText, extrusionDepth: 0.02) {
@@ -447,7 +364,7 @@ struct Chart3DVolumetricView: View {
             labelEntity.scale = SIMD3<Float>(repeating: 0.15)
             axis.addChild(labelEntity)
         }
-        
+
         return axis
     }
 

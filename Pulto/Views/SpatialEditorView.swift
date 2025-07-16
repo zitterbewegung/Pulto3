@@ -975,7 +975,7 @@ struct SpatialEditorView: View {
                 ["Charlie", "42", "Austin", "68000"],
                 ["Diana", "31", "Seattle", "82000"]
             ],
-            dtypes: ["Name": "string", "Age": "int", "City": "string", "Salary": "float"]
+            dataTypes: ["Name": "string", "Age": "int", "City": "string", "Salary": "float"]
         )
         currentVisualization = .dataTable(sampleData)
     }
@@ -1445,7 +1445,7 @@ struct SpatialEditorView: View {
         HStack {
             Label("\(data.rows.count) × \(data.columns.count)", systemImage: "tablecells")
             Spacer()
-            Text("\(data.dtypes.count) typed columns")
+            Text("\(data.dataTypes?.count ?? 0) typed columns")
         }
         .font(.caption2).foregroundColor(.secondary)
     }

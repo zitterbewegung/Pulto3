@@ -1,12 +1,13 @@
+import SwiftUI
+//import ASBUtils
+//import ASBModels
+import Combine
+
 //  Enhanced NewWindowID.swift with Point Cloud Integration
 //  UnderstandingVisionos
 //
 //  Created by Joshua Herman on 5/25/25.
 //
-
-import SwiftUI
-import Foundation
-import Charts
 
 // ─────────────────────────────────────────────────────────────
 // MARK: - Window metadata
@@ -25,6 +26,7 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
     var jupyterCellType: String {
         switch self {
         case .charts, .column, .volume, .pointcloud, .model3d: "code"
+
         case .spatial: "spatial"
         }
     }
@@ -245,6 +247,51 @@ struct PointCloudData: Codable, Hashable {
         \(hasIntensity ? "print(f\"- Intensity Range: [{np.min(intensities):.2f}, {np.max(intensities):.2f}]\")" : "")
         """
     }
+
+    func toEnhancedPandasCode() -> String {
+        let xPoints = points.map { String($0.x) }.joined(separator: ", ")
+        let yPoints = points.map { String($0.y) }.joined(separator: ", ")
+        let zPoints = points.map { String($0.z) }.joined(separator: ", ")
+
+        let intensities = points.map { String($0.intensity ?? 0.0) }.joined(separator: ", ")
+
+        return """
+        # Enhanced Point Cloud Data: \(title)
+        # Generated from VisionOS Point Cloud Viewer
+        
+        # Import necessary libraries
+        import numpy as np
+        import pandas as pd
+        
+        # Create DataFrame
+        data = {
+            "x": [\(xPoints)],
+            "y": [\(yPoints)],
+            "z": [\(zPoints)],
+            "intensity": [\(intensities)]
+        }
+        df = pd.DataFrame(data)
+        
+        print("Point Cloud Data Preview:")
+        print("=" * 60)
+        print(df.head())
+        
+        # Data statistics
+        print("\\nData Statistics:")
+        print("-" * 50)
+        print("Total points:", len(df))
+        print("X range:", df["x"].min(), "-", df["x"].max())
+        print("Y range:", df["y"].min(), "-", df["y"].max())
+        print("Z range:", df["z"].min(), "-", df["z"].max())
+        print("Intensity range:", df["intensity"].min(), "-", df["intensity"].max())
+        """
+    }
+
+    // Alias for backward compatibility
+    func toPandasCode() -> String {
+        return toPythonCode()
+    }
+
 }
 
 // Add this structure after PointCloudData
@@ -470,9 +517,212 @@ struct ChartData: Codable, Hashable {
         """
     }
 
+    // Alias for backward compatibility
+    func toPandasCode() -> String {
+        return toPythonCode()
+    }
+
 }
 
 // Add this structure after ChartData
+struct Chart3DData: Codable, Hashable {
+    var title: String
+    var chartType: String
+    var points: [Point3D]
+    var xAxisLabel: String
+    var yAxisLabel: String
+    var zAxisLabel: String
+    var colorScheme: String?
+    var showAxes: Bool
+    var showGrid: Bool
+    
+    struct Point3D: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+        var color: String?
+        var label: String?
+    }
+    
+    init(title: String = "3D Chart",
+         chartType: String = "scatter",
+         xAxisLabel: String = "X",
+         yAxisLabel: String = "Y",
+         zAxisLabel: String = "Z",
+         colorScheme: String? = nil,
+         showAxes: Bool = true,
+         showGrid: Bool = true) {
+        self.title = title
+        self.chartType = chartType
+        self.points = []
+        self.xAxisLabel = xAxisLabel
+        self.yAxisLabel = yAxisLabel
+        self.zAxisLabel = zAxisLabel
+        self.colorScheme = colorScheme
+        self.showAxes = showAxes
+        self.showGrid = showGrid
+    }
+    
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !points.isEmpty else {
+            return "# Empty 3D chart\nprint('No 3D chart data available')"
+        }
+        
+        let xPoints = points.map { String($0.x) }.joined(separator: ", ")
+        let yPoints = points.map { String($0.y) }.joined(separator: ", ")
+        let zPoints = points.map { String($0.z) }.joined(separator: ", ")
+        
+        return """
+        # \(title)
+        # Generated from VisionOS 3D Chart Viewer
+        
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        import plotly.graph_objects as go
+        
+        # 3D Chart data (\(points.count) points)
+        x_points = np.array([\(xPoints)])
+        y_points = np.array([\(yPoints)])
+        z_points = np.array([\(zPoints)])
+        
+        # Matplotlib 3D scatter plot
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        scatter = ax.scatter(x_points, y_points, z_points, c=z_points, cmap='viridis', alpha=0.7)
+        
+        ax.set_xlabel('\(xAxisLabel)')
+        ax.set_ylabel('\(yAxisLabel)')
+        ax.set_zlabel('\(zAxisLabel)')
+        ax.set_title('\(title)')
+        
+        \(showGrid ? "ax.grid(True)" : "")
+        plt.colorbar(scatter)
+        plt.tight_layout()
+        plt.show()
+        
+        # Plotly interactive 3D plot
+        fig_plotly = go.Figure()
+        
+        fig_plotly.add_trace(go.Scatter3d(
+            x=x_points,
+            y=y_points,
+            z=z_points,
+            mode='markers',
+            marker=dict(
+                size=5,
+                color=z_points,
+                colorscale='Viridis',
+                opacity=0.8
+            ),
+            name('\(title)')
+        ))
+        
+        fig_plotly.update_layout(
+            title='\(title)',
+            scene=dict(
+                xaxis_title='\(xAxisLabel)',
+                yaxis_title='\(yAxisLabel)',
+                zaxis_title='\(zAxisLabel)'
+            ),
+            width=800,
+            height=600
+        )
+        
+        fig_plotly.show()
+        
+        # Print statistics
+        print(f"3D Chart Statistics:")
+        print(f"- Title: '\(title)'")
+        print(f"- Chart Type: '\(chartType)'")
+        print(f"- Total Points: {len(x_points)}")
+        print(f"- X Range: [{np.min(x_points):.2f}, {np.max(x_points):.2f}]")
+        print(f"- Y Range: [{np.min(y_points):.2f}, {np.max(y_points):.2f}]")
+        print(f"- Z Range: [{np.min(z_points):.2f}, {np.max(z_points):.2f}]")
+        """
+    }
+    
+    // Helper method to generate default sample data
+    static func defaultData() -> Chart3DData {
+        var chart3D = Chart3DData(
+            title: "Sample 3D Chart",
+            chartType: "scatter",
+            xAxisLabel: "X Axis",
+            yAxisLabel: "Y Axis",
+            zAxisLabel: "Z Axis"
+        )
+        
+        // Generate sample 3D points
+        chart3D.points = [
+            Point3D(x: 0.0, y: 0.0, z: 0.0),
+            Point3D(x: 1.0, y: 2.0, z: 1.5),
+            Point3D(x: 2.0, y: 1.0, z: 3.0),
+            Point3D(x: 3.0, y: 3.0, z: 2.0),
+            Point3D(x: 4.0, y: 0.5, z: 4.0),
+            Point3D(x: 5.0, y: 2.5, z: 1.0),
+            Point3D(x: 6.0, y: 1.5, z: 3.5),
+            Point3D(x: 7.0, y: 3.5, z: 2.5),
+            Point3D(x: 8.0, y: 0.8, z: 4.2),
+            Point3D(x: 9.0, y: 2.2, z: 1.8)
+        ]
+        
+        return chart3D
+    }
+    
+    // Generate wave surface data
+    static func generateWave() -> Chart3DData {
+        var chart3D = Chart3DData(
+            title: "Wave Surface",
+            chartType: "surface",
+            xAxisLabel: "X",
+            yAxisLabel: "Y",
+            zAxisLabel: "Z"
+        )
+        
+        // Generate wave pattern
+        let resolution = 20
+        let size = 4.0
+        let step = size / Double(resolution)
+        
+        for i in 0..<resolution {
+            for j in 0..<resolution {
+                let x = -size/2 + Double(i) * step
+                let y = -size/2 + Double(j) * step
+                let z = sin(x) * cos(y) * 2.0
+                
+                chart3D.points.append(Point3D(x: x, y: y, z: z))
+            }
+        }
+        
+        return chart3D
+    }
+    
+    // Generate scatter data
+    static func generateScatter() -> Chart3DData {
+        var chart3D = Chart3DData(
+            title: "3D Scatter Plot",
+            chartType: "scatter",
+            xAxisLabel: "X",
+            yAxisLabel: "Y",
+            zAxisLabel: "Z"
+        )
+        
+        // Generate random scatter points
+        for _ in 0..<50 {
+            let x = Double.random(in: -5...5)
+            let y = Double.random(in: -5...5)
+            let z = Double.random(in: -5...5)
+            
+            chart3D.points.append(Point3D(x: x, y: y, z: z))
+        }
+        
+        return chart3D
+    }
+}
+
+// Add this structure after Chart3DData
 struct Model3DData: Codable, Hashable {
     var vertices: [Vertex3D]
     var faces: [Face3D]
@@ -781,204 +1031,261 @@ struct Model3DData: Codable, Hashable {
     }
 }
 
-struct WindowState: Codable, Hashable {
-    let id: Int = Int()
-    var isMinimized: Bool = false
-    var isMaximized: Bool = false
-    var opacity: Double = 1.0
-    var lastModified: Date = Date()
-    var content: String = ""
-    var exportTemplate: ExportTemplate = .plain
-    var customImports: [String] = []
-    var tags: [String] = []
-    var dataFrameData: DataFrameData? = nil
-    var pointCloudData: PointCloudData? = nil
-    var volumeData: VolumeData? = nil
-    var chartData: ChartData? = nil
-    var model3DData: Model3DData? = nil
-    var usdzBookmark: Data? = nil
-    var pointCloudBookmark: Data? = nil
-    var chart3DData: Chart3DData?
-
-    init(isMinimized: Bool = false, isMaximized: Bool = false,
-         opacity: Double = 1.0, content: String = "",
-         exportTemplate: ExportTemplate = .plain) {
-        self.isMinimized = isMinimized
-        self.isMaximized = isMaximized
-        self.opacity = opacity
-        self.content = content
-        self.exportTemplate = exportTemplate
-        self.lastModified = Date()
-    }
-}
-
-
+// Add this structure after Model3DData
+// Add this structure for DataFrame support
 struct DataFrameData: Codable, Hashable {
     var columns: [String]
     var rows: [[String]]
-    var dtypes: [String: String] // column name to data type mapping
-    var shapeRows: Int // instead of tuple
-    var shapeColumns: Int // instead of tuple
-
-    // Computed property for convenient access
-    var shape: (Int, Int) {
-        return (shapeRows, shapeColumns)
-    }
-
-    init(columns: [String] = [], rows: [[String]] = [], dtypes: [String: String] = [:]) {
+    var title: String
+    var description: String?
+    var dataTypes: [String: String]?
+    var shapeRows: Int { rows.count }
+    var shapeColumns: Int { columns.count }
+    
+    init(title: String = "Data Frame",
+         columns: [String] = [],
+         rows: [[String]] = [],
+         description: String? = nil,
+         dataTypes: [String: String]? = nil) {
+        self.title = title
         self.columns = columns
         self.rows = rows
-        self.dtypes = dtypes
-        self.shapeRows = rows.count
-        self.shapeColumns = columns.count
+        self.description = description
+        self.dataTypes = dataTypes
     }
-
-    // Helper methods
-    func toPandasCode() -> String {
+    
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
         guard !columns.isEmpty && !rows.isEmpty else {
-            return "# Empty DataFrame\ndf = pd.DataFrame()"
+            return "# Empty DataFrame\nprint('No DataFrame data available')"
         }
-
-        var code = "# DataFrame data\ndata = {\n"
-
-        for (colIndex, column) in columns.enumerated() {
-            let columnData = rows.map { $0.count > colIndex ? $0[colIndex] : "" }
-            let formattedData = columnData.map { "'\($0)'" }.joined(separator: ", ")
-            code += "    '\(column)': [\(formattedData)],\n"
-        }
-
-        code += "}\n\n"
-        code += "df = pd.DataFrame(data)\n\n"
-
-        // Add data type conversions if specified
-        if !dtypes.isEmpty {
-            code += "# Convert data types\n"
-            for (column, dtype) in dtypes {
-                switch dtype.lowercased() {
-                case "int", "integer":
-                    code += "df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce').astype('Int64')\n"
-                case "float", "numeric":
-                    code += "df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce')\n"
-                case "datetime", "date":
-                    code += "df['\(column)'] = pd.to_datetime(df['\(column)'], errors='coerce')\n"
-                case "bool", "boolean":
-                    code += "df['\(column)'] = df['\(column)'].astype('boolean')\n"
-                default:
-                    code += "# \(column): \(dtype)\n"
-                }
-            }
-            code += "\n"
-        }
-
-        code += "print(f\"DataFrame shape: {df.shape}\")\nprint(df.head())\nprint(df.info())"
-
-        return code
-    }
-
-    func toCSVString() -> String {
-        guard !columns.isEmpty else { return "" }
-
-        var csv = columns.joined(separator: ",") + "\n"
-        for row in rows {
-            let paddedRow = row + Array(repeating: "", count: max(0, columns.count - row.count))
-            csv += paddedRow.prefix(columns.count).joined(separator: ",") + "\n"
-        }
-        return csv
-    }
-
-    func toEnhancedPandasCode() -> String {
-        let columnsStr = columns.map { "'\($0)'" }.joined(separator: ", ")
-
-        // Create the data dictionary
-        var dataDict: [String] = []
-        for (index, column) in columns.enumerated() {
-            let columnValues = rows.map { row in
-                index < row.count ? row[index] : ""
-            }
-
-            // Format values based on data type
-            let dtype = dtypes[column] ?? "string"
-            let formattedValues: [String]
-
-            switch dtype {
-            case "int":
-                formattedValues = columnValues.map { Int($0) != nil ? $0 : "0" }
-            case "float":
-                formattedValues = columnValues.map { Double($0) != nil ? $0 : "0.0" }
-            default: // string
-                formattedValues = columnValues.map { "'\($0)'" }
-            }
-
-            let valuesStr = formattedValues.joined(separator: ", ")
-            dataDict.append("    '\(column)': [\(valuesStr)]")
-        }
-
-        let dataDictStr = "{\n\(dataDict.joined(separator: ",\n"))\n}"
-
-        // Generate dtypes dictionary
-        let dtypesStr = dtypes.map { "'\($0.key)': '\($0.value)'" }.joined(separator: ", ")
-
+        
+        let columnsString = columns.map { "\"\($0)\"" }.joined(separator: ", ")
+        let rowsString = rows.map { row in
+            "[\(row.map { "\"\($0)\"" }.joined(separator: ", "))]"
+        }.joined(separator: ",\n    ")
+        
         return """
-        # DataFrame Window - \(columns.count) columns, \(rows.count) rows
-        # DataFrame Columns: [\(columnsStr)]
-        # DataFrame Types: {\(dtypesStr)}
-        # DataFrame Rows: \(formatRowsForComment())
+        # \(title)
+        # Generated from VisionOS DataFrame Viewer
         
         import pandas as pd
         import numpy as np
         
-        # DataFrame data from VisionOS
-        data = \(dataDictStr)
+        # DataFrame data
+        columns = [\(columnsString)]
+        data = [
+            \(rowsString)
+        ]
         
         # Create DataFrame
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data, columns=columns)
         
-        # Set data types
-        \(generateDtypeConversions())
+        # Display DataFrame
+        print("DataFrame: \(title)")
+        print("=" * 50)
+        print(df)
         
-        # Display DataFrame info
-        print("DataFrame Summary:")
+        # Basic statistics
+        print("\\nDataFrame Info:")
         print(f"Shape: {df.shape}")
         print(f"Columns: {list(df.columns)}")
-        print("\\nData types:")
-        print(df.dtypes)
-        print("\\nFirst 10 rows:")
-        print(df.head(10))
-        print("\\nStatistical summary:")
-        print(df.describe(include='all'))
         
-        # Display the full DataFrame
-        df
+        # Show data types
+        print("\\nData Types:")
+        print(df.dtypes)
+        
+        # Show first few rows
+        print("\\nFirst 5 rows:")
+        print(df.head())
+        
+        # Show basic statistics for numeric columns
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            print("\\nNumeric Statistics:")
+            print(df[numeric_cols].describe())
+        
+        # Memory usage
+        print("\\nMemory Usage:")
+        print(df.memory_usage(deep=True))
         """
     }
-
-    private func formatRowsForComment() -> String {
-        let formattedRows = rows.prefix(5).map { row in
-            let quotedRow = row.map { "'\($0)'" }.joined(separator: ", ")
-            return "[\(quotedRow)]"
+    
+    // Enhanced pandas code with more features
+    func toEnhancedPandasCode() -> String {
+        guard !columns.isEmpty && !rows.isEmpty else {
+            return "# Empty DataFrame\nprint('No DataFrame data available')"
         }
-        let rowsStr = formattedRows.joined(separator: ", ")
-        let suffix = rows.count > 5 ? ", ..." : ""
-        return "[\(rowsStr)\(suffix)]"
+        
+        let columnsString = columns.map { "\"\($0)\"" }.joined(separator: ", ")
+        let rowsString = rows.map { row in
+            "[\(row.map { "\"\($0)\"" }.joined(separator: ", "))]"
+        }.joined(separator: ",\n    ")
+        
+        return """
+        # Enhanced DataFrame: \(title)
+        # Generated from VisionOS DataFrame Viewer
+        
+        import pandas as pd
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        
+        # DataFrame data
+        columns = [\(columnsString)]
+        data = [
+            \(rowsString)
+        ]
+        
+        # Create DataFrame
+        df = pd.DataFrame(data, columns=columns)
+        
+        # Enhanced DataFrame Analysis
+        print("Enhanced DataFrame Analysis: \(title)")
+        print("=" * 60)
+        
+        # Basic info
+        print("\\n1. Basic Information:")
+        print(f"   Shape: {df.shape}")
+        print(f"   Columns: {list(df.columns)}")
+        print(f"   Memory Usage: {df.memory_usage(deep=True).sum()} bytes")
+        
+        # Data types and null values
+        print("\\n2. Data Types and Missing Values:")
+        info_df = pd.DataFrame({
+            'Column': df.columns,
+            'Type': df.dtypes,
+            'Non-Null Count': df.count(),
+            'Null Count': df.isnull().sum()
+        })
+        print(info_df)
+        
+        # Statistical summary
+        print("\\n3. Statistical Summary:")
+        print(df.describe(include='all'))
+        
+        # Sample data
+        print("\\n4. Sample Data:")
+        print("First 5 rows:")
+        print(df.head())
+        
+        if len(df) > 5:
+            print("\\nLast 5 rows:")
+            print(df.tail())
+        
+        # Data visualization (if numeric columns exist)
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            print("\\n5. Data Visualization:")
+            
+            # Create subplots
+            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+            fig.suptitle('DataFrame Analysis: \(title)', fontsize=16)
+            
+            # Histogram for numeric columns
+            if len(numeric_cols) > 0:
+                df[numeric_cols].hist(ax=axes[0, 0], bins=20)
+                axes[0, 0].set_title('Histograms of Numeric Columns')
+            
+            # Correlation heatmap
+            if len(numeric_cols) > 1:
+                sns.heatmap(df[numeric_cols].corr(), annot=True, ax=axes[0, 1])
+                axes[0, 1].set_title('Correlation Matrix')
+            
+            # Box plot
+            if len(numeric_cols) > 0:
+                df[numeric_cols].boxplot(ax=axes[1, 0])
+                axes[1, 0].set_title('Box Plot of Numeric Columns')
+                axes[1, 0].tick_params(axis='x', rotation=45)
+            
+            # Value counts for categorical columns
+            categorical_cols = df.select_dtypes(include=['object']).columns
+            if len(categorical_cols) > 0:
+                col = categorical_cols[0]
+                df[col].value_counts().plot(kind='bar', ax=axes[1, 1])
+                axes[1, 1].set_title(f'Value Counts: {col}')
+                axes[1, 1].tick_params(axis='x', rotation=45)
+            
+            plt.tight_layout()
+            plt.show()
+        
+        # Export suggestions
+        print("\\n6. Export Options:")
+        print("   # Save to CSV:")
+        print("   df.to_csv('dataframe_export.csv', index=False)")
+        print("   \\n   # Save to Excel:")
+        print("   df.to_excel('dataframe_export.xlsx', index=False)")
+        print("   \\n   # Display in interactive table:")
+        print("   # df  # Just run this cell to see interactive table")
+        
+        # Final DataFrame ready for use
+        print("\\n7. DataFrame Ready for Analysis:")
+        print("   Variable 'df' contains your data and is ready for further analysis!")
+        """
+    }
+    
+    // Alias for backward compatibility
+    func toPandasCode() -> String {
+        return toPythonCode()
     }
 
-    private func generateDtypeConversions() -> String {
-        var conversions: [String] = []
+}
 
-        for (column, dtype) in dtypes {
-            switch dtype {
-            case "int":
-                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce').astype('Int64')")
-            case "float":
-                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce')")
-            case "bool":
-                conversions.append("df['\(column)'] = df['\(column)'].astype('bool')")
-            default: // string
-                conversions.append("df['\(column)'] = df['\(column)'].astype('string')")
-            }
-        }
+struct WindowState: Codable, Hashable {
+    let id: Int
+    var isMinimized: Bool
+    var isMaximized: Bool
+    var opacity: Double
+    var lastModified: Date
+    var content: String
+    var exportTemplate: ExportTemplate
+    var customImports: [String]
+    var tags: [String]
+    var dataFrameData: DataFrameData?
+    var pointCloudData: PointCloudData?
+    var volumeData: VolumeData?
+    var chartData: ChartData?
+    var model3DData: Model3DData?
+    var usdzBookmark: Data?
+    var pointCloudBookmark: Data?
+    var chart3DData: Chart3DData?
 
-        return conversions.joined(separator: "\n")
+    init(
+        id: Int = 0,
+        isMinimized: Bool = false,
+        isMaximized: Bool = false,
+        opacity: Double = 1.0,
+        lastModified: Date = Date(),
+        content: String = "",
+        exportTemplate: ExportTemplate = .plain,
+        customImports: [String] = [],
+        tags: [String] = [],
+        dataFrameData: DataFrameData? = nil,
+        pointCloudData: PointCloudData? = nil,
+        volumeData: VolumeData? = nil,
+        chartData: ChartData? = nil,
+        model3DData: Model3DData? = nil,
+        usdzBookmark: Data? = nil,
+        pointCloudBookmark: Data? = nil,
+        chart3DData: Chart3DData? = nil
+    ) {
+        self.id = id
+        self.isMinimized = isMinimized
+        self.isMaximized = isMaximized
+        self.opacity = opacity
+        self.lastModified = lastModified
+        self.content = content
+        self.exportTemplate = exportTemplate
+        self.customImports = customImports
+        self.tags = tags
+        self.dataFrameData = dataFrameData
+        self.pointCloudData = pointCloudData
+        self.volumeData = volumeData
+        self.chartData = chartData
+        self.model3DData = model3DData
+        self.usdzBookmark = usdzBookmark
+        self.pointCloudBookmark = pointCloudBookmark
+        self.chart3DData = chart3DData
     }
 }
 
@@ -1663,7 +1970,7 @@ struct NewWindow: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "tag")
                                     .font(.caption)
-                                Text(window.state.tags.joined(separator: ", "))
+                                Text("Tags: \(window.state.tags.joined(separator: ", "))")
                                     .font(.caption)
                             }
                             .foregroundStyle(.secondary)
@@ -1831,6 +2138,7 @@ struct NewWindow: View {
                                 }
                             }
                         }
+
                     // ───────────── POINT CLOUD ─────────────
                     case .pointcloud:
                         VStack {
@@ -1845,11 +2153,11 @@ struct NewWindow: View {
                                         endPoint: .bottomTrailing
                                     ))
 
-                                Text("Chart 3D Viewer")
+                                Text("Point Cloud Viewer")
                                     .font(.largeTitle)
                                     .fontWeight(.bold)
 
-                                if let pointCloud = window.state.chart3DData {
+                                if let pointCloud = window.state.pointCloudData {
                                     VStack(spacing: 12) {
                                         Text(pointCloud.title)
                                             .font(.title2)
@@ -1857,18 +2165,18 @@ struct NewWindow: View {
 
                                         HStack(spacing: 40) {
                                             VStack {
-                                                //Text("\(pointCloud.totalPoints)")
-                                                //    .font(.title)
-                                                //    .fontWeight(.semibold)
+                                                Text("\(pointCloud.totalPoints)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
                                                 Text("Points")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
                                             }
 
                                             VStack {
-                                                 //Text(pointCloud.demoType)
-                                                 //   .font(.title)
-                                                 //   .fontWeight(.semibold)
+                                                Text(pointCloud.demoType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
                                                 Text("Type")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
@@ -1877,7 +2185,7 @@ struct NewWindow: View {
                                         .padding(.top)
                                     }
                                 } else if window.state.pointCloudBookmark != nil {
-                                    Text("Imported 3D Chart")
+                                    Text("Imported Point Cloud")
                                         .font(.title2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1889,9 +2197,9 @@ struct NewWindow: View {
 
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-chart3d", value: id)
+                                    openWindow(id: "volumetric-pointcloud", value: id)
                                 } label: {
-                                    Label("Open Chart3D View", systemImage: "view.3d")
+                                    Label("Open Volumetric View", systemImage: "view.3d")
                                         .font(.headline)
                                         .padding()
                                         .background(.purple.opacity(0.2))
@@ -1918,6 +2226,7 @@ struct NewWindow: View {
                             if let url = try? result.get().first, ["ply", "pcd", "xyz", "csv"].contains(url.pathExtension.lowercased()) {
                                 Task {
                                     do {
+                                        // Save the bookmark
                                         let bookmark = try url.bookmarkData(options: .minimalBookmark)
                                         windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
                                     } catch {
@@ -2043,11 +2352,4 @@ struct NewWindow: View {
             }
         }
     }
-}
-
-// MARK: - Preview Provider
-
-
-#Preview("Spatial Editor") {
-    SpatialEditorView()
 }

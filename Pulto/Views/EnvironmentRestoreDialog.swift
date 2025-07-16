@@ -635,7 +635,7 @@ struct EnvironmentRestoreDialog: View {
 
                     ScrollView {
                         LazyVStack(spacing: 4) {
-                            ForEach(result.openedWindows, id: \.id) { window in
+                            ForEach(result.openedWindows.compactMap { $0 as? NewWindowID }, id: \.id) { window in
                                 HStack {
                                     Image(systemName: iconForWindowType(window.windowType.rawValue))
                                         .foregroundStyle(.green)
@@ -671,7 +671,7 @@ struct EnvironmentRestoreDialog: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
 
-                    ForEach(result.failedWindows, id: \.id) { window in
+                    ForEach(result.failedWindows.compactMap { $0 as? NewWindowID }, id: \.id) { window in
                         HStack {
                             Image(systemName: "xmark.circle")
                                 .foregroundStyle(.red)

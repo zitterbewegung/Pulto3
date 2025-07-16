@@ -130,7 +130,7 @@ struct EntryPoint: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
-
+        //
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
             if
@@ -148,7 +148,7 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+        .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
     }
 
     private var immersiveWorkspace: some SwiftUI.Scene {
@@ -347,7 +347,7 @@ struct EntryPoint: App {
                 let frame = DataFrameData(
                     columns: csv.headers,
                     rows:    csv.rows,
-                    dtypes:  dtypes
+                    dataTypes: dtypes
                 )
 
                 let id  = windowManager.getNextWindowID()
@@ -529,7 +529,7 @@ struct ProjectAwareEnvironmentView: View {
                 let frame = DataFrameData(
                     columns: csv.headers,
                     rows:    csv.rows,
-                    dtypes:  dtypes
+                    dataTypes: dtypes
                 )
 
                 let id  = windowManager.getNextWindowID()

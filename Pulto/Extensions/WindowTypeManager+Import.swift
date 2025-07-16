@@ -107,8 +107,6 @@ extension WindowTypeManager {
 
     func openVolumetricWindow(for window: NewWindowID, using openWindow: OpenWindowAction) {
         switch window.windowType {
-        case .pointcloud:
-            openWindow(id: "volumetric-pointcloud", value: window.id)
         case .model3d:
             openWindow(id: "volumetric-model3d", value: window.id)
         default:
@@ -293,34 +291,26 @@ extension WindowTypeManager {
         let content = sourceArray.joined(separator: "\n")
 
         switch windowType {
-        case .column:
-            if let dataFrame = try parseDataFrameFromContent(content) {
-                state.dataFrameData = dataFrame
-            }
-
-        case .spatial:
-            if let pointCloud = try parsePointCloudFromContent(content) {
-                state.pointCloudData = pointCloud
-            }
-
-        case .charts:
-            if let chartData = try parseChartDataFromContent(content) {
-                state.chartData = chartData
-            }
-
-        case .volume:
-            if let volumeData = try parseVolumeDataFromContent(content) {
-                state.volumeData = volumeData
-            }
-
         case .model3d:
             if let model3DData = try parseModel3DDataFromContent(content) {
                 state.model3DData = model3DData
             }
-
-        case .pointcloud:
+        case .column:
+            if let dataFrame = try parseDataFrameFromContent(content) {
+                state.dataFrameData = dataFrame
+            }
+        case .spatial:
             if let pointCloud = try parsePointCloudFromContent(content) {
                 state.pointCloudData = pointCloud
+            }
+        case .charts:
+            if let chartData = try parseChartDataFromContent(content) {
+                state.chartData = chartData
+            }
+        case .volume:
+            if let volumeData = try parseVolumeDataFromContent(content) {
+                state.volumeData = volumeData
+            }
             }
         }
     }
@@ -593,7 +583,7 @@ extension WindowTypeManager {
             return DataFrameData(
                 columns: columns,
                 rows: rows,
-                dtypes: dtypes
+                dataTypes: dtypes
             )
         }
         
@@ -648,7 +638,7 @@ extension WindowTypeManager {
         return DataFrameData(
             columns: columns,
             rows: rows,
-            dtypes: dtypes
+            dataTypes: dtypes
         )
     }
 
@@ -821,7 +811,7 @@ extension WindowTypeManager {
             return DataFrameData(
                 columns: columns,
                 rows: rows,
-                dtypes: dtypes
+                dataTypes: dtypes
             )
         }
         

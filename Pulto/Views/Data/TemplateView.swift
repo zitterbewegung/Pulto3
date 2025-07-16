@@ -594,7 +594,7 @@ struct TemplateView: View {
                     ["SENSOR_004", "22.8", "45.5", "Active"],
                     ["SENSOR_005", "23.3", "44.3", "Maintenance"]
                 ],
-                dtypes: [
+                dataTypes: [
                     "Sensor_ID": "string",
                     "Temperature": "float",
                     "Humidity": "float",

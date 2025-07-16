@@ -880,7 +880,7 @@ enum StandardWindowType: String, CaseIterable {
         case .dataFrame:  return .column
         //case .metrics:    return .volume
         //case .spatial:    return .spatial
-        case .pointCloud: return .pointcloud
+        case .pointCloud: return .spatial
         case .model3d:    return .model3d
         }
     }
@@ -1089,7 +1089,7 @@ extension WindowType {
         case .spatial:    return "rectangle.3.group"
         case .column:     return "tablecells"
         case .volume:     return "gauge"
-        case .pointcloud: return "circle.grid.3x3"
+        case .spatial: return "circle.grid.3x3"
         case .model3d:    return "cube"
         }
     }

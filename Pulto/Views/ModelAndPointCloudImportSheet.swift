@@ -88,7 +88,7 @@ struct PointCloudImportSheet: View {
     @MainActor
     private func createWindow(for pc: PointCloudData) {
         let newID = wm.getNextWindowID()
-        _ = wm.createWindow(.pointcloud, id: newID)
+        _ = wm.createWindow(.spatial, id: newID)
         wm.updateWindowPointCloud(newID, pointCloud: pc)   // extension below
         wm.markWindowAsOpened(newID)
     }

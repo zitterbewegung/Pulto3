@@ -197,7 +197,7 @@ class WindowTypeManager: ObservableObject {
     func getWindowChartData(for id: Int) -> ChartData? {
         return windows[id]?.state.chartData
     }
-
+    
     // Chart3D data methods
     func updateWindowChart3DData(_ id: Int, chart3DData: Chart3DData) {
         windows[id]?.state.chart3DData = chart3DData
@@ -237,10 +237,13 @@ class WindowTypeManager: ObservableObject {
         // Import the data first
         let importResult = try importFromGenericNotebook(fileURL: fileURL)
 
+        // Convert back to NewWindowID from AnyHashable
+        let restoredWindows = importResult.restoredWindows.compactMap { $0 as? NewWindowID }
+
         // Then actually open the windows visually
         var openedWindows: [NewWindowID] = []
 
-        for window in importResult.restoredWindows {
+        for window in restoredWindows {
             await MainActor.run {
                 openWindow(window.id) // This actually creates the visual window
                 markWindowAsOpened(window.id)
@@ -253,7 +256,7 @@ class WindowTypeManager: ObservableObject {
 
         return EnvironmentRestoreResult(
             importResult: importResult,
-            openedWindows: openedWindows,
+            openedWindows: openedWindows.map { $0 as AnyHashable },
             failedWindows: []
         )
     }
@@ -315,7 +318,7 @@ class WindowTypeManager: ObservableObject {
         let visionOSMetadata = extractVisionOSMetadata(from: json)
 
         return ImportResult(
-            restoredWindows: restoredWindows,
+            restoredWindows: restoredWindows.map { $0 as AnyHashable },
             errors: errors,
             originalMetadata: visionOSMetadata,
             idMapping: idMapping
@@ -418,11 +421,6 @@ class WindowTypeManager: ObservableObject {
                 state.dataFrameData = dataFrame
             }
 
-        case .pointcloud:
-            if let pointCloud = try parsePointCloudFromContent(content) {
-                state.pointCloudData = pointCloud
-            }
-
         case .volume:
             if let volumeData = try parseVolumeDataFromContent(content) {
                 state.volumeData = volumeData
@@ -439,6 +437,10 @@ class WindowTypeManager: ObservableObject {
             }
 
         case .spatial:
+            if let pointCloud = try parsePointCloudFromContent(content) {
+                state.pointCloudData = pointCloud
+            }
+        case .pointcloud:
             if let pointCloud = try parsePointCloudFromContent(content) {
                 state.pointCloudData = pointCloud
             }
@@ -532,7 +534,7 @@ class WindowTypeManager: ObservableObject {
         return DataFrameData(
             columns: ["imported_column"],
             rows: [["Data imported from notebook"]],
-            dtypes: ["imported_column": "string"]
+            dataTypes: ["imported_column": "string"]
         )
     }
 
@@ -1001,10 +1003,10 @@ class WindowTypeManager: ObservableObject {
             return generateDataFrameCellContent(for: window)
         case .volume:
             return generateVolumeCellContent(for: window)
-        case .pointcloud:
-            return generateSpatialCellContent(for: window)
         case .model3d:
             return generateModel3DCellContent(for: window)
+        case .pointcloud:
+            return generateSpatialCellContent(for: window)
         }
     }
 
@@ -1026,7 +1028,7 @@ class WindowTypeManager: ObservableObject {
 
     private func generateDataFrameCellContent(for window: NewWindowID) -> String {
         if let dataFrame = window.state.dataFrameData {
-            return dataFrame.toEnhancedPandasCode()
+            return dataFrame.toPythonCode()
         }
 
         let baseContent = """

@@ -3,9 +3,8 @@
 //  Pulto
 //
 //  Created by Joshua Herman on 6/18/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
-
 
 //
 //  SharedNotebookTypes.swift
@@ -13,6 +12,13 @@
 //
 
 import Foundation
+
+// Import the window types - assuming they're defined elsewhere
+// If NewWindowID is defined in OpenWindowView.swift, we need to move it to a shared location
+// or define it here. For now, let's define a minimal version:
+
+// MARK: - Forward Declarations (if needed)
+// These types should ideally be defined in a shared location
 
 // MARK: - Notebook File Type
 
@@ -46,11 +52,10 @@ struct NotebookFile: Identifiable, Hashable {
 // MARK: - Import Result Types
 
 struct ImportResult {
-    let restoredWindows: [NewWindowID]
+    let restoredWindows: [AnyHashable] 
     let errors: [ImportError]
     let originalMetadata: VisionOSExportInfo?
-    let idMapping: [Int: Int] // old ID -> new ID
-    
+    let idMapping: [Int: Int] 
     var isSuccessful: Bool {
         return !restoredWindows.isEmpty
     }
@@ -119,8 +124,8 @@ enum ImportError: Error, LocalizedError {
 
 struct EnvironmentRestoreResult {
     let importResult: ImportResult
-    let openedWindows: [NewWindowID]
-    let failedWindows: [NewWindowID]
+    let openedWindows: [AnyHashable] 
+    let failedWindows: [AnyHashable] 
     
     var totalRestored: Int {
         return openedWindows.count

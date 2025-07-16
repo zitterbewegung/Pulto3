@@ -509,8 +509,8 @@ struct WorkspaceDialog: View {
         case .spatial: return "cube"
         case .column: return "tablecells"
         case .volume: return "gauge"
-        case .pointcloud: return "dot.scope"
         case .model3d: return "cube.transparent"
+        case .pointcloud: return "dot.scope"
         }
     }
 }
