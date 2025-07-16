@@ -348,7 +348,7 @@ class PointCloudDemo2 {
 }
 
 // MARK: - SwiftUI Preview
-struct PointCloudPreview: View {
+struct PointCloudPlotView: View {
     @State private var selectedDemo = 0
     @State private var rotationAngle = 0.0
     @State private var showFileImporter = false
@@ -520,7 +520,7 @@ struct PointCloudPreview: View {
 
 // MARK: - Preview Provider
 #Preview {
-    PointCloudPreview(windowID: 1)
+    PointCloudPlotView(windowID: 1)
         .frame(width: 600, height: 800)
 }
 

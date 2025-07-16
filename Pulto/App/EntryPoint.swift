@@ -3,7 +3,7 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/16/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Copyright Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -87,6 +87,18 @@ struct EntryPoint: App {
         .windowStyle(.volumetric)
         .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
 
+        // PointCloudDemo dedicated volume
+        WindowGroup(id: "volumetric-pointclouddemo", for: Int.self) { $id in
+            if let id = id {
+                PointCloudPlotView(windowID: id)
+                    .environmentObject(windowManager)
+            } else {
+                EmptyView()
+            }
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
+
         // 3-D model volume
 
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
@@ -131,7 +143,7 @@ struct EntryPoint: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
-
+        
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
             if
@@ -237,6 +249,17 @@ struct EntryPoint: App {
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
 
+        // Create a PointCloudDemo window
+        let pointCloudDemoWindowID = windowManager.getNextWindowID()
+        let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
+        let pointCloudDemoWindow = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
+
+        // Create demo point cloud data
+        let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
+        windowManager.updateWindowPointCloud(pointCloudDemoWindowID, pointCloud: demoPointCloud)
+        windowManager.updateWindowContent(pointCloudDemoWindowID, content: "Demo Point Cloud - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
+        windowManager.addWindowTag(pointCloudDemoWindowID, tag: "Demo-PointCloud")
+
         // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
@@ -244,6 +267,11 @@ struct EntryPoint: App {
         // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
+        }
+
+        // Delay the point cloud demo window a bit more
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
         }
         #endif
     }
@@ -422,6 +450,17 @@ struct ProjectAwareEnvironmentView: View {
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
 
+        // Create a PointCloudDemo window
+        let pointCloudDemoWindowID = windowManager.getNextWindowID()
+        let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
+        let pointCloudDemoWindow = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
+
+        // Create demo point cloud data
+        let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
+        windowManager.updateWindowPointCloud(pointCloudDemoWindowID, pointCloud: demoPointCloud)
+        windowManager.updateWindowContent(pointCloudDemoWindowID, content: "Demo Point Cloud - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
+        windowManager.addWindowTag(pointCloudDemoWindowID, tag: "Demo-PointCloud")
+
         // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
@@ -429,6 +468,11 @@ struct ProjectAwareEnvironmentView: View {
         // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
+        }
+
+        // Delay the point cloud demo window a bit more
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
         }
         #endif
     }

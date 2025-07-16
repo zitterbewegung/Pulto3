@@ -641,7 +641,7 @@ struct Chart3DVolumetricView: View {
 
         var body: some View {
             Chart3DView(dataURL: dataURL)
-                .frame(width: 400, height: 300)
+                .frame(width: 600, height: 300)
                 .padding()
                 .onAppear {
                     // Create simple test data

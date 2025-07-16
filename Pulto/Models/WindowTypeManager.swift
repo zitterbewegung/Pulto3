@@ -1178,4 +1178,10 @@ class WindowTypeManager: ObservableObject {
         }
     }
 
+    func updatePointCloudBookmark(for id: Int, bookmark: Data?) {
+        if var window = windows[id] {
+            window.state.pointCloudBookmark = bookmark
+            windows[id] = window  // Re-assign to mutate the struct in the dictionary
+        }
+    }
 }
