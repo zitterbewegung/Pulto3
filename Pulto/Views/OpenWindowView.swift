@@ -1552,6 +1552,79 @@ struct NewWindow: View {
     @State var showFileImporter = false  // For USDZ import
     @State var showPointCloudImporter = false  // For point cloud import
 
+    @State private var loadingError: String?
+    @State private var loadedFileName: String = ""
+    @State private var isLoadingPointCloud: Bool = false
+
+    // Add this helper method to the NewWindow view:
+    private func loadPointCloudFromFile(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else {
+                loadingError = "No file selected"
+                return
+            }
+
+            let supportedExtensions = ["csv", "ply", "pcd", "xyz"]
+            let fileExtension = url.pathExtension.lowercased()
+
+            // Reset previous error and set loading state
+            loadingError = nil
+            isLoadingPointCloud = true
+
+            if supportedExtensions.contains(fileExtension) {
+                Task {
+                    do {
+                        // Load the point cloud data using PointCloudDemo2
+                        let pointCloudData = PointCloudDemo2.loadPointCloud(from: url)
+
+                        // Validate that we got valid data
+                        if pointCloudData.isEmpty {
+                            await MainActor.run {
+                                loadingError = "No valid points found in file or unsupported format"
+                                isLoadingPointCloud = false
+                            }
+                            return
+                        }
+
+                        // Convert to Chart3DData format
+                        let chart3DData = convertPointCloudToChart3D(pointCloudData, fileName: url.lastPathComponent)
+
+                        // Update the window with the converted data
+                        windowTypeManager.updateWindowChart3DData(id, chart3DData: chart3DData)
+
+                        // Update UI state
+                        await MainActor.run {
+                            loadedFileName = url.lastPathComponent
+                            isLoadingPointCloud = false
+
+                            // Automatically open the volumetric view with the loaded data
+                            openWindow(id: "volumetric-pointclouddemo", value: id)
+                        }
+
+                        print("Successfully imported \(pointCloudData.count) points from \(url.lastPathComponent) (\(fileExtension.uppercased()) format)")
+
+                    } catch {
+                        await MainActor.run {
+                            loadingError = "Failed to import point cloud: \(error.localizedDescription)"
+                            isLoadingPointCloud = false
+                        }
+                        print("Failed to import point cloud: \(error)")
+                    }
+                }
+            } else {
+                loadingError = "Unsupported file format: \(fileExtension). Supported formats: CSV, PLY, PCD, XYZ"
+                isLoadingPointCloud = false
+                print("Unsupported file type: \(fileExtension)")
+            }
+
+        case .failure(let error):
+            loadingError = "Error importing point cloud: \(error.localizedDescription)"
+            isLoadingPointCloud = false
+            print("Error importing point cloud: \(error.localizedDescription)")
+        }
+    }
+
     var body: some View {
         if let window = windowTypeManager.getWindowSafely(for: id) {
             VStack(spacing: 0) {
@@ -1735,7 +1808,141 @@ struct NewWindow: View {
                             }
                         }
                     // ───────────── POINT CLOUD ─────────────
-                    case .pointcloud:
+                        case .pointcloud:
+                            VStack {
+                                Spacer()
+
+                                VStack(spacing: 20) {
+                                    Image(systemName: "dot.scope")
+                                        .font(.system(size: 80))
+                                        .foregroundStyle(.linearGradient(
+                                            colors: [.purple, .blue],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ))
+
+                                    Text("Chart 3D Viewer")
+                                        .font(.largeTitle)
+                                        .fontWeight(.bold)
+
+                                    // Show loaded file name if available
+                                    if !loadedFileName.isEmpty {
+                                        HStack {
+                                            Image(systemName: "doc.text.fill")
+                                                .foregroundColor(.blue)
+                                            Text("Loaded: \(loadedFileName)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+
+                                    // Show loading error if any
+                                    if let error = loadingError {
+                                        HStack {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                                .foregroundColor(.red)
+                                            Text("Error: \(error)")
+                                                .font(.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                        .padding()
+                                        .background(Color.red.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+
+                                    // Show loading indicator
+                                    if isLoadingPointCloud {
+                                        HStack {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                            Text("Loading point cloud...")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding()
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+
+                                    if let pointCloud = window.state.chart3DData {
+                                        VStack(spacing: 12) {
+                                            Text(pointCloud.title)
+                                                .font(.title2)
+                                                .foregroundStyle(.secondary)
+
+                                            HStack(spacing: 40) {
+                                                VStack {
+                                                    Text("\(pointCloud.points.count)")
+                                                        .font(.title)
+                                                        .fontWeight(.semibold)
+                                                    Text("Points")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                }
+
+                                                VStack {
+                                                    Text(pointCloud.chartType)
+                                                        .font(.title)
+                                                        .fontWeight(.semibold)
+                                                    Text("Type")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                }
+                                            }
+                                            .padding(.top)
+                                        }
+                                    } else if window.state.pointCloudBookmark != nil {
+                                        Text("Imported 3D Chart")
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Text("This content is displayed in a volumetric window")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.top)
+
+                                    Button {
+                                        // Open the volumetric window (visionOS-safe)
+                                        openWindow(id: "volumetric-pointclouddemo", value: id)
+                                    } label: {
+                                        Label("Open Chart3D View", systemImage: "view.3d")
+                                            .font(.headline)
+                                            .padding()
+                                            .background(.purple.opacity(0.2))
+                                            .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(window.state.chart3DData == nil)
+
+                                    Button {
+                                        // Reset error state before showing file importer
+                                        loadingError = nil
+                                        showPointCloudImporter = true
+                                    } label: {
+                                        Label("Import Point Cloud", systemImage: "square.and.arrow.down")
+                                            .font(.headline)
+                                            .padding()
+                                            .background(.green.opacity(0.2))
+                                            .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(isLoadingPointCloud)
+                                }
+                                .padding(40)
+
+                                Spacer()
+                            }
+                            .fileImporter(isPresented: $showPointCloudImporter, allowedContentTypes: [
+                                .commaSeparatedText,  // CSV
+                                UTType(filenameExtension: "ply") ?? .data,  // PLY
+                                UTType(filenameExtension: "pcd") ?? .data,  // PCD
+                                UTType(filenameExtension: "xyz") ?? .data   // XYZ
+                            ], allowsMultipleSelection: false) { result in
+                                // Enhanced file loading with error handling
+                                loadPointCloudFromFile(result)
+                            }
+                    /*case .pointcloud:
                         VStack {
                             Spacer()
 
@@ -1855,7 +2062,7 @@ struct NewWindow: View {
                             case .failure(let error):
                                 print("Error importing point cloud: \(error.localizedDescription)")
                             }
-                        }
+                        }*/
 
                     // ───────────── CHARTS ─────────────
                     case .charts:
