@@ -11,6 +11,13 @@ import SwiftUI
 import Charts
 import UniformTypeIdentifiers
 
+// MARK: - Helper Extensions
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
+}
+
 class PointCloudDemo2 {
 
     // MARK: - Demo Functions
@@ -192,7 +199,7 @@ class PointCloudDemo2 {
         return pointCloud
     }
 
-    /// Load point cloud from a file
+    /// Load point cloud from various file formats (CSV, PLY, PCD, XYZ)
     static func loadPointCloud(from url: URL) -> [(x: Double, y: Double, z: Double, intensity: Double?)] {
         do {
             #if !os(visionOS)
@@ -257,7 +264,7 @@ class PointCloudDemo2 {
         var currentVertex = 0
         var xIndex = 0, yIndex = 1, zIndex = 2
         var intensityIndex: Int? = nil
-        var propertyCount = 3
+        var propertyIndex = 0
         
         // Parse header
         for line in lines {
@@ -271,11 +278,17 @@ class PointCloudDemo2 {
             } else if trimmedLine.starts(with: "property") {
                 let parts = trimmedLine.components(separatedBy: " ")
                 if parts.count >= 3 {
-                    let propertyName = parts[2].lowercased()
-                    if propertyName == "intensity" || propertyName == "scalar_intensity" {
-                        intensityIndex = propertyCount
+                    let propertyName = parts.last?.lowercased() ?? ""
+                    
+                    // Map standard property names to indices
+                    switch propertyName {
+                    case "x": xIndex = propertyIndex
+                    case "y": yIndex = propertyIndex
+                    case "z": zIndex = propertyIndex
+                    case "intensity", "scalar_intensity", "i": intensityIndex = propertyIndex
+                    default: break
                     }
-                    propertyCount += 1
+                    propertyIndex += 1
                 }
             } else if trimmedLine == "end_header" {
                 headerEnded = true
@@ -283,16 +296,12 @@ class PointCloudDemo2 {
             }
             
             if headerEnded && currentVertex < vertexCount {
-                let parts = trimmedLine.components(separatedBy: " ").filter { !$0.isEmpty }
+                let parts = trimmedLine.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
                 if parts.count >= 3 {
-                    if let x = Double(parts[xIndex]),
-                       let y = Double(parts[yIndex]),
-                       let z = Double(parts[zIndex]) {
-                        let intensity = if let intensityIndex = intensityIndex, intensityIndex < parts.count {
-                            Double(parts[intensityIndex])
-                        } else {
-                            nil
-                        }
+                    if let x = Double(parts[safe: xIndex] ?? ""),
+                       let y = Double(parts[safe: yIndex] ?? ""),
+                       let z = Double(parts[safe: zIndex] ?? "") {
+                        let intensity: Double? = intensityIndex != nil ? Double(parts[safe: intensityIndex!] ?? "") : nil
                         points.append((x: x, y: y, z: z, intensity: intensity))
                     }
                 }
@@ -317,7 +326,7 @@ class PointCloudDemo2 {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
             if trimmedLine.starts(with: "FIELDS") {
-                fields = trimmedLine.components(separatedBy: " ").dropFirst().map { $0.lowercased() }
+                fields = trimmedLine.components(separatedBy: .whitespaces).dropFirst().map { $0.lowercased() }
                 
                 // Find indices for x, y, z, and intensity
                 for (index, field) in fields.enumerated() {
@@ -334,17 +343,13 @@ class PointCloudDemo2 {
                 continue
             }
             
-            if dataStarted && !trimmedLine.isEmpty {
-                let parts = trimmedLine.components(separatedBy: " ").filter { !$0.isEmpty }
+            if dataStarted && !trimmedLine.isEmpty && !trimmedLine.starts(with: "#") {
+                let parts = trimmedLine.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
                 if parts.count >= 3 {
-                    if let x = Double(parts[xIndex]),
-                       let y = Double(parts[yIndex]),
-                       let z = Double(parts[zIndex]) {
-                        let intensity = if let intensityIndex = intensityIndex, intensityIndex < parts.count {
-                            Double(parts[intensityIndex])
-                        } else {
-                            nil
-                        }
+                    if let x = Double(parts[safe: xIndex] ?? ""),
+                       let y = Double(parts[safe: yIndex] ?? ""),
+                       let z = Double(parts[safe: zIndex] ?? "") {
+                        let intensity: Double? = intensityIndex != nil ? Double(parts[safe: intensityIndex!] ?? "") : nil
                         points.append((x: x, y: y, z: z, intensity: intensity))
                     }
                 }
@@ -367,7 +372,8 @@ class PointCloudDemo2 {
                 continue
             }
             
-            let parts = trimmedLine.components(separatedBy: " ").filter { !$0.isEmpty }
+            // Handle both space and tab separation
+            let parts = trimmedLine.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
             if parts.count >= 3 {
                 if let x = Double(parts[0]),
                    let y = Double(parts[1]),
@@ -385,10 +391,10 @@ class PointCloudDemo2 {
     // MARK: - Demo Execution
 
     static func runAllDemos() {
-        print(" Point Cloud Demo Starting...\n")
+        print("🎯 Point Cloud Demo Starting...\n")
 
         // Demo 1: Simple Sphere
-        print("1 Generating Sphere Point Cloud...")
+        print("1️⃣ Generating Sphere Point Cloud...")
         let sphereData = generateSpherePointCloud(radius: 10.0, points: 1000)
         let sphereChart = ChartDataExtractor.extractSimplePointCloudData(
             title: "Sphere Point Cloud (1000 points)",
@@ -399,10 +405,10 @@ class PointCloudDemo2 {
         )
         let sphereCode = ChartDataExtractor.generateJupyterPythonCode(sphereChart)
         ChartDataExtractor.saveJupyterCode(sphereCode, to: "sphere_pointcloud.py")
-        print(" Sphere point cloud saved to sphere_pointcloud.py\n")
+        print("✅ Sphere point cloud saved to sphere_pointcloud.py\n")
 
         // Demo 2: Torus with Intensity
-        print("2 Generating Torus Point Cloud with Intensity...")
+        print("2️⃣ Generating Torus Point Cloud with Intensity...")
         let torusData = generateTorusPointCloud(majorRadius: 10.0, minorRadius: 3.0, points: 2000)
         let torusChart = ChartDataExtractor.extractPointCloudData(
             title: "Torus Point Cloud with Height-based Intensity",
@@ -413,10 +419,10 @@ class PointCloudDemo2 {
         )
         let torusCode = ChartDataExtractor.generateJupyterPythonCode(torusChart)
         ChartDataExtractor.saveJupyterCode(torusCode, to: "torus_pointcloud.py")
-        print(" Torus point cloud saved to torus_pointcloud.py\n")
+        print("✅ Torus point cloud saved to torus_pointcloud.py\n")
 
         // Demo 3: Wave Surface
-        print("3 Generating Wave Surface...")
+        print("3️⃣ Generating Wave Surface...")
         let waveData = generateWaveSurface(size: 20.0, resolution: 50)
         let waveChart = ChartDataExtractor.extractPointCloudData(
             title: "Wave Surface Point Cloud",
@@ -427,10 +433,10 @@ class PointCloudDemo2 {
         )
         let waveCode = ChartDataExtractor.generateJupyterPythonCode(waveChart)
         ChartDataExtractor.saveJupyterCode(waveCode, to: "wave_pointcloud.py")
-        print(" Wave surface saved to wave_pointcloud.py\n")
+        print("✅ Wave surface saved to wave_pointcloud.py\n")
 
         // Demo 4: Spiral Galaxy
-        print("4 Generating Spiral Galaxy...")
+        print("4️⃣ Generating Spiral Galaxy...")
         let galaxyData = generateSpiralGalaxy(arms: 3, points: 5000)
         let galaxyChart = ChartDataExtractor.extractPointCloudData(
             title: "Spiral Galaxy Point Cloud",
@@ -443,10 +449,10 @@ class PointCloudDemo2 {
         let galaxyPlotlyCode = ChartDataExtractor.generateJupyterPlotlyCode(galaxyChart)
         ChartDataExtractor.saveJupyterCode(galaxyCode, to: "galaxy_pointcloud.py")
         ChartDataExtractor.saveJupyterCode(galaxyPlotlyCode, to: "galaxy_pointcloud_plotly.py")
-        print(" Galaxy point cloud saved (both matplotlib and plotly versions)\n")
+        print("✅ Galaxy point cloud saved (both matplotlib and plotly versions)\n")
 
         // Demo 5: Noisy Cube
-        print("5 Generating Noisy Cube...")
+        print("5️⃣ Generating Noisy Cube...")
         let cubeData = generateNoisyCube(size: 10.0, pointsPerFace: 500)
         let cubeChart = ChartDataExtractor.extractSimplePointCloudData(
             title: "Noisy Cube Point Cloud",
@@ -457,13 +463,13 @@ class PointCloudDemo2 {
         )
         let cubeCode = ChartDataExtractor.generateJupyterPythonCode(cubeChart)
         ChartDataExtractor.saveJupyterCode(cubeCode, to: "cube_pointcloud.py")
-        print(" Noisy cube saved to cube_pointcloud.py\n")
+        print("✅ Noisy cube saved to cube_pointcloud.py\n")
 
         // Generate a combined demo notebook
-        print(" Generating Jupyter Notebook with all demos...")
+        print("📓 Generating Jupyter Notebook with all demos...")
         generateCombinedNotebook()
 
-        print(" Demo Complete! Generated files:")
+        print("🎉 Demo Complete! Generated files:")
         print("   - sphere_pointcloud.py")
         print("   - torus_pointcloud.py")
         print("   - wave_pointcloud.py")
@@ -472,7 +478,7 @@ class PointCloudDemo2 {
         print("   - cube_pointcloud.py")
         print("   - pointcloud_demo_notebook.py")
         print("\n")
-        print("\n Tip: Run these .py files in Jupyter Notebook to see the visualizations!")
+        print("\n💡 Tip: Run these .py files in Jupyter Notebook to see the visualizations!")
     }
 
     static func generateCombinedNotebook() {
@@ -514,9 +520,9 @@ class PointCloudDemo2 {
             ("Noisy Cube", 3000, "Cube faces with random noise")
         ]
         
-        print("\nDataset Summary:")
+        print("\\nDataset Summary:")
         print("-" * 60)
-        for name, points, description in datasets {
+        for name, points, description in datasets:
             print(f"{name:15} | {points:6} points | {description}")
         """
 
@@ -567,6 +573,7 @@ class PointCloudDemo2 {
  -2.019377 -6.147036 7.624701 0.9
  9.596219 -2.219221 -1.728479 0.7
  */
+
 // MARK: - SwiftUI Preview
 struct PointCloudPlotView: View {
     @State private var selectedDemo = 5 // Default to CSV demo
@@ -696,10 +703,32 @@ struct PointCloudPlotView: View {
                     Spacer()
                     if selectedDemo == 5 {
                         Label("Sample CSV Data", systemImage: "doc.text")
+                    } else if selectedDemo == 6 && !importedPoints.isEmpty {
+                        Label("Imported File", systemImage: "square.and.arrow.down")
                     }
                 }
                 .font(.caption)
                 .foregroundColor(.blue)
+                
+                // Show intensity information
+                if !currentPointCloud.isEmpty {
+                    let hasIntensity = currentPointCloud.contains { $0.intensity != nil }
+                    HStack {
+                        Label(hasIntensity ? "With Intensity Data" : "No Intensity Data", 
+                              systemImage: hasIntensity ? "waveform" : "waveform.slash")
+                        Spacer()
+                        if hasIntensity {
+                            let intensityRange = currentPointCloud.compactMap { $0.intensity }
+                            if !intensityRange.isEmpty {
+                                let minInt = intensityRange.min() ?? 0
+                                let maxInt = intensityRange.max() ?? 0
+                                Label(String(format: "%.2f - %.2f", minInt, maxInt), systemImage: "slider.horizontal.3")
+                            }
+                        }
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                }
             }
             .padding()
             .background(Color.gray.opacity(0.1))
@@ -707,7 +736,7 @@ struct PointCloudPlotView: View {
             .padding(.horizontal)
 
             // Import button
-            Button("Import Point Cloud File") {
+            Button("Import Point Cloud (CSV/PLY/PCD/XYZ)") {
                 showFileImporter = true
             }
             .frame(maxWidth: .infinity)
@@ -720,7 +749,7 @@ struct PointCloudPlotView: View {
             // Export button
             Button(action: {
                 PointCloudDemo2.runAllDemos()
-                print(" Exported all demos to Python files!")
+                print("✅ Exported all demos to Python files!")
             }) {
                 Label("Export to Jupyter", systemImage: "square.and.arrow.up")
                     .frame(maxWidth: .infinity)
@@ -747,9 +776,16 @@ struct PointCloudPlotView: View {
             switch result {
             case .success(let urls):
                 guard let url = urls.first else { return }
-                importedPoints = PointCloudDemo2.loadPointCloud(from: url)
-                selectedDemo = 6 // Switch to imported tab
-                print("Successfully imported \(importedPoints.count) points from \(url.lastPathComponent)")
+                let supportedExtensions = ["csv", "ply", "pcd", "xyz"]
+                let fileExtension = url.pathExtension.lowercased()
+                
+                if supportedExtensions.contains(fileExtension) {
+                    importedPoints = PointCloudDemo2.loadPointCloud(from: url)
+                    selectedDemo = 6 // Switch to imported tab
+                    print("Successfully imported \(importedPoints.count) points from \(url.lastPathComponent) (\(fileExtension.uppercased()) format)")
+                } else {
+                    print("Unsupported file format: \(fileExtension). Supported formats: CSV, PLY, PCD, XYZ")
+                }
             case .failure(let error):
                 print("Error importing file: \(error.localizedDescription)")
             }

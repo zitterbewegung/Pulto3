@@ -7,6 +7,7 @@
 import SwiftUI
 import Foundation
 import Charts
+import UniformTypeIdentifiers
 
 // ─────────────────────────────────────────────────────────────
 // MARK: - Window metadata
