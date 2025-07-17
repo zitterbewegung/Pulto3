@@ -1282,7 +1282,7 @@ class PointCloudDemo {
         if (documentPath == nil) {
             documentPath = NSHomeDirectory() + "/Documents"
         }
-        
+
         let filePath = documentPath! + "/" + filename
 
         do {
@@ -1832,17 +1832,17 @@ struct NewWindow: View {
                                             do {
                                                 let bookmark = try url.bookmarkData(options: .minimalBookmark)
                                                 windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
-                                                
+
                                                 // Load the point cloud data and convert it to Chart3DData
                                                 let pointCloudData = PointCloudDemo2.loadPointCloud(from: url)
                                                 let chart3DData = convertPointCloudToChart3D(pointCloudData, fileName: url.lastPathComponent)
-                                                
+
                                                 // Update the window with the converted data
                                                 windowTypeManager.updateWindowChart3DData(id, chart3DData: chart3DData)
-                                                
+
                                                 // Automatically open the volumetric view with the loaded data
                                                 openWindow(id: "volumetric-pointclouddemo", value: id)
-                                                
+
                                                 print("Successfully imported point cloud: \(url.lastPathComponent)")
                                             } catch {
                                                 print("Failed to import point cloud: \(error)")
@@ -1979,10 +1979,10 @@ private func convertPointCloudToChart3D(_ pointCloudData: [(x: Double, y: Double
     let points = pointCloudData.map { point in
         Point3D(x: Float(point.x), y: Float(point.y), z: Float(point.z))
     }
-    
+
     let title = "Point Cloud: \(fileName)"
     let chartType = "scatter"
-    
+
     return Chart3DData(title: title, chartType: chartType, points: points)
 }
 
