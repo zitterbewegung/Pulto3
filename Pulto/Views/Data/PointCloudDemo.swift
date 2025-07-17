@@ -170,9 +170,9 @@ class PointCloudDemo2 {
     static func generateCSVCloud() -> [(x: Double, y: Double, z: Double, intensity: Double?)] {
         // Based on the sample CSV data in the comments
         let csvData: [(Double, Double, Double, Double?)] = [
-            (-6.546342442212422, -4.179903666068734, 6.298714628531242, nil),
-            (-2.019376912037411, -6.147036408083054, 7.624700668539823, nil),
-            (9.59621907909937, -2.2192208519935686, -1.7284785784053573, nil),
+            (-6.546342442212422, -4.179903666068734, 6.298714628531242, 0.8),
+            (-2.019376912037411, -6.147036408083054, 7.624700668539823, 0.9),
+            (9.59621907909937, -2.2192208519935686, -1.7284785784053573, 0.7),
             (8.716651471147433, -1.189249275314604, 4.75454238509943, nil),
             (4.362438263364272, -7.8615570443755045, -4.3777909082510105, nil),
             (-4.4427639844136015, -2.0944798486744487, -8.710625829542561, nil),
@@ -187,26 +187,6 @@ class PointCloudDemo2 {
         // Add the base CSV data points
         for (x, y, z, intensity) in csvData {
             pointCloud.append((x: x, y: y, z: z, intensity: intensity))
-        }
-        
-        // Generate additional points to create a more interesting visualization
-        // Create clusters around the original points
-        for (x, y, z, _) in csvData {
-            for _ in 0..<15 { // 15 additional points per original point
-                let offsetX = Double.random(in: -2...2)
-                let offsetY = Double.random(in: -2...2)
-                let offsetZ = Double.random(in: -2...2)
-                
-                let newX = x + offsetX
-                let newY = y + offsetY
-                let newZ = z + offsetZ
-                
-                // Calculate intensity based on distance from center
-                let distance = sqrt(newX*newX + newY*newY + newZ*newZ)
-                let intensity = max(0.0, 1.0 - (distance / 20.0))
-                
-                pointCloud.append((x: newX, y: newY, z: newZ, intensity: intensity))
-            }
         }
         
         return pointCloud
@@ -544,6 +524,49 @@ class PointCloudDemo2 {
     }
 }
 
+/*
+ Supported Point Cloud Formats:
+ 
+ 1. CSV Format:
+ x,y,z,intensity
+ -6.546342442212422,-4.179903666068734,6.298714628531242,0.8
+ -2.019376912037411,-6.147036408083054,7.624700668539823,0.9
+ 9.59621907909937,-2.2192208519935686,-1.7284785784053573,0.7
+ 
+ 2. PLY Format:
+ ply
+ format ascii 1.0
+ element vertex 3
+ property float x
+ property float y
+ property float z
+ property float intensity
+ end_header
+ -6.546342 -4.179904 6.298715 0.8
+ -2.019377 -6.147036 7.624701 0.9
+ 9.596219 -2.219221 -1.728479 0.7
+ 
+ 3. PCD Format:
+ VERSION .7
+ FIELDS x y z intensity
+ SIZE 4 4 4 4
+ TYPE F F F F
+ COUNT 1 1 1 1
+ WIDTH 3
+ HEIGHT 1
+ VIEWPOINT 0 0 0 1 0 0 0
+ POINTS 3
+ DATA ascii
+ -6.546342 -4.179904 6.298715 0.8
+ -2.019377 -6.147036 7.624701 0.9
+ 9.596219 -2.219221 -1.728479 0.7
+ 
+ 4. XYZ Format:
+ # Simple XYZ format with optional intensity
+ -6.546342 -4.179904 6.298715 0.8
+ -2.019377 -6.147036 7.624701 0.9
+ 9.596219 -2.219221 -1.728479 0.7
+ */
 // MARK: - SwiftUI Preview
 struct PointCloudPlotView: View {
     @State private var selectedDemo = 5 // Default to CSV demo
@@ -759,18 +782,4 @@ struct PointCloudPlotView_Previews: PreviewProvider {
  // Generate visualization code
  let pythonCode = ChartDataExtractor.generateJupyterPythonCode(sphereChart)
  let plotlyCode = ChartDataExtractor.generateJupyterPlotlyCode(sphereChart)
- */
-/*
- Demo data
- x,y,z,intensity
- -6.546342442212422,-4.179903666068734,6.298714628531242,
- -2.019376912037411,-6.147036408083054,7.624700668539823,
- 9.59621907909937,-2.2192208519935686,-1.7284785784053573,
- 8.716651471147433,-1.189249275314604,4.75454238509943,
- 4.362438263364272,-7.8615570443755045,-4.3777909082510105,
- -4.4427639844136015,-2.0944798486744487,-8.710625829542561,
- -0.6746971176831776,0.3812547298886156,-9.969926209873751,
- 7.655368516294206,1.6789262084001224,6.211001502694926,
- 4.423516297334105,-4.471041172543755,-7.774464251679221,
- 2.5149683123126407,9.193033413950568,-3.0270564973339558,
  */
