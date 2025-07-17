@@ -1890,7 +1890,7 @@ struct NewWindow: View {
 
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-chart3d", value: id)
+                                    openWindow(id: "volumetric-pointclouddemo", value: id)
                                 } label: {
                                     Label("Open Chart3D View", systemImage: "view.3d")
                                         .font(.headline)
