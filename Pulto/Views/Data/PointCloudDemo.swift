@@ -576,13 +576,35 @@ class PointCloudDemo2 {
 
 // MARK: - SwiftUI Preview
 struct PointCloudPlotView: View {
-    @State private var selectedDemo = 5 // Default to CSV demo
+    @State private var selectedDemo: Int
     @State private var rotationAngle = 0.0
     @State private var showFileImporter = false
     @State private var importedPoints: [(x: Double, y: Double, z: Double, intensity: Double?)] = []
+    @State private var loadedFileName: String = ""
+    @State private var loadingError: String?
+    
     let windowID: Int
+    let fileURL: URL?
 
     let demoNames = ["Sphere", "Torus", "Wave Surface", "Spiral Galaxy", "Noisy Cube", "CSV Demo", "Imported"]
+
+    // MARK: - Initializers
+    
+    /// Initialize with optional file URL for automatic loading
+    /// - Parameters:
+    ///   - windowID: Window identifier
+    ///   - fileURL: Optional URL to CSV, PLY, PCD, or XYZ file to load automatically
+    init(windowID: Int, fileURL: URL? = nil) {
+        self.windowID = windowID
+        self.fileURL = fileURL
+        
+        // Set initial demo based on whether file is provided
+        if fileURL != nil {
+            self._selectedDemo = State(initialValue: 6) // Imported tab
+        } else {
+            self._selectedDemo = State(initialValue: 5) // CSV Demo tab
+        }
+    }
 
     var currentPointCloud: [(x: Double, y: Double, z: Double, intensity: Double?)] {
         switch selectedDemo {
@@ -615,6 +637,30 @@ struct PointCloudPlotView: View {
             Text("Point Cloud Demo")
                 .font(.largeTitle)
                 .bold()
+
+            // Show loaded file name if available
+            if !loadedFileName.isEmpty {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                        .foregroundColor(.blue)
+                    Text("Loaded: \(loadedFileName)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+            }
+
+            // Show loading error if any
+            if let error = loadingError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    Text("Error: \(error)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.horizontal)
+            }
 
             // Demo selector
             Picker("Select Demo", selection: $selectedDemo) {
@@ -763,6 +809,12 @@ struct PointCloudPlotView: View {
             Spacer()
         }
         .padding(.vertical)
+        .onAppear {
+            // Load file if provided
+            if let fileURL = fileURL {
+                loadPointCloudFromFile(fileURL)
+            }
+        }
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [
@@ -776,19 +828,39 @@ struct PointCloudPlotView: View {
             switch result {
             case .success(let urls):
                 guard let url = urls.first else { return }
-                let supportedExtensions = ["csv", "ply", "pcd", "xyz"]
-                let fileExtension = url.pathExtension.lowercased()
-                
-                if supportedExtensions.contains(fileExtension) {
-                    importedPoints = PointCloudDemo2.loadPointCloud(from: url)
-                    selectedDemo = 6 // Switch to imported tab
-                    print("Successfully imported \(importedPoints.count) points from \(url.lastPathComponent) (\(fileExtension.uppercased()) format)")
-                } else {
-                    print("Unsupported file format: \(fileExtension). Supported formats: CSV, PLY, PCD, XYZ")
-                }
+                loadPointCloudFromFile(url)
             case .failure(let error):
+                loadingError = error.localizedDescription
                 print("Error importing file: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Load point cloud data from a file URL
+    /// - Parameter url: URL to the point cloud file (CSV, PLY, PCD, XYZ)
+    private func loadPointCloudFromFile(_ url: URL) {
+        let supportedExtensions = ["csv", "ply", "pcd", "xyz"]
+        let fileExtension = url.pathExtension.lowercased()
+        
+        // Reset previous error
+        loadingError = nil
+        
+        if supportedExtensions.contains(fileExtension) {
+            let points = PointCloudDemo2.loadPointCloud(from: url)
+            
+            if points.isEmpty {
+                loadingError = "No valid points found in file or unsupported format"
+            } else {
+                importedPoints = points
+                selectedDemo = 6 // Switch to imported tab
+                loadedFileName = url.lastPathComponent
+                print("Successfully imported \(importedPoints.count) points from \(url.lastPathComponent) (\(fileExtension.uppercased()) format)")
+            }
+        } else {
+            loadingError = "Unsupported file format: \(fileExtension). Supported formats: CSV, PLY, PCD, XYZ"
+            print("Unsupported file format: \(fileExtension). Supported formats: CSV, PLY, PCD, XYZ")
         }
     }
 }
@@ -796,14 +868,33 @@ struct PointCloudPlotView: View {
 // MARK: - Preview Provider
 struct PointCloudPlotView_Previews: PreviewProvider {
     static var previews: some View {
-        PointCloudPlotView(windowID: 1)
-            .frame(width: 600, height: 800)
+        Group {
+            // Default view without file
+            PointCloudPlotView(windowID: 1)
+                .frame(width: 600, height: 800)
+                .previewDisplayName("Default Demo")
+            
+            // Example with file URL (uncomment and provide actual file path for testing)
+            // PointCloudPlotView(windowID: 1, fileURL: URL(fileURLWithPath: "/path/to/sample.csv"))
+            //     .frame(width: 600, height: 800)
+            //     .previewDisplayName("With File")
+        }
     }
 }
 
 // MARK: - Example Usage
 /*
- To run the demo:
+ To use with file loading:
+
+ // Without file (shows demo data)
+ PointCloudPlotView(windowID: 1)
+
+ // With file (automatically loads and displays the file)
+ PointCloudPlotView(windowID: 1, fileURL: URL(fileURLWithPath: "/path/to/pointcloud.csv"))
+ 
+ // With URL from file picker or other source
+ let fileURL = URL(fileURLWithPath: "/Users/username/Documents/data.ply")
+ PointCloudPlotView(windowID: 1, fileURL: fileURL)
 
  // Run all demos
  PointCloudDemo2.runAllDemos()
