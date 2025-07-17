@@ -1915,21 +1915,34 @@ struct NewWindow: View {
 
                             Spacer()
                         }
-                        .fileImporter(isPresented: $showPointCloudImporter, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
-                            if let url = try? result.get().first, ["ply", "pcd", "xyz", "csv"].contains(url.pathExtension.lowercased()) {
-                                Task {
-                                    do {
-                                        let bookmark = try url.bookmarkData(options: .minimalBookmark)
-                                        windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
-                                    } catch {
-                                        print("Failed to import point cloud: \(error)")
+                        .fileImporter(isPresented: $showPointCloudImporter, allowedContentTypes: [
+                            .commaSeparatedText,  // CSV
+                            UTType(filenameExtension: "ply") ?? .data,  // PLY
+                            UTType(filenameExtension: "pcd") ?? .data,  // PCD
+                            UTType(filenameExtension: "xyz") ?? .data   // XYZ
+                        ], allowsMultipleSelection: false) { result in
+                            switch result {
+                            case .success(let urls):
+                                if let url = urls.first {
+                                    let supportedExtensions = ["ply", "pcd", "xyz", "csv"]
+                                    if supportedExtensions.contains(url.pathExtension.lowercased()) {
+                                        Task {
+                                            do {
+                                                let bookmark = try url.bookmarkData(options: .minimalBookmark)
+                                                windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
+                                                print("Successfully imported point cloud: \(url.lastPathComponent)")
+                                            } catch {
+                                                print("Failed to import point cloud: \(error)")
+                                            }
+                                        }
+                                    } else {
+                                        print("Unsupported file type: \(url.pathExtension)")
                                     }
                                 }
-                            } else {
-                                print("Unsupported file type")
+                            case .failure(let error):
+                                print("Error importing point cloud: \(error.localizedDescription)")
                             }
                         }
-
                     // ───────────── CHARTS ─────────────
                     case .charts:
                         VStack {
