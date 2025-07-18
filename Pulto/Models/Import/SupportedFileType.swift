@@ -6,14 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
-//
-//  FileAnalysisTypes.swift
-//  Pulto3
-//
-//  Data structures and types for file analysis system
-//
-
 import Foundation
 import SwiftUI
 
@@ -28,7 +20,7 @@ enum SupportedFileType: String, CaseIterable {
     case ipynb = "ipynb"
     case usdz = "usdz"
     case unknown = "unknown"
-    
+
     var displayName: String {
         switch self {
         case .csv: return "CSV"
@@ -41,7 +33,7 @@ enum SupportedFileType: String, CaseIterable {
         case .unknown: return "Unknown"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .csv, .tsv: return "tablecells"
@@ -75,7 +67,7 @@ enum DataType {
 
 // MARK: - Column Types
 
-enum ImportColumnType {
+enum ColumnType {
     case numeric
     case categorical
     case date
@@ -108,7 +100,6 @@ struct DataAnalysisResult {
     let dataType: DataType
     let structure: AnalysisStructure
     let metadata: [String: Any]
-    let suggestions: [String]
 }
 
 // MARK: - Analysis Structures
@@ -142,7 +133,7 @@ struct PointCloudBounds {
     var maxY: Double = -.infinity
     var minZ: Double = .infinity
     var maxZ: Double = -.infinity
-    
+
     mutating func updateWith(x: Double, y: Double, z: Double) {
         minX = min(minX, x)
         maxX = max(maxX, x)
@@ -175,7 +166,7 @@ struct SheetAnalysis {
     let rowCount: Int
     let columnCount: Int
     let hasHeaders: Bool
-    let dataTypes: [ColumnType]
+    let dataTypes: [String: ColumnType]
 }
 
 struct Model3DStructure: AnalysisStructure {
@@ -197,7 +188,7 @@ struct ExtractedNotebookData {
     let variableName: String
     let dataType: NotebookDataType
     let shape: (Int, Int)?
-    
+
     enum NotebookDataType {
         case dataFrame
         case array
@@ -228,17 +219,22 @@ enum ImportVisualizationType {
 
 // MARK: - Visualization Recommendations
 
-struct VisualizationRecommendation {
+struct VisualizationRecommendation: Identifiable {
+    let id = UUID()
     let type: SpatialVisualizationType
     let priority: Priority
     let confidence: Double
     var reason: String
-    let configuration: VisualizationConfiguration
-    
-    enum Priority: Int {
+    let configuration: any VisualizationConfiguration
+
+    enum Priority: Int, Comparable {
         case high = 3
         case medium = 2
         case low = 1
+
+        static func < (lhs: VisualizationRecommendation.Priority, rhs: VisualizationRecommendation.Priority) -> Bool {
+            return lhs.rawValue < rhs.rawValue
+        }
     }
 }
 
@@ -246,7 +242,7 @@ enum SpatialVisualizationType {
     // Basic
     case dataTable
     case jsonTreeViewer
-    
+
     // 2D Charts
     case scatterPlot2D
     case lineChart
@@ -257,7 +253,7 @@ enum SpatialVisualizationType {
     case boxPlot
     case violinPlot
     case candlestick
-    
+
     // 3D Visualizations
     case scatterPlot3D
     case surface3D
@@ -265,7 +261,7 @@ enum SpatialVisualizationType {
     case pointCloud3D
     case volumetric
     case crossSection
-    
+
     // Specialized
     case heatmap
     case densityHeatMap
@@ -276,7 +272,7 @@ enum SpatialVisualizationType {
     case treemap
     case geospatialMap
     case timeSeriesPath
-    
+
     // Model & Notebook
     case model3DViewer
     case materialEditor
@@ -284,7 +280,7 @@ enum SpatialVisualizationType {
     case notebookSpatialLayout
     case cellFlowVisualization
     case multiSheetViewer
-    
+
     var windowType: WindowType {
         switch self {
         case .dataTable, .multiSheetViewer:
@@ -310,148 +306,32 @@ enum SpatialVisualizationType {
 
 protocol VisualizationConfiguration {}
 
-struct EmptyConfiguration: VisualizationConfiguration {}
+struct DataTableConfiguration: VisualizationConfiguration {}
+struct ScatterPlotConfiguration: VisualizationConfiguration {}
+struct PointCloudConfiguration: VisualizationConfiguration {}
+struct HeatmapConfiguration: VisualizationConfiguration {}
+struct TimeSeriesConfiguration: VisualizationConfiguration {}
+struct NetworkConfiguration: VisualizationConfiguration {}
+struct VolumetricConfiguration: VisualizationConfiguration {}
+struct CrossSectionConfiguration: VisualizationConfiguration {}
+struct LineChartConfiguration: VisualizationConfiguration {}
+struct AreaChartConfiguration: VisualizationConfiguration {}
+struct MultiLineChartConfiguration: VisualizationConfiguration {}
+struct BarChartConfiguration: VisualizationConfiguration {}
+struct HistogramConfiguration: VisualizationConfiguration {}
+struct CandlestickConfiguration: VisualizationConfiguration {}
+struct Surface3DConfiguration: VisualizationConfiguration {}
+struct ContourConfiguration: VisualizationConfiguration {}
+struct GeospatialConfiguration: VisualizationConfiguration {}
+struct SpreadsheetViewerConfiguration: VisualizationConfiguration {}
+struct Model3DViewerConfiguration: VisualizationConfiguration {}
+struct MaterialEditorConfiguration: VisualizationConfiguration {}
+struct AnimationConfiguration: VisualizationConfiguration {}
+struct NotebookLayoutConfiguration: VisualizationConfiguration {}
+struct JSONViewerConfiguration: VisualizationConfiguration {}
+struct SunburstConfiguration: VisualizationConfiguration {}
+struct TreemapConfiguration: VisualizationConfiguration {}
 
-struct DataTableConfiguration: VisualizationConfiguration {
-    var pageSize: Int = 50
-    var enableSorting: Bool = true
-    var enableFiltering: Bool = true
-}
-
-struct ScatterPlotConfiguration: VisualizationConfiguration {
-    let dimensions: Int
-    var suggestedAxes: [String] = []
-    var enableColorMapping: Bool = true
-}
-
-struct PointCloudConfiguration: VisualizationConfiguration {
-    var estimatedPoints: Int = 0
-    var coordinateColumns: [String] = []
-    var hasIntensity: Bool = false
-    var hasColor: Bool = false
-    var hasClassification: Bool = false
-    var enableLOD: Bool = true
-}
-
-struct HeatmapConfiguration: VisualizationConfiguration {
-    var colorScale: String = "viridis"
-    var enableInterpolation: Bool = true
-}
-
-struct TimeSeriesConfiguration: VisualizationConfiguration {
-    var timeColumn: String = ""
-    var spatialColumns: [String] = []
-    var animationSpeed: Double = 1.0
-}
-
-struct NetworkConfiguration: VisualizationConfiguration {
-    var layoutAlgorithm: String = "force-directed"
-    var enable3D: Bool = true
-}
-
-struct ForceDirectedConfiguration: VisualizationConfiguration {
-    var chargeStrength: Double = -30
-    var linkDistance: Double = 30
-}
-
-struct HierarchicalConfiguration: VisualizationConfiguration {
-    var orientation: String = "vertical"
-    var nodeSpacing: Double = 20
-}
-
-struct VolumetricConfiguration: VisualizationConfiguration {
-    var renderMode: String = "points"
-    var enableInteraction: Bool = true
-}
-
-struct CrossSectionConfiguration: VisualizationConfiguration {
-    var axis: String = "z"
-    var sliceCount: Int = 10
-}
-
-struct LineChartConfiguration: VisualizationConfiguration {
-    var enableSmoothing: Bool = false
-    var showDataPoints: Bool = true
-}
-
-struct AreaChartConfiguration: VisualizationConfiguration {
-    var stackMode: String = "normal"
-    var transparency: Double = 0.7
-}
-
-struct MultiLineChartConfiguration: VisualizationConfiguration {
-    var maxLines: Int = 10
-    var enableLegend: Bool = true
-}
-
-struct BarChartConfiguration: VisualizationConfiguration {
-    var orientation: String = "vertical"
-    var groupMode: String = "grouped"
-}
-
-struct HistogramConfiguration: VisualizationConfiguration {
-    var binCount: Int = 30
-    var enableDensityCurve: Bool = false
-}
-
-struct CandlestickConfiguration: VisualizationConfiguration {
-    var upColor: String = "green"
-    var downColor: String = "red"
-}
-
-struct Surface3DConfiguration: VisualizationConfiguration {
-    var colorMap: String = "viridis"
-    var enableWireframe: Bool = false
-}
-
-struct ContourConfiguration: VisualizationConfiguration {
-    var levelCount: Int = 10
-    var enableLabels: Bool = true
-}
-
-struct GeospatialConfiguration: VisualizationConfiguration {
-    var mapStyle: String = "satellite"
-    var enableClustering: Bool = true
-}
-
-struct SpreadsheetViewerConfiguration: VisualizationConfiguration {
-    let sheetNames: [String]
-    var activeSheet: Int = 0
-}
-
-struct Model3DViewerConfiguration: VisualizationConfiguration {
-    var enableWireframe: Bool = false
-    var enableBoundingBox: Bool = false
-}
-
-struct MaterialEditorConfiguration: VisualizationConfiguration {
-    var enableRealTimePreview: Bool = true
-}
-
-struct AnimationConfiguration: VisualizationConfiguration {
-    var playbackSpeed: Double = 1.0
-    var enableLooping: Bool = true
-}
-
-struct NotebookLayoutConfiguration: VisualizationConfiguration {
-    var layoutStyle: String = "flow"
-    var cellSpacing: Double = 20
-}
-
-struct JSONViewerConfiguration: VisualizationConfiguration {
-    var expandDepth: Int = 2
-    var enableSearch: Bool = true
-}
-
-struct SunburstConfiguration: VisualizationConfiguration {
-    var startAngle: Double = 0
-    var enableZoom: Bool = true
-}
-
-struct TreemapConfiguration: VisualizationConfiguration {
-    var algorithm: String = "squarify"
-    var enableTooltips: Bool = true
-}
 
 // MARK: - LAS File Support
 
@@ -503,7 +383,7 @@ enum FileAnalysisError: LocalizedError {
     case invalidNotebookFormat
     case parsingError(String)
     case invalidLASFile(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .unsupportedFormat:
