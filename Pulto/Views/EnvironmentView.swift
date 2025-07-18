@@ -564,18 +564,18 @@ struct DataTab: View {
                     ], spacing: 16) {
                         FormatCard(
                             title: "Data Files", formats: ["CSV", "TSV", "JSON"],
-                            icon: "tablecells", color: .blue
+                            icon: "tablecells", color: .green
                         )
                         FormatCard(
                             title: "3D Models", formats: ["USDZ", "USD", "OBJ"],
-                            icon: "cube", color: .purple
+                            icon: "cube", color: .red
                         )
                         FormatCard(
-                            title: "Images", formats: ["PNG", "JPG", "HEIC"],
+                            title: "Point Clouds", formats: ["PLY", "XYZ", "HEIC"],
                             icon: "photo", color: .green
                         )
                         FormatCard(
-                            title: "Code Files", formats: ["PY", "IPYNB", "R"],
+                            title: "Code Files", formats: ["PY", "IPYNB"],
                             icon: "chevron.left.forwardslash.chevron.right", color: .orange
                         )
                     }

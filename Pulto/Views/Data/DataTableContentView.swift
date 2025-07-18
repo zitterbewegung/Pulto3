@@ -233,7 +233,7 @@ struct DataTableContentView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                .frame(width: 300, height: 200)
+                .frame(width: 300, height: 300)
             }
         }
         .fileImporter(
