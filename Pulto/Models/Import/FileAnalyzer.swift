@@ -6,7 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -164,7 +163,7 @@ class SchemaInferenceEngine {
             dataType: dataType,
             structure: TabularStructure(
                 headers: headers,
-                columnTypes: columnTypes,
+                importcolumnTypes: columnTypes,
                 rowCount: lines.count - 1,
                 patterns: patterns,
                 coordinateColumns: coordinateColumns,
@@ -197,8 +196,8 @@ class SchemaInferenceEngine {
         return Array(row.prefix(columnCount))
     }
 
-    private func inferColumnTypes(headers: [String], rows: [[String]]) -> [String: ColumnType] {
-        var types: [String: ColumnType] = [:]
+    private func inferColumnTypes(headers: [String], rows: [[String]]) -> [String: ImportColumnType] {
+        var types: [String: ImportColumnType] = [:]
 
         for (index, header) in headers.enumerated() {
             var numericCount = 0
@@ -245,7 +244,7 @@ class SchemaInferenceEngine {
         return types
     }
 
-    private func detectCoordinateColumns(headers: [String], types: [String: ColumnType]) -> [String] {
+    private func detectCoordinateColumns(headers: [String], types: [String: ImportColumnType]) -> [String] {
         var coordinateColumns: [String] = []
 
         let coordinatePatterns = [
@@ -272,7 +271,7 @@ class SchemaInferenceEngine {
         return coordinateColumns
     }
 
-    private func detectTimeColumns(headers: [String], types: [String: ColumnType]) -> Bool {
+    private func detectTimeColumns(headers: [String], types: [String: ImportColumnType]) -> Bool {
         return headers.contains { header in
             types[header] == .date ||
             header.lowercased().contains("time") ||
@@ -281,7 +280,7 @@ class SchemaInferenceEngine {
         }
     }
 
-    private func detectDataPatterns(headers: [String], rows: [[String]], types: [String: ColumnType]) -> Set<DataPattern> {
+    private func detectDataPatterns(headers: [String], rows: [[String]], types: [String: ImportColumnType]) -> Set<DataPattern> {
         var patterns: Set<DataPattern> = []
 
         // Check for hierarchical data
@@ -749,22 +748,3 @@ extension DateFormatter {
     }()
 }
 
-// NOTE: This is a placeholder to resolve the compiler error.
-// You should replace this with your actual implementation for reading LAS files.
-struct LASFileReader {
-    let data: Data
-
-    init(data: Data) {
-        self.data = data
-    }
-
-    func readHeader() throws -> LASHeader {
-        // Placeholder implementation
-        return LASHeader(versionMajor: 1, versionMinor: 2, systemIdentifier: "", generatingSoftware: "", fileCreationDayOfYear: 0, fileCreationYear: 0, headerSize: 0, offsetToPointData: 0, numberOfVariableLengthRecords: 0, pointDataFormatID: 0, pointDataRecordLength: 0, numberOfPointRecords: 0, scaleX: 1, scaleY: 1, scaleZ: 1, offsetX: 0, offsetY: 0, offsetZ: 0, minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0)
-    }
-
-    func readPoints(count: Int) throws -> [LASPoint] {
-        // Placeholder implementation
-        return []
-    }
-}

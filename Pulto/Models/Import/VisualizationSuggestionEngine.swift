@@ -7,12 +7,6 @@
 //
 
 
-//
-//  VisualizationSuggestionEngine.swift
-//  Pulto3
-//
-//  Intelligent visualization suggestions based on data analysis
-//
 
 import Foundation
 import SwiftUI

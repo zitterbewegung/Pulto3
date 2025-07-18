@@ -1692,6 +1692,70 @@ struct DataTableContentView: View {
         return csv
     }
 
+    // Replace the existing handleFileImport method:
+    @MainActor
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                // Use enhanced importer for supported advanced formats
+                let advancedFormats = ["xlsx", "las", "ipynb"]
+                if advancedFormats.contains(url.pathExtension.lowercased()) {
+                    selectedImportURL = url
+                    showEnhancedFileImporter = true
+                } else {
+                    // Use standard import for simple formats
+                    handleStandardFileImport(url)
+                }
+            }
+        case .failure(let error):
+            print("Import failed:", error)
+        }
+    }
+
+    @MainActor
+    private func handleStandardFileImport(_ url: URL) {
+        // Your existing simple import logic
+        print("Importing file:", url.lastPathComponent)
+
+        // Example for CSV
+        if url.pathExtension.lowercased() == "csv" {
+            Task {
+                do {
+                    let text = try String(contentsOf: url)
+                    guard let csv = CSVParser.parse(text) else { return }
+
+                    let dtypes = Dictionary(uniqueKeysWithValues: zip(
+                        csv.headers,
+                        csv.columnTypes.map { type -> String in
+                            switch type {
+                            case .numeric: return "float"
+                            case .categorical: return "string"
+                            case .date: return "datetime"
+                            case .unknown: return "string"
+                            }
+                        }
+                    ))
+
+                    let frame = DataFrameData(
+                        columns: csv.headers,
+                        rows: csv.rows,
+                        dtypes: dtypes
+                    )
+
+                    let id = windowManager.getNextWindowID()
+                    let win = windowManager.createWindow(.column, id: id)
+                    windowManager.updateWindowDataFrame(win.id, dataFrame: frame)
+                    windowManager.markWindowAsOpened(win.id)
+                    openWindow(value: id)
+
+                } catch {
+                    print("Error importing CSV: \(error)")
+                }
+            }
+        }
+    }
+    /*
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
@@ -1732,7 +1796,7 @@ struct DataTableContentView: View {
             importError = "Import failed: \(error.localizedDescription)"
         }
     }
-
+     */
     private func parseCSVContent(_ content: String) throws -> DataFrameData {
         if let csvData = CSVParser.parse(content) {
             let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in

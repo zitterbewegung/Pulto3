@@ -19,6 +19,7 @@
 		DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */; };
 		DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */; };
 		DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */; };
+		DC604EF02E2AF24F00B158D8 /* CoreXLSX in Frameworks */ = {isa = PBXBuildFile; productRef = DC604EEF2E2AF24F00B158D8 /* CoreXLSX */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
 		DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B342E04A126005454FE /* SpatialEditorView.swift */; };
@@ -165,6 +166,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC604EF02E2AF24F00B158D8 /* CoreXLSX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -368,6 +370,9 @@
 				Base,
 			);
 			mainGroup = DF58AE122BCD826D00C8F737;
+			packageReferences = (
+				DC604EEE2E2AF1C000B158D8 /* XCRemoteSwiftPackageReference "CoreXLSX" */,
+			);
 			preferredProjectObjectVersion = 56;
 			productRefGroup = DF58AE1C2BCD826D00C8F737 /* Products */;
 			projectDirPath = "";
@@ -723,6 +728,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DC604EEE2E2AF1C000B158D8 /* XCRemoteSwiftPackageReference "CoreXLSX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CoreOffice/CoreXLSX.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.14.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DC604EEF2E2AF24F00B158D8 /* CoreXLSX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DC604EEE2E2AF1C000B158D8 /* XCRemoteSwiftPackageReference "CoreXLSX" */;
+			productName = CoreXLSX;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DF58AE132BCD826D00C8F737 /* Project object */;
 }

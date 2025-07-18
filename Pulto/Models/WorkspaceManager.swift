@@ -788,6 +788,47 @@ struct ChartVisualizationNavigator {
     }
 }
 
+// Add this to your workspace tab or create menu:
+struct QuickImportMenu: View {
+    @EnvironmentObject var windowManager: WindowTypeManager
+    @Binding var showEnhancedFileImporter: Bool
+
+    var body: some View {
+        Menu {
+            Button {
+                showEnhancedFileImporter = true
+            } label: {
+                Label("Import with Analysis", systemImage: "wand.and.stars")
+            }
+
+            Divider()
+
+            Button {
+                // Quick CSV import
+                showEnhancedFileImporter = true
+            } label: {
+                Label("Import CSV/Excel", systemImage: "tablecells")
+            }
+
+            Button {
+                // Quick point cloud import
+                showEnhancedFileImporter = true
+            } label: {
+                Label("Import Point Cloud", systemImage: "view.3d")
+            }
+
+            Button {
+                // Quick notebook import
+                showEnhancedFileImporter = true
+            } label: {
+                Label("Import Notebook", systemImage: "doc.text.magnifyingglass")
+            }
+
+        } label: {
+            Label("Import", systemImage: "square.and.arrow.down")
+        }
+    }
+}
 
 // MARK: - Helper Extensions
 

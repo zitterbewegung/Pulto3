@@ -566,7 +566,7 @@ struct EnhancedFileImportView: View {
                 columns: structure.headers,
                 rows: [], // Would be populated from actual file data
                 dtypes: Dictionary(
-                    uniqueKeysWithValues: structure.columnTypes.map { key, value in
+                    uniqueKeysWithValues: structure.importcolumnTypes.map { key, value in
                         (key, value == .numeric ? "float" : "string")
                     }
                 )
@@ -873,6 +873,17 @@ struct VisualizationSuggestionCard: View {
     }
 }
 
+// Create a version that accepts a preselected URL:
+extension EnhancedFileImportView {
+    init(preselectedURL: URL? = nil) {
+        if let url = preselectedURL {
+            self._selectedFileURL = State(initialValue: url)
+            self._importStage = State(initialValue: .analyzing)
+        }
+    }
+}
+
+
 // MARK: - Preview
 
 struct EnhancedFileImportView_Previews: PreviewProvider {
@@ -881,3 +892,4 @@ struct EnhancedFileImportView_Previews: PreviewProvider {
             .environmentObject(WindowTypeManager.shared)
     }
 }
+

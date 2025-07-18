@@ -67,7 +67,7 @@ enum DataType {
 
 // MARK: - Column Types
 
-enum ColumnType {
+enum ImportColumnType {
     case numeric
     case categorical
     case date
@@ -108,7 +108,7 @@ protocol AnalysisStructure {}
 
 struct TabularStructure: AnalysisStructure {
     let headers: [String]
-    let columnTypes: [String: ColumnType]
+    let importcolumnTypes: [String: ImportColumnType]
     let rowCount: Int
     let patterns: Set<DataPattern>
     let coordinateColumns: [String]
@@ -166,7 +166,7 @@ struct SheetAnalysis {
     let rowCount: Int
     let columnCount: Int
     let hasHeaders: Bool
-    let dataTypes: [String: ColumnType]
+    let dataTypes: [String: ImportColumnType]
 }
 
 struct Model3DStructure: AnalysisStructure {
@@ -401,3 +401,4 @@ enum FileAnalysisError: LocalizedError {
         }
     }
 }
+

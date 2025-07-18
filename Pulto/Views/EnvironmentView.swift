@@ -156,6 +156,10 @@ struct EnvironmentView: View {
     @State private var showAppleSignIn      = false
     @State private var showWelcome           = false
 
+    // Add these to your existing @State variables in EnvironmentView:
+    @State private var showEnhancedFileImporter = false
+    @State private var selectedImportURL: URL?
+
     var body: some View {
         VStack(spacing: 0) {
             HeaderView(viewModel: viewModel,
@@ -178,13 +182,15 @@ struct EnvironmentView: View {
                     CreateTab(createWindow: createStandardWindow)
                 }
 
+                // In your TabView, replace the Data tab with:
                 Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
-                    DataTab(
+                    EnhancedDataTab(
                         showFileImporter: $showFileImporter,
+                        showEnhancedFileImporter: $showEnhancedFileImporter,
                         createBlankTable: createBlankDataTable
                     )
                 }
-
+                
                 Tab("Active", systemImage: "rectangle.stack.fill", value: .active) {
                     ActiveWindowsTab(
                         windowManager:  windowManager,
@@ -398,12 +404,25 @@ struct EnvironmentView: View {
         }
     }
 
-    private var supportedFileTypes: [UTType] {
-        [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
-         .usdz]
+    //private var supportedFileTypes: [UTType] {
+    //    [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
+   //      .usdz]
 
         //[.commaSeparatedText, .tabSeparatedText, .json, .plainText,
         // .image, .usdz, .threeDContent, .data]
+    //}
+    // Replace the existing supportedFileTypes computed property:
+    private var supportedFileTypes: [UTType] {
+        [
+            .commaSeparatedText,
+            .tabSeparatedText,
+            .json,
+            .plainText,
+            .usdz,
+            UTType(filenameExtension: "xlsx") ?? .data,
+            UTType(filenameExtension: "las") ?? .data,
+            UTType(filenameExtension: "ipynb") ?? .json
+        ]
     }
 }
 
@@ -525,7 +544,7 @@ struct CreateTab: View {
         }
     }
 }
-
+/*
 // MARK: - Data Tab
 struct DataTab: View {
     @Binding var showFileImporter: Bool
@@ -584,8 +603,112 @@ struct DataTab: View {
             .padding()
         }
     }
-}
+}*/
+// Replace the DataTab implementation with this enhanced version:
+struct EnhancedDataTab: View {
+    @Binding var showFileImporter: Bool
+    @Binding var showEnhancedFileImporter: Bool
+    let createBlankTable: () -> Void
 
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Import Data")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                // Import Actions
+                VStack(spacing: 16) {
+                    // Enhanced Import (Primary)
+                    EnvironmentActionCard(
+                        title: "Smart Import",
+                        subtitle: "Intelligent file analysis & suggestions",
+                        icon: "wand.and.stars",
+                        color: .purple
+                    ) {
+                        showEnhancedFileImporter = true
+                    }
+
+                    HStack(spacing: 16) {
+                        EnvironmentActionCard(
+                            title: "Quick Import",
+                            subtitle: "Standard file import",
+                            icon: "doc.badge.plus",
+                            color: .blue
+                        ) {
+                            showFileImporter = true
+                        }
+
+                        EnvironmentActionCard(
+                            title: "Blank Table",
+                            subtitle: "Start with sample data",
+                            icon: "tablecells",
+                            color: .yellow
+                        ) {
+                            createBlankTable()
+                        }
+                    }
+                }
+
+                Divider().padding(.vertical, 8)
+
+                // Supported Formats - Enhanced
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Supported Formats")
+                        .font(.headline)
+
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        FormatCard(
+                            title: "Data Files",
+                            formats: ["CSV", "TSV", "JSON", "Excel"],
+                            icon: "tablecells",
+                            color: .green
+                        )
+                        FormatCard(
+                            title: "3D Models",
+                            formats: ["USDZ", "USD", "OBJ"],
+                            icon: "cube",
+                            color: .red
+                        )
+                        FormatCard(
+                            title: "Point Clouds",
+                            formats: ["LAS", "PLY", "XYZ"],
+                            icon: "view.3d",
+                            color: .blue
+                        )
+                        FormatCard(
+                            title: "Notebooks",
+                            formats: ["IPYNB", "PY"],
+                            icon: "doc.text.magnifyingglass",
+                            color: .purple
+                        )
+                    }
+
+                    // New features callout
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(.purple)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("New: Intelligent Import")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("Smart Import analyzes your files and suggests the best visualizations")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+            .padding()
+        }
+    }
+}
 // MARK: - Active Windows Tab
 struct ActiveWindowsTab: View {
     let windowManager: WindowTypeManager
@@ -1263,6 +1386,38 @@ struct WelcomeStep: View {
         }
     }
 }
+
+// Add this extension to make window creation easier:
+extension EnvironmentView {
+    @MainActor
+    func createVisualizationWindow(
+        type: WindowType,
+        title: String,
+        tags: [String] = []
+    ) -> Int {
+        let windowID = windowManager.getNextWindowID()
+        let position = WindowPosition(
+            x: 100 + Double(windowID * 20),
+            y: 100 + Double(windowID * 20),
+            z: 0,
+            width: 800,
+            height: 600
+        )
+
+        _ = windowManager.createWindow(type, id: windowID, position: position)
+        windowManager.updateWindowContent(windowID, content: title)
+
+        for tag in tags {
+            windowManager.addWindowTag(windowID, tag: tag)
+        }
+
+        openWindow(value: windowID)
+        windowManager.markWindowAsOpened(windowID)
+
+        return windowID
+    }
+}
+
 
 // MARK: - Previews
 struct EnvironmentView_Previews: PreviewProvider {
