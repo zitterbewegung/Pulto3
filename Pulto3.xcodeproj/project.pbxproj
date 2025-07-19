@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 73;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -96,7 +96,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		DC7094582E206D300000CC3A /* Exceptions for "Extensions" folder in "Pulto" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"WindowTypeManager+Import.swift",
@@ -104,21 +104,22 @@
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
-		DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		DC85D57B2E03852300559301 /* Exceptions for "Models" folder in "Pulto" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				generateSamplePointCloud.swift,
+				Import/FileImportIntegration.swift,
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
-		DCA420E72E214A9600C57416 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		DCA420E72E214A9600C57416 /* Exceptions for "server" folder in "Pulto" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Backend/Dockerfile.dev,
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
-		DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		DCB8174D2E2862410014FC37 /* Exceptions for "Data" folder in "Pulto" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				demo.csv,
@@ -128,47 +129,77 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		DC7094512E2010720000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+		DC9383D72E2B59E600ECDF34 /* Exceptions for "Models" folder in "Copy Bundle Resources" phase from "Pulto" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
 			membershipExceptions = (
-				generateSamplePointCloud.swift,
-			);
-		};
-		DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
-			membershipExceptions = (
-				"WindowTypeManager+Replace.swift",
+				Import/FileImportIntegration.swift,
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
-		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
-		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCA420E72E214A9600C57416 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
-		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
-		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
-		DC7094F42E20A5F10000CC3A /* Data */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Data; sourceTree = "<group>"; };
-		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094512E2010720000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
+		DC28CF682E02695000F3705E /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		DC3F86032E0F79D70042AAD3 /* .github */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .github;
+			sourceTree = "<group>";
+		};
+		DC3F86072E103C3A0042AAD3 /* server */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DCA420E72E214A9600C57416 /* Exceptions for "server" folder in "Pulto" target */,
+			);
+			path = server;
+			sourceTree = "<group>";
+		};
+		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PultoTests;
+			sourceTree = "<group>";
+		};
+		DC7094552E206D110000CC3A /* Extensions */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DC7094582E206D300000CC3A /* Exceptions for "Extensions" folder in "Pulto" target */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		DC7094F42E20A5F10000CC3A /* Data */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DCB8174D2E2862410014FC37 /* Exceptions for "Data" folder in "Pulto" target */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		DCF810432E030A1900258CAE /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DC85D57B2E03852300559301 /* Exceptions for "Models" folder in "Pulto" target */,
+				DC9383D72E2B59E600ECDF34 /* Exceptions for "Models" folder in "Copy Bundle Resources" phase from "Pulto" target */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		DC3F8DD12E103E090042AAD3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		DF58AE182BCD826D00C8F737 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				DC604EF02E2AF24F00B158D8 /* CoreXLSX in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -313,8 +344,6 @@
 				DC3F8DD52E103E090042AAD3 /* PultoTests */,
 			);
 			name = PultoTests;
-			packageProductDependencies = (
-			);
 			productName = PultoTests;
 			productReference = DC3F8DD42E103E090042AAD3 /* PultoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -328,8 +357,6 @@
 				DF58AE192BCD826D00C8F737 /* Resources */,
 			);
 			buildRules = (
-			);
-			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
 				DC28CF682E02695000F3705E /* Tests */,
@@ -372,8 +399,9 @@
 			mainGroup = DF58AE122BCD826D00C8F737;
 			packageReferences = (
 				DC604EEE2E2AF1C000B158D8 /* XCRemoteSwiftPackageReference "CoreXLSX" */,
+				DC0EC7842E2BDC5000B9A2D9 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
-			preferredProjectObjectVersion = 56;
+			preferredProjectObjectVersion = 90;
 			productRefGroup = DF58AE1C2BCD826D00C8F737 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -387,14 +415,11 @@
 /* Begin PBXResourcesBuildPhase section */
 		DC3F8DD22E103E090042AAD3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		DF58AE192BCD826D00C8F737 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */,
 				DC28CF6C2E026B4300F3705E /* template.ipynb in Resources */,
@@ -403,21 +428,17 @@
 				DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */,
 				DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		DC3F8DD02E103E090042AAD3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		DF58AE172BCD826D00C8F737 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */,
 				DC6A50A52E0B607600C4FEAF /* EnvironmentView.swift in Sources */,
@@ -444,7 +465,6 @@
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -457,7 +477,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		DC3F8DDB2E103E090042AAD3 /* Debug */ = {
+		DC3F8DDB2E103E090042AAD3 /* Debug configuration for PBXNativeTarget "PultoTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -480,7 +500,7 @@
 			};
 			name = Debug;
 		};
-		DC3F8DDC2E103E090042AAD3 /* Release */ = {
+		DC3F8DDC2E103E090042AAD3 /* Release configuration for PBXNativeTarget "PultoTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -503,7 +523,7 @@
 			};
 			name = Release;
 		};
-		DF58AE2E2BCD826F00C8F737 /* Debug */ = {
+		DF58AE2E2BCD826F00C8F737 /* Debug configuration for PBXProject "Pulto3" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */;
 			buildSettings = {
@@ -569,7 +589,7 @@
 			};
 			name = Debug;
 		};
-		DF58AE2F2BCD826F00C8F737 /* Release */ = {
+		DF58AE2F2BCD826F00C8F737 /* Release configuration for PBXProject "Pulto3" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */;
 			buildSettings = {
@@ -628,7 +648,7 @@
 			};
 			name = Release;
 		};
-		DF58AE312BCD826F00C8F737 /* Debug */ = {
+		DF58AE312BCD826F00C8F737 /* Debug configuration for PBXNativeTarget "Pulto" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */;
 			buildSettings = {
@@ -662,7 +682,7 @@
 			};
 			name = Debug;
 		};
-		DF58AE322BCD826F00C8F737 /* Release */ = {
+		DF58AE322BCD826F00C8F737 /* Release configuration for PBXNativeTarget "Pulto" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */;
 			buildSettings = {
@@ -703,33 +723,38 @@
 		DC3F8DDA2E103E090042AAD3 /* Build configuration list for PBXNativeTarget "PultoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				DC3F8DDB2E103E090042AAD3 /* Debug */,
-				DC3F8DDC2E103E090042AAD3 /* Release */,
+				DC3F8DDB2E103E090042AAD3 /* Debug configuration for PBXNativeTarget "PultoTests" */,
+				DC3F8DDC2E103E090042AAD3 /* Release configuration for PBXNativeTarget "PultoTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		DF58AE162BCD826D00C8F737 /* Build configuration list for PBXProject "Pulto3" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				DF58AE2E2BCD826F00C8F737 /* Debug */,
-				DF58AE2F2BCD826F00C8F737 /* Release */,
+				DF58AE2E2BCD826F00C8F737 /* Debug configuration for PBXProject "Pulto3" */,
+				DF58AE2F2BCD826F00C8F737 /* Release configuration for PBXProject "Pulto3" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		DF58AE302BCD826F00C8F737 /* Build configuration list for PBXNativeTarget "Pulto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				DF58AE312BCD826F00C8F737 /* Debug */,
-				DF58AE322BCD826F00C8F737 /* Release */,
+				DF58AE312BCD826F00C8F737 /* Debug configuration for PBXNativeTarget "Pulto" */,
+				DF58AE322BCD826F00C8F737 /* Release configuration for PBXNativeTarget "Pulto" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		DC0EC7842E2BDC5000B9A2D9 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
 		DC604EEE2E2AF1C000B158D8 /* XCRemoteSwiftPackageReference "CoreXLSX" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/CoreOffice/CoreXLSX.git";

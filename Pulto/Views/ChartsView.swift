@@ -6,7 +6,7 @@ import UIKit
 struct ChartsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
-    @State private var selectedVisualizationType: VisualizationType = .pointCloud
+    @State private var selectedVisualizationType: ChartsVisualizationType = .pointCloud
     @State private var showSidebar = true
     @State private var selectedDataset: String? = nil
     @State private var visualizationSettings = VisualizationSettings()
@@ -47,7 +47,7 @@ struct ChartsView: View {
                     }
 
                     Picker("Visualization Type", selection: $selectedVisualizationType) {
-                        ForEach(VisualizationType.allCases) { type in
+                        ForEach(ChartsVisualizationType.allCases) { type in
                             Label(type.rawValue, systemImage: type.iconName)
                                 .tag(type)
                         }
@@ -241,7 +241,7 @@ struct ChartsView: View {
                     ax.plot_surface(X + center[0], Y + center[1], 
                                   np.ones_like(X) * (z + center[2]), alpha=0.6)
                 for y in r:
-                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1], 
+                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1]), 
                                   Y + center[2], alpha=0.6)
                 for x in r:
                     ax.plot_surface(np.ones_like(X) * (x + center[0]), X + center[1], 
@@ -269,7 +269,7 @@ struct ChartsView: View {
             if settings['show_axes']:
                 ax.plot([0, 3], [0, 0], [0, 0], 'r-', linewidth=3, label='X')
                 ax.plot([0, 0], [0, 3], [0, 0], 'g-', linewidth=3, label='Y') 
-                ax.plot([0, 0], [0, 0, [0, 3], 'b-', linewidth=3, label='Z')
+                ax.plot([0, 0], [0, 0], [0, 3], 'b-', linewidth=3, label='Z')
                 ax.legend()
             
             ax.set_xlabel('X')
@@ -408,7 +408,7 @@ struct ChartsView: View {
 }
 
 // MARK: - Visualization Types
-enum VisualizationType: String, CaseIterable, Identifiable {
+enum ChartsVisualizationType: String, CaseIterable, Identifiable {
     case twoDimensional = "2D Data"
     case threeDimensional = "3D Model"
     case pointCloud = "Point Cloud"
@@ -427,7 +427,7 @@ enum VisualizationType: String, CaseIterable, Identifiable {
 // MARK: - Sidebar View
 struct SidebarView: View {
     @Binding var selectedDataset: String?
-    @Binding var visualizationType: VisualizationType
+    @Binding var visualizationType: ChartsVisualizationType
     @State private var datasets = [
         Dataset(name: "Temperature Heatmap", type: .twoDimensional),
         Dataset(name: "Elevation Map", type: .twoDimensional),
@@ -471,7 +471,7 @@ struct SidebarView: View {
 // MARK: - Visualization View
 struct VisualizationView: View {
     @Environment(\.dismiss) private var dismiss
-    let type: VisualizationType
+    let type: ChartsVisualizationType
     @Binding var settings: VisualizationSettings
     @State private var cameraPosition: SIMD3<Float> = [0, 5, 10]
 
@@ -511,7 +511,7 @@ struct VisualizationView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Close Window (â��W)")
+                    .help("Close Window (âW)")
                     .padding()
                 }
                 Spacer()
@@ -523,7 +523,7 @@ struct VisualizationView: View {
 
 // MARK: - Control Panel
 struct ControlPanelView: View {
-    let visualizationType: VisualizationType
+    let visualizationType: ChartsVisualizationType
     @Binding var settings: VisualizationSettings
 
     var body: some View {
@@ -1078,7 +1078,7 @@ struct PointCloudView: View {
             [13.56, 13.32, 2.976, 0.972549, 248.0, 181.0, 148.0],
             [13.68, 13.32, 2.784, 0.909804, 232.0, 144.0, 116.0],
             [13.8, 13.32, 2.664, 0.870588, 222.0, 124.0, 101.0],
-            [13.92, 13.32, 2.484, 0.811765, 207.0, 105.0, 86.0],
+_           [13.92, 13.32, 2.484, 0.811765, 207.0, 105.0, 86.0],
             [13.32, 13.44, 2.94, 0.960784, 245.0, 197.0, 166.0],
             [13.44, 13.44, 2.94, 0.960784, 245.0, 191.0, 161.0],
             [13.56, 13.44, 2.952, 0.964706, 246.0, 170.0, 139.0],
@@ -1195,7 +1195,7 @@ struct PointCloudView: View {
             lineWidth: 2
         )
 
-        // Y-axis (green) â�� vertical, no rotation
+        // Y-axis (green) â vertical, no rotation
         context.stroke(
             Path { path in
                 path.move(to: CGPoint(x: centerX, y: centerY))
@@ -1236,7 +1236,7 @@ struct PointCloudPoint {
 struct Dataset: Identifiable {
     let id = UUID()
     let name: String
-    let type: VisualizationType
+    let type: ChartsVisualizationType
     var pointCount: Int {
         switch type {
         case .twoDimensional:

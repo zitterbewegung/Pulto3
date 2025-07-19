@@ -5,746 +5,315 @@
 //  Created by Joshua Herman on 7/18/25.
 //  Copyright © 2025 Apple. All rights reserved.
 //
-
+/*
 import Foundation
 import SwiftUI
-import UniformTypeIdentifiers
 import TabularData
 
-// MARK: - File Analysis System
-
+// Main FileAnalyzer class
 class FileAnalyzer: ObservableObject {
     static let shared = FileAnalyzer()
 
-    @Published var isAnalyzing = false
     @Published var analysisProgress: Double = 0.0
     @Published var currentAnalysisStep: String = ""
 
-    private let schemaInferenceEngine = SchemaInferenceEngine()
-    private let visualizationSuggestionEngine = VisualizationSuggestionEngine()
+    private let suggestionEngine = VisualizationSuggestionEngine()
+    private let queue = DispatchQueue(label: "com.pulto3.fileanalyzer", qos: .userInitiated)
 
-    // MARK: - Main Analysis Entry Point
-
-    func analyzeFile(_ url: URL) async throws -> FileAnalysisResult {
-        await MainActor.run {
-            isAnalyzing = true
-            analysisProgress = 0.0
-            currentAnalysisStep = "Reading file..."
-        }
-
-        defer {
-            Task { @MainActor in
-                isAnalyzing = false
-                analysisProgress = 1.0
-            }
-        }
-
-        // Determine file type
-        let fileType = detectFileType(from: url)
-
-        // Read file data
-        let data = try Data(contentsOf: url)
-
-        await MainActor.run {
-            analysisProgress = 0.2
-            currentAnalysisStep = "Analyzing structure..."
-        }
-
-        // Perform type-specific analysis
-        let analysisResult: DataAnalysisResult
-
-        switch fileType {
-        case .csv, .tsv:
-            analysisResult = try await schemaInferenceEngine.analyzeTabularData(data, delimiter: fileType == .csv ? "," : "\t")
-        case .json:
-            analysisResult = try await schemaInferenceEngine.analyzeJSONData(data)
-        case .xlsx:
-            analysisResult = try await schemaInferenceEngine.analyzeExcelData(data, url: url)
-        case .las:
-            analysisResult = try await schemaInferenceEngine.analyzeLASData(data)
-        case .ipynb:
-            analysisResult = try await schemaInferenceEngine.analyzeNotebookData(data)
-        case .usdz:
-            analysisResult = try await schemaInferenceEngine.analyzeUSDZData(data, url: url)
-        default:
+    func analyzeFile(at url: URL) async throws -> FileAnalysisResult {
+        let fileType = SupportedFileType(rawValue: url.pathExtension.lowercased()) ?? .unknown
+        if fileType == .unknown {
             throw FileAnalysisError.unsupportedFormat
         }
 
-        await MainActor.run {
-            analysisProgress = 0.6
-            currentAnalysisStep = "Generating visualization suggestions..."
-        }
+        // Perform the core analysis to get the data structure
+        let analysisResult = try await performAnalysis(for: url, type: fileType)
 
-        // Generate visualization suggestions
-        let suggestions = visualizationSuggestionEngine.suggestVisualizations(for: analysisResult)
+        // Generate suggestions based on the analysis
+        let suggestions = suggestionEngine.suggestVisualizations(for: analysisResult)
 
-        await MainActor.run {
-            analysisProgress = 1.0
-            currentAnalysisStep = "Analysis complete"
-        }
+        // The final result includes the analysis and the new suggestions
+        let finalAnalysis = DataAnalysisResult(
+            dataType: analysisResult.dataType,
+            structure: analysisResult.structure,
+            metadata: analysisResult.metadata,
+            suggestions: suggestions
+        )
 
         return FileAnalysisResult(
             fileURL: url,
             fileType: fileType,
-            analysis: analysisResult,
+            analysis: finalAnalysis,
             suggestions: suggestions
         )
     }
 
-    // MARK: - File Type Detection
+    private func performAnalysis(for url: URL, type: SupportedFileType) async throws -> DataAnalysisResult {
+        await updateProgress(step: "Starting analysis...", progress: 0.1)
 
-    private func detectFileType(from url: URL) -> SupportedFileType {
-        // FIX: Renamed variable from 'extension' to 'fileExtension' because 'extension' is a reserved keyword in Swift.
-        let fileExtension = url.pathExtension.lowercased()
-
-        switch fileExtension {
-        case "csv": return .csv
-        case "tsv": return .tsv
-        case "json": return .json
-        case "xlsx": return .xlsx
-        case "las": return .las
-        case "ipynb": return .ipynb
-        case "usdz": return .usdz
-        default: return .unknown
+        switch type {
+        case .csv, .tsv:
+            return try await analyzeTabular(url: url, isCSV: type == .csv)
+        case .json:
+            return try await analyzeJSON(url: url)
+        case .xlsx:
+            return try await analyzeSpreadsheet(url: url)
+        case .las:
+            return try await analyzePointCloud(url: url)
+        case .ipynb:
+            return try await analyzeNotebook(url: url)
+        case .usdz:
+            return try await analyze3DModel(url: url)
+        default:
+            throw FileAnalysisError.unsupportedFormat
         }
     }
-}
 
-// MARK: - Schema Inference Engine
+    // MARK: - Analysis Implementations
 
-class SchemaInferenceEngine {
+    private func analyzeTabular(url: URL, isCSV: Bool) async throws -> DataAnalysisResult {
+        await updateProgress(step: "Reading tabular data...", progress: 0.2)
+        let data = try String(contentsOf: url, encoding: .utf8)
+        guard !data.isEmpty else { throw FileAnalysisError.emptyFile }
 
-    // MARK: - Tabular Data Analysis
+        let delimiter: Character = isCSV ? "," : "\t"
+        let (headers, rows) = ImportCSVParser.parse(data, delimiter: delimiter)
+        let rowCount = rows.count
 
-    func analyzeTabularData(_ data: Data, delimiter: String) async throws -> DataAnalysisResult {
-        guard let content = String(data: data, encoding: .utf8) else {
-            throw FileAnalysisError.encodingError
+        await updateProgress(step: "Inferring schema...", progress: 0.4)
+        let columnTypes = inferColumnTypes(rows: Array(rows.prefix(100)), headers: headers)
+
+        await updateProgress(step: "Detecting patterns...", progress: 0.6)
+        var patterns: Set<DataPattern> = []
+        if columnTypes.values.contains(.date) {
+            patterns.insert(.timeSeries)
         }
 
-        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        guard !lines.isEmpty else {
-            throw FileAnalysisError.emptyFile
-        }
-
-        // Pass 1: Detect headers and basic structure
-        let headers = parseHeaders(lines[0], delimiter: delimiter)
-        var rows: [[String]] = []
-
-        for i in 1..<min(lines.count, 1001) { // Sample first 1000 rows
-            let row = parseRow(lines[i], delimiter: delimiter, columnCount: headers.count)
-            rows.append(row)
-        }
-
-        // Pass 2: Infer column types
-        let columnTypes = inferColumnTypes(headers: headers, rows: rows)
-
-        // Pass 3: Detect patterns and relationships
-        let patterns = detectDataPatterns(headers: headers, rows: rows, types: columnTypes)
-
-        // Check for coordinate data
-        let coordinateColumns = detectCoordinateColumns(headers: headers, types: columnTypes)
-        let hasTimeData = detectTimeColumns(headers: headers, types: columnTypes)
-
-        // Determine data type
-        let dataType: DataType
+        let coordinateColumns = findCoordinateColumns(headers)
         if coordinateColumns.count >= 2 {
-            dataType = .tabularWithCoordinates
-        } else if hasTimeData {
-            dataType = .timeSeries
-        } else if patterns.contains(.hierarchical) {
-            dataType = .hierarchical
-        } else if patterns.contains(.network) {
-            dataType = .networkData
-        } else {
-            dataType = .tabular
+            patterns.insert(.spatial)
         }
+
+        let timeColumns = findTimeColumns(headers, columnTypes: columnTypes)
+
+        let dataType: DataType = !coordinateColumns.isEmpty ? .tabularWithCoordinates : .tabular
+
+        let structure = TabularStructure(
+            headers: headers,
+            columnTypes: columnTypes,
+            rowCount: rowCount,
+            patterns: patterns,
+            coordinateColumns: coordinateColumns,
+            timeColumns: timeColumns
+        )
 
         return DataAnalysisResult(
             dataType: dataType,
-            structure: TabularStructure(
-                headers: headers,
-                importcolumnTypes: columnTypes,
-                rowCount: lines.count - 1,
-                patterns: patterns,
-                coordinateColumns: coordinateColumns,
-                timeColumns: hasTimeData ? headers.filter { h in
-                    columnTypes[h] == .date || h.lowercased().contains("time") || h.lowercased().contains("date")
-                } : []
-            ),
-            metadata: [
-                "delimiter": delimiter,
-                "encoding": "UTF-8",
-                "totalRows": lines.count - 1
-            ]
+            structure: structure,
+            metadata: ["delimiter": isCSV ? "comma" : "tab"],
+            suggestions: []
         )
     }
 
-    private func parseHeaders(_ line: String, delimiter: String) -> [String] {
-        return line.components(separatedBy: delimiter)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    private func parseRow(_ line: String, delimiter: String, columnCount: Int) -> [String] {
-        var row = line.components(separatedBy: delimiter)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-        // Ensure consistent column count
-        while row.count < columnCount {
-            row.append("")
+    private func analyzeJSON(url: URL) async throws -> DataAnalysisResult {
+        await updateProgress(step: "Parsing JSON...", progress: 0.3)
+        let data = try Data(contentsOf: url)
+        guard let jsonObject = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) else {
+            throw FileAnalysisError.parsingError("Invalid JSON format.")
         }
 
-        return Array(row.prefix(columnCount))
-    }
-
-    private func inferColumnTypes(headers: [String], rows: [[String]]) -> [String: ImportColumnType] {
-        var types: [String: ImportColumnType] = [:]
-
-        for (index, header) in headers.enumerated() {
-            var numericCount = 0
-            var dateCount = 0
-            var booleanCount = 0
-            var emptyCount = 0
-
-            for row in rows {
-                guard index < row.count else { continue }
-                let value = row[index]
-
-                if value.isEmpty {
-                    emptyCount += 1
-                    continue
-                }
-
-                if Double(value) != nil {
-                    numericCount += 1
-                } else if isDate(value) {
-                    dateCount += 1
-                } else if isBoolean(value) {
-                    booleanCount += 1
-                }
-            }
-
-            let totalNonEmpty = rows.count - emptyCount
-            guard totalNonEmpty > 0 else {
-                types[header] = .unknown
-                continue
-            }
-
-            // Determine type based on majority
-            if Double(numericCount) / Double(totalNonEmpty) > 0.8 {
-                types[header] = .numeric
-            } else if Double(dateCount) / Double(totalNonEmpty) > 0.8 {
-                types[header] = .date
-            } else if Double(booleanCount) / Double(totalNonEmpty) > 0.8 {
-                types[header] = .boolean
-            } else {
-                types[header] = .categorical
-            }
-        }
-
-        return types
-    }
-
-    private func detectCoordinateColumns(headers: [String], types: [String: ImportColumnType]) -> [String] {
-        var coordinateColumns: [String] = []
-
-        let coordinatePatterns = [
-            ["x", "y", "z"],
-            ["lon", "lat", "alt"],
-            ["longitude", "latitude", "altitude"],
-            ["easting", "northing", "elevation"]
-        ]
-
-        for pattern in coordinatePatterns {
-            let matches = pattern.compactMap { coord in
-                headers.first { header in
-                    let h = header.lowercased()
-                    return (h == coord || h.contains(coord)) && types[header] == .numeric
-                }
-            }
-
-            if matches.count >= 2 {
-                coordinateColumns = matches
-                break
-            }
-        }
-
-        return coordinateColumns
-    }
-
-    private func detectTimeColumns(headers: [String], types: [String: ImportColumnType]) -> Bool {
-        return headers.contains { header in
-            types[header] == .date ||
-            header.lowercased().contains("time") ||
-            header.lowercased().contains("date") ||
-            header.lowercased().contains("timestamp")
-        }
-    }
-
-    private func detectDataPatterns(headers: [String], rows: [[String]], types: [String: ImportColumnType]) -> Set<DataPattern> {
-        var patterns: Set<DataPattern> = []
-
-        // Check for hierarchical data
-        if headers.contains(where: { $0.lowercased().contains("parent") || $0.lowercased().contains("child") }) {
-            patterns.insert(.hierarchical)
-        }
-
-        // Check for network data
-        if headers.contains(where: { h in
-            let lower = h.lowercased()
-            return lower.contains("source") || lower.contains("target") || lower.contains("from") || lower.contains("to")
-        }) {
-            patterns.insert(.network)
-        }
-
-        // Check for high cardinality
-        for (index, header) in headers.enumerated() {
-            if types[header] == .categorical {
-                let uniqueValues = Set(rows.compactMap { row in
-                    index < row.count ? row[index] : nil
-                }.filter { !$0.isEmpty })
-
-                if uniqueValues.count > rows.count / 2 {
-                    patterns.insert(.highCardinality)
-                }
-            }
-        }
-
-        // Check for missing data
-        let missingDataRatio = rows.reduce(0.0) { sum, row in
-            sum + Double(row.filter { $0.isEmpty }.count) / Double(row.count)
-        } / Double(rows.count)
-
-        if missingDataRatio > 0.1 {
-            patterns.insert(.sparseData)
-        }
-
-        return patterns
-    }
-
-    // MARK: - JSON Analysis
-
-    func analyzeJSONData(_ data: Data) async throws -> DataAnalysisResult {
-        let json = try JSONSerialization.jsonObject(with: data)
-
-        // Analyze JSON structure
+        await updateProgress(step: "Analyzing JSON structure...", progress: 0.5)
         var structure = JSONStructure()
-        analyzeJSONNode(json, depth: 0, structure: &structure)
+        var dataType: DataType = .hierarchical // Default for JSON
 
-        // Detect data type based on structure
-        let dataType: DataType
-        if structure.hasCoordinates {
+        // Recursive traversal to analyze structure
+        traverseJSON(jsonObject, currentDepth: 1, structure: &structure)
+
+        if structure.hasNodes && structure.hasEdges {
+            dataType = .networkData
+        } else if structure.hasCoordinates {
             dataType = .geospatial
-        } else if structure.hasNestedArrays && structure.isNumericData {
-            dataType = .matrix
-        } else if structure.hasTimestamps {
-            dataType = .timeSeries
         } else if structure.isArrayOfObjects {
             dataType = .tabular
-        } else if structure.hasNodes && structure.hasEdges {
-            dataType = .networkData
-        } else {
-            dataType = .structured
         }
 
         return DataAnalysisResult(
             dataType: dataType,
             structure: structure,
-            metadata: [
-                "depth": structure.maxDepth,
-                "totalObjects": structure.objectCount,
-                "totalArrays": structure.arrayCount
-            ]
+            metadata: ["fileSize": data.count],
+            suggestions: []
         )
     }
 
-    private func analyzeJSONNode(_ node: Any, depth: Int, structure: inout JSONStructure) {
-        structure.maxDepth = max(structure.maxDepth, depth)
+    private func analyzeSpreadsheet(url: URL) async throws -> DataAnalysisResult {
+        await updateProgress(step: "Parsing Excel workbook...", progress: 0.3)
 
-        if let dict = node as? [String: Any] {
-            structure.objectCount += 1
+        // Use the new, robust ExcelParser
+        let workbook = try ExcelParser.parseExcelFile(at: url)
 
-            // Check for coordinate patterns
-            let keys = Set(dict.keys.map { $0.lowercased() })
-            if keys.contains("lat") || keys.contains("latitude") ||
-               keys.contains("x") || keys.contains("coordinates") {
-                structure.hasCoordinates = true
-            }
+        await updateProgress(step: "Analyzing sheets...", progress: 0.6)
 
-            // Check for graph patterns
-            if keys.contains("nodes") || keys.contains("vertices") {
-                structure.hasNodes = true
-            }
-            if keys.contains("edges") || keys.contains("links") {
-                structure.hasEdges = true
-            }
-
-            // Recurse
-            for (_, value) in dict {
-                analyzeJSONNode(value, depth: depth + 1, structure: &structure)
-            }
-
-        } else if let array = node as? [Any] {
-            structure.arrayCount += 1
-
-            if !array.isEmpty {
-                // Check if array of objects
-                if array.allSatisfy({ $0 is [String: Any] }) {
-                    structure.isArrayOfObjects = true
-                }
-
-                // Check if numeric array
-                if array.allSatisfy({ $0 is Double || $0 is Int }) {
-                    structure.isNumericData = true
-
-                    // Check for nested arrays (matrix)
-                    if depth > 0, array.first is [Any] {
-                        structure.hasNestedArrays = true
-                    }
-                }
-
-                // Analyze first element
-                analyzeJSONNode(array[0], depth: depth + 1, structure: &structure)
-            }
-        }
-    }
-
-    // MARK: - Excel Analysis
-
-    func analyzeExcelData(_ data: Data, url: URL) async throws -> DataAnalysisResult {
-        // This would use a library like CoreXLSX or similar
-        // For now, we'll create a placeholder that demonstrates the structure
-
-        var sheetAnalyses: [SheetAnalysis] = []
-
-        // In a real implementation, this would parse the Excel file
-        // and analyze each sheet independently
-        let mockSheets = ["Sheet1", "Sheet2"] // Replace with actual sheet parsing
-
-        for sheetName in mockSheets {
-            // Analyze each sheet as tabular data
-            let sheetAnalysis = SheetAnalysis(
-                name: sheetName,
-                rowCount: 100, // Replace with actual count
-                columnCount: 10, // Replace with actual count
-                hasHeaders: true,
-                dataTypes: [:] // Would be populated by actual analysis
+        // Convert the parser's detailed sheets into the standard SheetAnalysis model
+        let sheetAnalyses = workbook.sheets.map { excelSheet -> SheetAnalysis in
+            return SheetAnalysis(
+                name: excelSheet.name,
+                rowCount: excelSheet.rowCount,
+                columnCount: excelSheet.columnCount,
+                hasHeaders: excelSheet.hasHeaders,
+                dataTypes: excelSheet.columnTypes
             )
-            sheetAnalyses.append(sheetAnalysis)
+        }
+
+        let structure = SpreadsheetStructure(sheets: sheetAnalyses)
+
+        var metadata: [String: Any] = ["sheetCount": workbook.sheets.count]
+        if let author = workbook.metadata.author {
+            metadata["author"] = author
         }
 
         return DataAnalysisResult(
             dataType: .spreadsheet,
-            structure: SpreadsheetStructure(sheets: sheetAnalyses),
-            metadata: [
-                "fileName": url.lastPathComponent,
-                "sheetCount": sheetAnalyses.count
-            ]
+            structure: structure,
+            metadata: metadata,
+            suggestions: []
         )
     }
 
-    // MARK: - LAS (LiDAR) Analysis
+    private func analyzePointCloud(url: URL) async throws -> DataAnalysisResult {
+        await updateProgress(step: "Reading LAS file...", progress: 0.3)
+        let data = try Data(contentsOf: url)
+        let reader = LASFileReader(data: data)
+        let header = try reader.readHeader()
 
-    func analyzeLASData(_ data: Data) async throws -> DataAnalysisResult {
-        // FIX: Added a placeholder LASFileReader to resolve the "Cannot find in scope" error.
-        // You will need to replace this with your actual LAS file reading implementation.
-        let lasReader = LASFileReader(data: data)
-        let header = try lasReader.readHeader()
-
-        // Sample points for analysis
-        let sampleSize = min(10000, Int(header.numberOfPointRecords))
-        let points = try lasReader.readPoints(count: sampleSize)
-
-        // Analyze point cloud characteristics
-        var bounds = PointCloudBounds()
-        var hasIntensity = false
-        var hasRGB = false
-        var hasClassification = false
-        var hasGPSTime = false
-
-        for point in points {
-            bounds.updateWith(x: point.x, y: point.y, z: point.z)
-
-            if point.intensity > 0 { hasIntensity = true }
-            if point.red > 0 || point.green > 0 || point.blue > 0 { hasRGB = true }
-            if point.classification > 0 { hasClassification = true }
-            if point.gpsTime > 0 { hasGPSTime = true }
-        }
-
-        let density = calculatePointDensity(points: points, bounds: bounds)
+        await updateProgress(step: "Analyzing point cloud header...", progress: 0.6)
+        let structure = PointCloudStructure(
+            pointCount: Int(header.numberOfPointRecords),
+            bounds: PointCloudBounds(minX: header.minX, maxX: header.maxX, minY: header.minY, maxY: header.maxY, minZ: header.minZ, maxZ: header.maxZ),
+            hasIntensity: reader.pointFormatHasIntensity(),
+            hasColor: reader.pointFormatHasColor(),
+            hasClassification: true, // All standard formats have classification
+            hasGPSTime: reader.pointFormatHasGPSTime(),
+            averageDensity: 0, // Would require full point analysis to calculate
+            pointFormat: Int(header.pointDataFormatID)
+        )
 
         return DataAnalysisResult(
             dataType: .pointCloud,
-            structure: PointCloudStructure(
-                pointCount: Int(header.numberOfPointRecords),
-                bounds: bounds,
-                hasIntensity: hasIntensity,
-                hasColor: hasRGB,
-                hasClassification: hasClassification,
-                hasGPSTime: hasGPSTime,
-                averageDensity: density,
-                pointFormat: Int(header.pointDataFormatID)
-            ),
-            metadata: [
-                "version": "\(header.versionMajor).\(header.versionMinor)",
-                "systemID": header.systemIdentifier,
-                "software": header.generatingSoftware,
-                "creationDate": "\(header.fileCreationDayOfYear)-\(header.fileCreationYear)"
-            ]
+            structure: structure,
+            metadata: ["version": "\(header.versionMajor).\(header.versionMinor)", "software": header.generatingSoftware],
+            suggestions: []
         )
     }
 
-    private func calculatePointDensity(points: [LASPoint], bounds: PointCloudBounds) -> Double {
-        let volume = (bounds.maxX - bounds.minX) * (bounds.maxY - bounds.minY) * (bounds.maxZ - bounds.minZ)
-        return volume > 0 ? Double(points.count) / volume : 0
+    private func analyzeNotebook(url: URL) async throws -> DataAnalysisResult {
+        // A full implementation would parse the .ipynb JSON structure
+        await updateProgress(step: "Analyzing notebook...", progress: 0.4)
+        let structure = NotebookStructure(cellCount: 0, extractedData: [], visualizationCode: [])
+        return DataAnalysisResult(dataType: .notebook, structure: structure, metadata: [:], suggestions: [])
     }
 
-    // MARK: - Jupyter Notebook Analysis
-
-    func analyzeNotebookData(_ data: Data) async throws -> DataAnalysisResult {
-        // FIX: Cast the result of JSONSerialization to [String: Any] to resolve subscript error.
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let cells = json["cells"] as? [[String: Any]] else {
-            throw FileAnalysisError.invalidNotebookFormat
-        }
-
-        var extractedData: [ExtractedNotebookData] = []
-        var visualizationCode: [VisualizationCodeBlock] = []
-
-        for cell in cells {
-            guard let cellType = cell["cell_type"] as? String else { continue }
-
-            if cellType == "code" {
-                let source = extractSourceFromCell(cell)
-
-                // Look for data definitions
-                if let data = extractDataFromCode(source) {
-                    extractedData.append(data)
-                }
-
-                // Look for visualization code
-                if let viz = extractVisualizationFromCode(source) {
-                    visualizationCode.append(viz)
-                }
-            }
-        }
-
-        // Determine primary data type based on extracted data
-        let dataType = determineDataTypeFromExtracted(extractedData)
-
-        return DataAnalysisResult(
-            dataType: dataType,
-            structure: NotebookStructure(
-                cellCount: cells.count,
-                extractedData: extractedData,
-                visualizationCode: visualizationCode
-            ),
-            metadata: [
-                "nbformat": json["nbformat"] as? Int ?? 0,
-                "language": (json["metadata"] as? [String: Any])?["language_info"] as? [String: Any] ?? [:]
-            ]
-        )
-    }
-
-    private func extractSourceFromCell(_ cell: [String: Any]) -> String {
-        if let source = cell["source"] as? String {
-            return source
-        } else if let sourceArray = cell["source"] as? [String] {
-            return sourceArray.joined()
-        }
-        return ""
-    }
-
-    private func extractDataFromCode(_ code: String) -> ExtractedNotebookData? {
-        // Look for pandas DataFrames
-        if code.contains("pd.DataFrame") || code.contains("read_csv") {
-            return ExtractedNotebookData(
-                variableName: extractVariableName(from: code),
-                dataType: .dataFrame,
-                shape: extractDataShape(from: code)
-            )
-        }
-
-        // Look for numpy arrays
-        if code.contains("np.array") || code.contains("numpy.array") {
-            return ExtractedNotebookData(
-                variableName: extractVariableName(from: code),
-                dataType: .array,
-                shape: extractDataShape(from: code)
-            )
-        }
-
-        // Look for point cloud data patterns
-        if code.contains("points") && (code.contains("[:,0]") || code.contains("['x']")) {
-            return ExtractedNotebookData(
-                variableName: extractVariableName(from: code),
-                dataType: .pointCloud,
-                shape: nil
-            )
-        }
-
-        return nil
-    }
-
-    private func extractVisualizationFromCode(_ code: String) -> VisualizationCodeBlock? {
-        var vizType: ImportVisualizationType?
-        var data: [String] = []
-
-        if code.contains("plt.scatter") || code.contains("ax.scatter") {
-            vizType = code.contains("projection='3d'") ? .scatter3D : .scatter2D
-        } else if code.contains("plt.plot") || code.contains("ax.plot") {
-            vizType = .line
-        } else if code.contains("plt.bar") || code.contains("ax.bar") {
-            vizType = .bar
-        } else if code.contains("plt.hist") || code.contains("ax.hist") {
-            vizType = .histogram
-        } else if code.contains("sns.heatmap") || code.contains("plt.imshow") {
-            vizType = .heatmap
-        } else if code.contains("plot_surface") || code.contains("plot_wireframe") {
-            vizType = .surface3D
-        }
-
-        guard let type = vizType else { return nil }
-
-        // Extract data variable names
-        let lines = code.components(separatedBy: .newlines)
-        for line in lines {
-            if line.contains("plt.") || line.contains("ax.") || line.contains("sns.") {
-                data = extractDataVariables(from: line)
-                break
-            }
-        }
-
-        return VisualizationCodeBlock(
-            type: type,
-            library: detectVisualizationLibrary(from: code),
-            dataVariables: data
-        )
-    }
-
-    private func extractVariableName(from code: String) -> String {
-        let pattern = #"(\w+)\s*="#
-        if let match = code.range(of: pattern, options: .regularExpression) {
-            let varName = String(code[match]).trimmingCharacters(in: .whitespaces)
-            return varName.replacingOccurrences(of: "=", with: "").trimmingCharacters(in: .whitespaces)
-        }
-        return "data"
-    }
-
-    private func extractDataShape(from code: String) -> (Int, Int)? {
-        let pattern = #"shape.*?(\d+).*?(\d+)"#
-        if let match = code.range(of: pattern, options: .regularExpression) {
-            let shapeStr = String(code[match])
-            let numbers = shapeStr.components(separatedBy: CharacterSet.decimalDigits.inverted)
-                .compactMap { Int($0) }
-            if numbers.count >= 2 {
-                return (numbers[0], numbers[1])
-            }
-        }
-        return nil
-    }
-
-    private func extractDataVariables(from line: String) -> [String] {
-        let pattern = #"\(([^,\)]+)"#
-        var variables: [String] = []
-
-        do {
-            let regex = try NSRegularExpression(pattern: pattern)
-            let matches = regex.matches(in: line, range: NSRange(line.startIndex..., in: line))
-
-            for match in matches {
-                if let range = Range(match.range(at: 1), in: line) {
-                    let variable = String(line[range]).trimmingCharacters(in: .whitespaces)
-                    if !variable.isEmpty && !variable.hasPrefix("'") && !variable.hasPrefix("\"") {
-                        variables.append(variable)
-                    }
-                }
-            }
-        } catch {
-            // Handle regex error if necessary
-        }
-
-        return variables
-    }
-
-    private func detectVisualizationLibrary(from code: String) -> String {
-        if code.contains("plotly") { return "plotly" }
-        if code.contains("seaborn") || code.contains("sns") { return "seaborn" }
-        if code.contains("matplotlib") || code.contains("plt") { return "matplotlib" }
-        return "unknown"
-    }
-
-    private func determineDataTypeFromExtracted(_ data: [ExtractedNotebookData]) -> DataType {
-        if data.contains(where: { $0.dataType == .pointCloud }) {
-            return .pointCloud
-        } else if data.contains(where: { $0.dataType == .dataFrame }) {
-            return .tabular
-        } else if data.contains(where: { $0.dataType == .array }) {
-            return .matrix
-        }
-        return .notebook
-    }
-
-    // MARK: - USDZ Analysis
-
-    func analyzeUSDZData(_ data: Data, url: URL) async throws -> DataAnalysisResult {
-        // USDZ is a complex format that would require ModelIO or similar
-        // For now, we'll create a basic analysis
-
-        return DataAnalysisResult(
-            dataType: .model3D,
-            structure: Model3DStructure(
-                format: "usdz",
-                hasTextures: true, // Would be determined by actual parsing
-                hasMaterials: true,
-                hasAnimations: false,
-                vertexCount: 0, // Would be extracted from model
-                faceCount: 0
-            ),
-            metadata: [
-                "fileName": url.lastPathComponent,
-                "fileSize": data.count
-            ]
-        )
+    private func analyze3DModel(url: URL) async throws -> DataAnalysisResult {
+        // A full implementation would use Model I/O or RealityKit to inspect the USDZ asset
+        await updateProgress(step: "Analyzing 3D model...", progress: 0.4)
+        let structure = Model3DStructure(format: "usdz", hasTextures: false, hasMaterials: false, hasAnimations: false, vertexCount: 0, faceCount: 0)
+        return DataAnalysisResult(dataType: .model3D, structure: structure, metadata: [:], suggestions: [])
     }
 
     // MARK: - Helper Functions
 
-    private func isDate(_ value: String) -> Bool {
-        let dateFormatters = [
-            ISO8601DateFormatter(),
-            DateFormatter.shortDate,
-            DateFormatter.mediumDate
-        ]
+    private func traverseJSON(_ json: Any, currentDepth: Int, structure: inout JSONStructure) {
+        structure.maxDepth = max(structure.maxDepth, currentDepth)
 
-        for formatter in dateFormatters {
-            if let isoFormatter = formatter as? ISO8601DateFormatter {
-                if isoFormatter.date(from: value) != nil { return true }
-            } else if let dateFormatter = formatter as? DateFormatter {
-                if dateFormatter.date(from: value) != nil { return true }
+        if let dictionary = json as? [String: Any] {
+            structure.objectCount += 1
+            if Set(dictionary.keys).contains("nodes") && Set(dictionary.keys).contains("edges") {
+                structure.hasNodes = true
+                structure.hasEdges = true
+            }
+            if Set(dictionary.keys).contains("lat") && Set(dictionary.keys).contains("lon") {
+                structure.hasCoordinates = true
+            }
+
+            for value in dictionary.values {
+                traverseJSON(value, currentDepth: currentDepth + 1, structure: &structure)
+            }
+        } else if let array = json as? [Any] {
+            structure.arrayCount += 1
+            if !array.isEmpty {
+                // Check if it's an array of objects (potential tabular data)
+                if array[0] is [String: Any] {
+                    structure.isArrayOfObjects = true
+                }
+                // Check for nested arrays
+                if array[0] is [Any] {
+                    structure.hasNestedArrays = true
+                }
+                traverseJSON(array[0], currentDepth: currentDepth + 1, structure: &structure)
             }
         }
-        return false
     }
 
-    private func isBoolean(_ value: String) -> Bool {
-        let booleanValues = ["true", "false", "yes", "no", "1", "0", "t", "f", "y", "n"]
-        return booleanValues.contains(value.lowercased())
+    private func inferColumnTypes(rows: [[String]], headers: [String]) -> [String: ColumnType] {
+        var columnTypes: [String: ColumnType] = [:]
+        guard !rows.isEmpty else { return [:] }
+
+        for (index, header) in headers.enumerated() {
+            let sampleValues = rows.compactMap { $0.count > index ? $0[index] : nil }
+            columnTypes[header] = inferTypeForColumn(values: sampleValues)
+        }
+        return columnTypes
+    }
+
+    private func inferTypeForColumn(values: [String]) -> ColumnType {
+        guard !values.isEmpty else { return .unknown }
+
+        var numericCount = 0
+        var dateCount = 0
+        let sampleSize = min(values.count, 100) // Don't check the whole file for performance
+
+        for i in 0..<sampleSize {
+            let value = values[i].trimmingCharacters(in: .whitespaces)
+            if value.isEmpty { continue }
+
+            if Double(value) != nil { numericCount += 1 }
+            if ISO8601DateFormatter().date(from: value) != nil { dateCount += 1 }
+        }
+
+        let threshold = 0.8 // 80% of values must match the type
+
+        if Double(numericCount) / Double(sampleSize) >= threshold { return .numeric }
+        if Double(dateCount) / Double(sampleSize) >= threshold { return .date }
+
+        return .categorical
+    }
+
+    private func findCoordinateColumns(_ headers: [String]) -> [String] {
+        let h = headers.map { $0.lowercased() }
+        var coords: [String] = []
+        if let xIndex = h.firstIndex(of: "x"), let yIndex = h.firstIndex(of: "y") {
+            coords.append(headers[xIndex])
+            coords.append(headers[yIndex])
+            if let zIndex = h.firstIndex(of: "z") {
+                coords.append(headers[zIndex])
+            }
+        } else if let latIndex = h.firstIndex(where: { $0 == "lat" || $0 == "latitude" }),
+                  let lonIndex = h.firstIndex(where: { $0 == "lon" || $0 == "longitude" }) {
+            coords.append(headers[latIndex])
+            coords.append(headers[lonIndex])
+        }
+        return coords
+    }
+
+    private func findTimeColumns(_ headers: [String], columnTypes: [String: ColumnType]) -> [String] {
+        return headers.filter { header in
+            columnTypes[header] == .date || header.lowercased().contains("time") || header.lowercased().contains("date")
+        }
+    }
+
+    @MainActor
+    private func updateProgress(step: String, progress: Double) {
+        self.currentAnalysisStep = step
+        self.analysisProgress = progress
     }
 }
-
-// MARK: - DateFormatter Extensions
-
-extension DateFormatter {
-    static let shortDate: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter
-    }()
-
-    static let mediumDate: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter
-    }()
-}
-
+*/

@@ -2,8 +2,8 @@
 //  WindowTypeManager.swift
 //  Pulto3
 //
-//  Created by Joshua Herman on 7/13/25.
-//  Copyright 2025 Apple. All rights reserved.
+//  Created by Joshua Herman on 7/18/25.
+//  Copyright © 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -31,7 +31,7 @@ class WindowTypeManager: ObservableObject {
     func setSelectedProject(_ project: Project) {
         selectedProject = project
         objectWillChange.send()
-        
+
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
     }
@@ -39,7 +39,7 @@ class WindowTypeManager: ObservableObject {
     func clearSelectedProject() {
         selectedProject = nil
         objectWillChange.send()
-        
+
         // Notify that project has been cleared
         NotificationCenter.default.post(name: .projectCleared, object: nil)
     }

@@ -627,7 +627,7 @@ class VisualizationSuggestionEngine {
     }
 
     // MARK: - Helper Functions
-
+/*
     private func mapNotebookVizToNative(_ notebookType: ImportVisualizationType) -> SpatialVisualizationType {
         switch notebookType {
         case .scatter2D: return .scatterPlot2D
@@ -644,4 +644,6 @@ class VisualizationSuggestionEngine {
         case .tree: return .hierarchicalLayout
         }
     }
+ */
 }
+

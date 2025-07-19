@@ -158,6 +158,7 @@ struct EnvironmentView: View {
 
     // Add these to your existing @State variables in EnvironmentView:
     @State private var showEnhancedFileImporter = false
+    @State private var showMinimalFileImporter = false
     @State private var selectedImportURL: URL?
 
     var body: some View {
@@ -231,6 +232,11 @@ struct EnvironmentView: View {
         .sheet(isPresented: $showAppleSignIn) {
             AppleSignInView(isPresented: $showAppleSignIn)
                 .frame(width: 700, height: 800)
+        }
+        // Add this sheet to your body (alongside your other sheets):
+        .sheet(isPresented: $showMinimalFileImporter) {
+            MinimalFileImportView()
+                .environmentObject(windowManager)
         }
         .fileImporter(
             isPresented: $showFileImporter,

@@ -1,18 +1,12 @@
 //
-//  EnhancedFileImportView.swift
+//  EnhancedFileImportView.swift (Corrected)
 //  Pulto3
 //
-//  Created by Joshua Herman on 7/18/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Enhanced file import UI with intelligent visualization suggestions
 //
-
+/*
 import SwiftUI
 import UniformTypeIdentifiers
-
-// NOTE: The vast majority of the compiler errors you're seeing (e.g., "'FileAnalysisResult' is ambiguous")
-// are caused by issues in your 'SupportedFileType.swift' file. That file appears to have duplicate
-// definitions for many of your core data structures. You must fix that file first by finding and
-// removing the duplicated code blocks. The changes below fix the few remaining errors in *this* file.
 
 struct EnhancedFileImportView: View {
     @StateObject private var fileAnalyzer = FileAnalyzer.shared
@@ -21,7 +15,6 @@ struct EnhancedFileImportView: View {
     @Environment(\.openWindow) private var openWindow
 
     @State private var selectedFileURL: URL?
-    // NOTE: This will resolve once 'FileAnalysisResult' is no longer ambiguous.
     @State private var analysisResult: FileAnalysisResult?
     @State private var selectedVisualization: VisualizationRecommendation?
     @State private var showFileImporter = false
@@ -306,17 +299,11 @@ struct EnhancedFileImportView: View {
                         Text("Additional Options")
                             .font(.headline)
 
-                        Toggle(isOn: .constant(true)) {
-                            Text("Open in new window")
-                        }
-                        Toggle(isOn: .constant(false)) {
-                            Text("Import raw data")
-                        }
+                        Toggle("Open in new window", isOn: .constant(true))
+                        Toggle("Import raw data", isOn: .constant(false))
 
                         if result.fileType == .xlsx {
-                            Toggle(isOn: .constant(true)) {
-                                Text("Import all sheets")
-                            }
+                            Toggle("Import all sheets", isOn: .constant(true))
                         }
                     }
                     .padding()
@@ -380,11 +367,10 @@ struct EnhancedFileImportView: View {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            _ = url.startAccessingSecurityScopedResource() // Start accessing
             selectedFileURL = url
             saveToRecentImports(url)
             analyzeFile()
-            // Note: stopAccessingSecurityScopedResource() should be called when done with the file, e.g., after analysis
+
         case .failure(let error):
             errorMessage = error.localizedDescription
             showError = true
@@ -398,7 +384,6 @@ struct EnhancedFileImportView: View {
 
         Task {
             do {
-                // NOTE: This call will fail until 'FileAnalysisResult' is resolved.
                 let result = try await fileAnalyzer.analyzeFile(url)
 
                 await MainActor.run {
@@ -417,8 +402,6 @@ struct EnhancedFileImportView: View {
                     self.importStage = .selecting
                 }
             }
-            // Stop accessing after analysis
-            url.stopAccessingSecurityScopedResource()
         }
     }
 
@@ -447,8 +430,6 @@ struct EnhancedFileImportView: View {
         importStage = .creating
 
         Task {
-            // FIX: Explicitly specify the enum type to resolve ambiguity.
-            // The original '.dataTable' could not be inferred by the compiler.
             await createVisualization(
                 type: .dataTable,
                 fileResult: result,
@@ -471,7 +452,7 @@ struct EnhancedFileImportView: View {
         let windowType = type.windowType
 
         // Create window
-        _ = windowManager.createWindow(
+        let window = windowManager.createWindow(
             windowType,
             id: windowID,
             position: WindowPosition(
@@ -508,8 +489,6 @@ struct EnhancedFileImportView: View {
         // This would be expanded to handle all file types and visualizations
         // For now, showing a few examples:
 
-        // NOTE: All cases in this switch will fail until the ambiguity of the 'structure'
-        // types (TabularStructure, PointCloudStructure, etc.) is resolved in your other file.
         switch fileResult.fileType {
         case .csv, .tsv:
             if let structure = fileResult.analysis.structure as? TabularStructure {
@@ -566,7 +545,7 @@ struct EnhancedFileImportView: View {
                 columns: structure.headers,
                 rows: [], // Would be populated from actual file data
                 dtypes: Dictionary(
-                    uniqueKeysWithValues: structure.importcolumnTypes.map { key, value in
+                    uniqueKeysWithValues: structure.columnTypes.map { key, value in
                         (key, value == .numeric ? "float" : "string")
                     }
                 )
@@ -575,11 +554,10 @@ struct EnhancedFileImportView: View {
 
         case .scatterPlot3D:
             if structure.coordinateColumns.count >= 3 {
-                // FIX: The 'chartType' parameter likely expects a String, not an enum case.
-                // The error "Type 'String' has no member 'scatter'" indicates this mismatch.
+                // Create 3D scatter plot
                 let chartData = Chart3DData(
                     title: "3D Scatter Plot",
-                    chartType: "scatter", // Changed from .scatter
+                    chartType: .scatter,
                     xData: [], // Would be populated from actual data
                     yData: [],
                     zData: [],
@@ -601,8 +579,7 @@ struct EnhancedFileImportView: View {
         structure: PointCloudStructure,
         url: URL
     ) async {
-        // NOTE: The "Extra arguments" error here is likely a side effect of the 'PointCloudStructure'
-        // type being ambiguous. Once that is fixed, this error should disappear.
+        // Create point cloud visualization
         let pointCloud = PointCloudData(
             title: url.lastPathComponent,
             points: [], // Would be populated from LAS file
@@ -623,8 +600,10 @@ struct EnhancedFileImportView: View {
         url: URL
     ) async {
         // Handle Excel import - could create multiple windows for each sheet
-        if let firstSheet = structure.sheets.first {
+        for sheet in structure.sheets {
+            // Create a window for each sheet if importing all
             // For now, just handle the first sheet
+            break
         }
     }
 
@@ -649,13 +628,11 @@ struct EnhancedFileImportView: View {
     }
 
     private func fileIcon(for url: URL) -> String {
-        // NOTE: This will resolve once 'SupportedFileType' is no longer ambiguous.
         let type = SupportedFileType(rawValue: url.pathExtension.lowercased()) ?? .unknown
         return type.icon
     }
 
     private func dataTypeDescription(_ type: DataType) -> String {
-        // NOTE: This will resolve once 'DataType' is no longer ambiguous.
         switch type {
         case .tabular: return "Tabular"
         case .tabularWithCoordinates: return "Spatial Table"
@@ -674,7 +651,6 @@ struct EnhancedFileImportView: View {
     }
 
     private func getRowCount(from analysis: DataAnalysisResult) -> Int? {
-        // NOTE: This will resolve once the structure types are no longer ambiguous.
         if let tabular = analysis.structure as? TabularStructure {
             return tabular.rowCount
         } else if let pointCloud = analysis.structure as? PointCloudStructure {
@@ -707,7 +683,7 @@ struct EnhancedFileImportView: View {
         ]
     }
 
-    private let supportedFormats: [(type: String, description: String, icon: String, color: Color)] = [
+    private let supportedFormats = [
         (type: "CSV/TSV", description: "Tabular data files", icon: "tablecells", color: Color.green),
         (type: "Excel", description: "Multi-sheet workbooks", icon: "tablecells.badge.ellipsis", color: Color.green),
         (type: "JSON", description: "Structured data", icon: "curlybraces", color: Color.orange),
@@ -833,7 +809,7 @@ struct VisualizationSuggestionCard: View {
     private var visualizationIcon: String {
         switch suggestion.type {
         case .dataTable: return "tablecells"
-        case .scatterPlot2D, .scatterPlot3D: return "chart.dots.scatter"
+        case .scatterPlot2D, .scatterPlot3D: return "chart.scatter"
         case .lineChart, .multiLineChart: return "chart.line.uptrend.xyaxis"
         case .barChart: return "chart.bar"
         case .heatmap, .densityHeatMap: return "square.grid.3x3.fill.square"
@@ -873,17 +849,6 @@ struct VisualizationSuggestionCard: View {
     }
 }
 
-// Create a version that accepts a preselected URL:
-extension EnhancedFileImportView {
-    init(preselectedURL: URL? = nil) {
-        if let url = preselectedURL {
-            self._selectedFileURL = State(initialValue: url)
-            self._importStage = State(initialValue: .analyzing)
-        }
-    }
-}
-
-
 // MARK: - Preview
 
 struct EnhancedFileImportView_Previews: PreviewProvider {
@@ -892,4 +857,4 @@ struct EnhancedFileImportView_Previews: PreviewProvider {
             .environmentObject(WindowTypeManager.shared)
     }
 }
-
+*/

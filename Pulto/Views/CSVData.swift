@@ -16,14 +16,14 @@ struct CSVData: Equatable {
     let rows: [[String]]
     let columnTypes: [ColumnType]
 }
-
+/*
 enum ColumnType: Equatable {
     case numeric
     case categorical
     case date
     case unknown
 }
-
+*/
 enum ChartRecommendation: CaseIterable, Equatable {
     case lineChart
     case barChart

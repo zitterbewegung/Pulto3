@@ -1,433 +1,841 @@
 //
-//  ExampleDataImportView.swift
+//  EnhancedFileImportView.swift (Corrected)
 //  Pulto3
 //
-//  Created by Joshua Herman on 7/18/25.
-//  Copyright © 2025 Apple. All rights reserved.
+//  Enhanced file import UI with intelligent visualization suggestions
 //
-//  Examples of how to use the enhanced file import system
-//
-
+/*
 import SwiftUI
+import UniformTypeIdentifiers
 
-// MARK: - Example 1: Basic Usage in a View
-
-struct ExampleDataImportView: View {
+struct EnhancedFileImportView: View {
     @StateObject private var fileAnalyzer = FileAnalyzer.shared
     @EnvironmentObject var windowManager: WindowTypeManager
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
-    
+
+    @State private var selectedFileURL: URL?
+    @State private var analysisResult: FileAnalysisResult?
+    @State private var selectedVisualization: VisualizationRecommendation?
+    @State private var showFileImporter = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    @State private var importStage: ImportStage = .selecting
+
+    enum ImportStage {
+        case selecting
+        case analyzing
+        case suggesting
+        case creating
+    }
+
     var body: some View {
-        VStack {
-            // Direct file analysis
-            Button("Analyze File") {
-                analyzeExampleFile()
-            }
-            
-            // Show import dialog
-            Button("Import with UI") {
-                showImportDialog()
-            }
-        }
-    }
-    
-    func analyzeExampleFile() {
-        Task {
-            do {
-                let url = URL(fileURLWithPath: "/path/to/data.csv")
-                let result = try await fileAnalyzer.analyzeFile(url)
-                
-                print("File type: \(result.fileType)")
-                print("Data type: \(result.analysis.dataType)")
-                print("Suggestions: \(result.suggestions.count)")
-                
-                // Create visualization based on top suggestion
-                if let suggestion = result.suggestions.first {
-                    await createVisualization(from: result, suggestion: suggestion)
-                }
-            } catch {
-                print("Analysis failed: \(error)")
-            }
-        }
-    }
-    
-    @MainActor
-    func createVisualization(
-        from result: FileAnalysisResult,
-        suggestion: VisualizationRecommendation
-    ) async {
-        let windowIDs = await windowManager.createWindowsFromFileAnalysis(
-            result,
-            suggestions: [suggestion],
-            openWindow: { openWindow(value: $0) }
-        )
-        
-        print("Created windows: \(windowIDs)")
-    }
-    
-    func showImportDialog() {
-        // This would present the EnhancedFileImportView
-    }
-}
+        VStack(spacing: 0) {
+            // Header
+            headerView
 
-// MARK: - Example 2: Programmatic Import of Different File Types
+            Divider()
 
-class FileImportExamples {
-    let windowManager = WindowTypeManager.shared
-    let fileAnalyzer = FileAnalyzer.shared
-    
-    // MARK: CSV Import Example
-    
-    func importCSVWithCoordinates() async {
-        let csvContent = """
-        x,y,z,intensity,label
-        10.5,20.3,5.1,0.8,Building
-        11.2,21.1,5.3,0.7,Building
-        15.6,25.4,2.1,0.3,Ground
-        16.1,26.2,2.0,0.3,Ground
-        """
-        
-        // Save to temporary file
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("coordinates.csv")
-        try? csvContent.write(to: tempURL, atomically: true, encoding: .utf8)
-        
-        // Analyze file
-        do {
-            let result = try await fileAnalyzer.analyzeFile(tempURL)
-            
-            // Should detect tabular data with coordinates
-            if case .tabularWithCoordinates = result.analysis.dataType {
-                print("✅ Correctly detected coordinate data")
-                
-                // Check suggestions
-                for suggestion in result.suggestions {
-                    print("- \(suggestion.type): \(suggestion.reason)")
+            // Content
+            ScrollView {
+                VStack(spacing: 24) {
+                    switch importStage {
+                    case .selecting:
+                        fileSelectionView
+                    case .analyzing:
+                        analysisProgressView
+                    case .suggesting:
+                        suggestionView
+                    case .creating:
+                        creatingVisualizationView
+                    }
                 }
+                .padding()
             }
-        } catch {
-            print("❌ Import failed: \(error)")
+
+            // Footer
+            Divider()
+            footerView
+        }
+        .frame(width: 800, height: 600)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
+        .alert("Import Error", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: supportedUTTypes,
+            allowsMultipleSelection: false
+        ) { result in
+            handleFileSelection(result)
         }
     }
-    
-    // MARK: Excel Import Example
-    
-    func importExcelWithMultipleSheets() async {
-        let excelURL = URL(fileURLWithPath: "/path/to/data.xlsx")
-        
-        do {
-            let result = try await fileAnalyzer.analyzeFile(excelURL)
-            
-            if let structure = result.analysis.structure as? SpreadsheetStructure {
-                print("Found \(structure.sheets.count) sheets:")
-                
-                for sheet in structure.sheets {
-                    print("- \(sheet.name): \(sheet.rowCount) rows × \(sheet.columnCount) columns")
+
+    // MARK: - Header View
+
+    private var headerView: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Import Data")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                if let url = selectedFileURL {
+                    HStack {
+                        Image(systemName: fileIcon(for: url))
+                            .foregroundStyle(.blue)
+                        Text(url.lastPathComponent)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                
-                // Create windows for each sheet
-                await windowManager.createWindowsFromFileAnalysis(
-                    result,
-                    suggestions: result.suggestions,
-                    openWindow: { _ in }
+            }
+
+            Spacer()
+
+            Button("Cancel") {
+                dismiss()
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding()
+    }
+
+    // MARK: - File Selection View
+
+    private var fileSelectionView: some View {
+        VStack(spacing: 24) {
+            // Drop zone
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.blue.opacity(0.1))
+                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [10]))
+                .frame(height: 200)
+                .overlay {
+                    VStack(spacing: 16) {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.blue)
+
+                        Text("Drop files here or click to browse")
+                            .font(.headline)
+
+                        Button("Choose File") {
+                            showFileImporter = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+
+            // Supported formats
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Supported Formats")
+                    .font(.headline)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 12) {
+                    ForEach(supportedFormats, id: \.type) { format in
+                        HStack {
+                            Image(systemName: format.icon)
+                                .foregroundStyle(format.color)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(format.type)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text(format.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(12)
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+
+            // Recent imports
+            if !recentImports.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Recent Imports")
+                        .font(.headline)
+
+                    ForEach(recentImports, id: \.self) { url in
+                        Button {
+                            selectedFileURL = url
+                            analyzeFile()
+                        } label: {
+                            HStack {
+                                Image(systemName: fileIcon(for: url))
+                                    .foregroundStyle(.blue)
+                                Text(url.lastPathComponent)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "clock")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(8)
+                        }
+                        .buttonStyle(.plain)
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Analysis Progress View
+
+    private var analysisProgressView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Progress indicator
+            ProgressView(value: fileAnalyzer.analysisProgress) {
+                Text("Analyzing File...")
+                    .font(.headline)
+            } currentValueLabel: {
+                Text("\(Int(fileAnalyzer.analysisProgress * 100))%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .progressViewStyle(.linear)
+            .frame(width: 300)
+
+            Text(fileAnalyzer.currentAnalysisStep)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            // Analysis steps
+            VStack(alignment: .leading, spacing: 12) {
+                AnalysisStep(
+                    title: "Reading file structure",
+                    isComplete: fileAnalyzer.analysisProgress > 0.2
+                )
+                AnalysisStep(
+                    title: "Inferring data schema",
+                    isComplete: fileAnalyzer.analysisProgress > 0.4
+                )
+                AnalysisStep(
+                    title: "Detecting patterns",
+                    isComplete: fileAnalyzer.analysisProgress > 0.6
+                )
+                AnalysisStep(
+                    title: "Generating suggestions",
+                    isComplete: fileAnalyzer.analysisProgress > 0.8
                 )
             }
-        } catch {
-            print("Excel import failed: \(error)")
+            .padding()
+            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+            Spacer()
         }
     }
-    
-    // MARK: LAS Import Example
-    
-    func importLiDARFile() async {
-        let lasURL = URL(fileURLWithPath: "/path/to/pointcloud.las")
-        
-        do {
-            let result = try await fileAnalyzer.analyzeFile(lasURL)
-            
-            if let structure = result.analysis.structure as? PointCloudStructure {
-                print("Point cloud properties:")
-                print("- Points: \(structure.pointCount)")
-                print("- Has intensity: \(structure.hasIntensity)")
-                print("- Has color: \(structure.hasColor)")
-                print("- Has GPS time: \(structure.hasGPSTime)")
-                print("- Density: \(structure.averageDensity) points/m³")
-                
-                // Should suggest point cloud visualization
-                let pointCloudSuggestions = result.suggestions.filter {
-                    $0.type == .pointCloud3D || $0.type == .volumetric
-                }
-                
-                print("Found \(pointCloudSuggestions.count) point cloud visualizations")
-            }
-        } catch {
-            print("LAS import failed: \(error)")
-        }
-    }
-    
-    // MARK: Notebook Import Example
-    
-    func importJupyterNotebook() async {
-        let notebookContent = """
-        {
-            "cells": [
-                {
-                    "cell_type": "code",
-                    "source": [
-                        "import pandas as pd\\n",
-                        "import numpy as np\\n",
-                        "\\n",
-                        "# Create sample data\\n",
-                        "data = pd.DataFrame({\\n",
-                        "    'x': np.random.randn(100),\\n",
-                        "    'y': np.random.randn(100),\\n",
-                        "    'z': np.random.randn(100)\\n",
-                        "})"
-                    ],
-                    "metadata": {}
-                },
-                {
-                    "cell_type": "code",
-                    "source": [
-                        "# Create 3D scatter plot\\n",
-                        "import matplotlib.pyplot as plt\\n",
-                        "from mpl_toolkits.mplot3d import Axes3D\\n",
-                        "\\n",
-                        "fig = plt.figure()\\n",
-                        "ax = fig.add_subplot(111, projection='3d')\\n",
-                        "ax.scatter(data['x'], data['y'], data['z'])"
-                    ],
-                    "metadata": {}
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "Python 3",
-                    "language": "python",
-                    "name": "python3"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 4
-        }
-        """
-        
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("example.ipynb")
-        try? notebookContent.write(to: tempURL, atomically: true, encoding: .utf8)
-        
-        do {
-            let result = try await fileAnalyzer.analyzeFile(tempURL)
-            
-            if let structure = result.analysis.structure as? NotebookStructure {
-                print("Notebook analysis:")
-                print("- Cells: \(structure.cellCount)")
-                print("- Extracted data: \(structure.extractedData.count)")
-                print("- Visualizations: \(structure.visualizationCode.count)")
-                
-                // Should detect DataFrame and suggest native visualization
-                for data in structure.extractedData {
-                    print("- Found \(data.dataType) named '\(data.variableName)'")
-                }
-                
-                for viz in structure.visualizationCode {
-                    print("- Found \(viz.type) visualization using \(viz.library)")
-                }
-            }
-        } catch {
-            print("Notebook import failed: \(error)")
-        }
-    }
-}
 
-// MARK: - Example 3: Custom Visualization Configuration
+    // MARK: - Suggestion View
 
-struct CustomVisualizationExample {
-    
-    func createCustomPointCloudVisualization() async {
-        let fileURL = URL(fileURLWithPath: "/path/to/data.las")
-        
-        // Create custom configuration
-        let customConfig = PointCloudConfiguration(
-            estimatedPoints: 1_000_000,
-            coordinateColumns: ["x", "y", "z"],
-            hasIntensity: true,
-            hasColor: true,
-            hasClassification: true,
-            enableLOD: true  // Level of detail for performance
-        )
-        
-        // Create custom recommendation
-        let customRecommendation = VisualizationRecommendation(
-            type: .pointCloud3D,
-            priority: .high,
-            confidence: 1.0,
-            reason: "Custom high-performance point cloud visualization",
-            configuration: customConfig
-        )
-        
-        // Use the custom recommendation
-        // ... implementation
-    }
-    
-    func createTimeSeriesVisualization() async {
-        let config = TimeSeriesConfiguration(
-            timeColumn: "timestamp",
-            spatialColumns: ["x", "y", "z"],
-            animationSpeed: 2.0
-        )
-        
-        let recommendation = VisualizationRecommendation(
-            type: .timeSeriesPath,
-            priority: .high,
-            confidence: 0.9,
-            reason: "Animate movement over time",
-            configuration: config
-        )
-        
-        // Use for GPS-tracked data
-    }
-}
+    private var suggestionView: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if let result = analysisResult {
+                // File analysis summary
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("File Analysis", systemImage: "doc.text.magnifyingglass")
+                        .font(.headline)
 
-// MARK: - Example 4: Batch Processing
+                    HStack(spacing: 24) {
+                        AnalysisStat(
+                            label: "Type",
+                            value: result.fileType.displayName,
+                            icon: "doc"
+                        )
 
-struct BatchImportExample {
-    @MainActor
-    func importMultipleFiles() async {
-        let urls = [
-            URL(fileURLWithPath: "/data/scan1.las"),
-            URL(fileURLWithPath: "/data/scan2.las"),
-            URL(fileURLWithPath: "/data/metadata.xlsx"),
-            URL(fileURLWithPath: "/data/analysis.ipynb")
-        ]
-        
-        for url in urls {
-            do {
-                let result = try await FileAnalyzer.shared.analyzeFile(url)
-                
-                print("\n📄 File: \(url.lastPathComponent)")
-                print("   Type: \(result.fileType.displayName)")
-                print("   Data: \(result.analysis.dataType)")
-                print("   Top suggestion: \(result.suggestions.first?.type ?? .dataTable)")
-                
-                // Create appropriate visualization
-                if let suggestion = result.suggestions.first {
-                    await createVisualizationForBatch(
-                        result: result,
-                        suggestion: suggestion
-                    )
-                }
-                
-                // Small delay between imports
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                
-            } catch {
-                print("   ❌ Failed: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    @MainActor
-    private func createVisualizationForBatch(
-        result: FileAnalysisResult,
-        suggestion: VisualizationRecommendation
-    ) async {
-        // Implementation to create windows
-    }
-}
+                        AnalysisStat(
+                            label: "Data Type",
+                            value: dataTypeDescription(result.analysis.dataType),
+                            icon: "chart.bar"
+                        )
 
-// MARK: - Example 5: Error Handling
-
-struct ErrorHandlingExample {
-    
-    func importWithErrorHandling() async {
-        let url = URL(fileURLWithPath: "/path/to/file.unknown")
-        
-        do {
-            let result = try await FileAnalyzer.shared.analyzeFile(url)
-            // Process result
-        } catch FileAnalysisError.unsupportedFormat {
-            print("This file format is not supported")
-            // Show user-friendly error
-        } catch FileAnalysisError.emptyFile {
-            print("The file appears to be empty")
-        } catch FileAnalysisError.encodingError {
-            print("Could not read the file - encoding issue")
-        } catch FileAnalysisError.invalidLASFile(let message) {
-            print("LAS file error: \(message)")
-        } catch {
-            print("Unexpected error: \(error)")
-        }
-    }
-}
-
-// MARK: - Example 6: Integration with SwiftUI
-
-struct ContentViewWithImport: View {
-    @State private var showImporter = false
-    @State private var importedWindows: [Int] = []
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                // Your content
-                
-                Button("Import Data") {
-                    showImporter = true
-                }
-                .sheet(isPresented: $showImporter) {
-                    EnhancedFileImportView()
-                        .onDisappear {
-                            // Handle completion
-                            print("Imported windows: \(importedWindows)")
+                        if let rowCount = getRowCount(from: result.analysis) {
+                            AnalysisStat(
+                                label: "Rows",
+                                value: "\(rowCount)",
+                                icon: "tablecells"
+                            )
                         }
+                    }
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                // Visualization suggestions
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Suggested Visualizations")
+                        .font(.headline)
+
+                    ForEach(result.suggestions.indices, id: \.self) { index in
+                        let suggestion = result.suggestions[index]
+                        VisualizationSuggestionCard(
+                            suggestion: suggestion,
+                            isSelected: selectedVisualization?.type == suggestion.type,
+                            onSelect: {
+                                selectedVisualization = suggestion
+                            }
+                        )
+                    }
+                }
+
+                // Additional options
+                if selectedVisualization != nil {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Additional Options")
+                            .font(.headline)
+
+                        Toggle("Open in new window", isOn: .constant(true))
+                        Toggle("Import raw data", isOn: .constant(false))
+
+                        if result.fileType == .xlsx {
+                            Toggle("Import all sheets", isOn: .constant(true))
+                        }
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .navigationTitle("Data Visualization")
+        }
+    }
+
+    // MARK: - Creating Visualization View
+
+    private var creatingVisualizationView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            ProgressView("Creating Visualization...")
+                .controlSize(.large)
+
+            Text("Setting up your \(selectedVisualization?.type.windowType.displayName ?? "visualization")")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Footer View
+
+    private var footerView: some View {
+        HStack {
+            if importStage == .suggesting && selectedFileURL != nil {
+                Button("Change File") {
+                    resetImport()
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            HStack(spacing: 12) {
+                if importStage == .suggesting && analysisResult != nil {
+                    Button("Import Raw Data") {
+                        createDataTableVisualization()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Create Visualization") {
+                        createSelectedVisualization()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedVisualization == nil)
+                }
+            }
+        }
+        .padding()
+    }
+
+    // MARK: - Helper Methods
+
+    private func handleFileSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            selectedFileURL = url
+            saveToRecentImports(url)
+            analyzeFile()
+
+        case .failure(let error):
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    private func analyzeFile() {
+        guard let url = selectedFileURL else { return }
+
+        importStage = .analyzing
+
+        Task {
+            do {
+                let result = try await fileAnalyzer.analyzeFile(at: url)
+
+                await MainActor.run {
+                    self.analysisResult = result
+                    self.importStage = .suggesting
+
+                    // Auto-select the highest priority suggestion
+                    if let firstSuggestion = result.suggestions.first {
+                        self.selectedVisualization = firstSuggestion
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.showError = true
+                    self.importStage = .selecting
+                }
+            }
+        }
+    }
+
+    private func createSelectedVisualization() {
+        guard let visualization = selectedVisualization,
+              let result = analysisResult else { return }
+
+        importStage = .creating
+
+        Task {
+            await createVisualization(
+                type: visualization.type,
+                fileResult: result,
+                configuration: visualization.configuration
+            )
+
+            await MainActor.run {
+                dismiss()
+            }
+        }
+    }
+
+    private func createDataTableVisualization() {
+        guard let result = analysisResult else { return }
+
+        importStage = .creating
+
+        Task {
+            await createVisualization(
+                type: .dataTable,
+                fileResult: result,
+                configuration: DataTableConfiguration()
+            )
+
+            await MainActor.run {
+                dismiss()
+            }
+        }
+    }
+
+    @MainActor
+    private func createVisualization(
+        type: SpatialVisualizationType,
+        fileResult: FileAnalysisResult,
+        configuration: any VisualizationConfiguration
+    ) async {
+        let windowID = windowManager.getNextWindowID()
+        let windowType = type.windowType
+
+        // Create window
+        _ = windowManager.createWindow(
+            type: windowType,
+            id: windowID,
+            position: WindowPosition(
+                x: 100 + Double(windowID * 20),
+                y: 100 + Double(windowID * 20)
+            )
+        )
+
+        // Set window content based on file type and visualization
+        await populateWindow(
+            windowID: windowID,
+            windowType: windowType,
+            fileResult: fileResult,
+            visualizationType: type,
+            configuration: configuration
+        )
+
+        // Open the window
+        openWindow(value: windowID)
+        windowManager.markWindowAsOpened(windowID)
+    }
+
+    @MainActor
+    private func populateWindow(
+        windowID: Int,
+        windowType: WindowType,
+        fileResult: FileAnalysisResult,
+        visualizationType: SpatialVisualizationType,
+        configuration: any VisualizationConfiguration
+    ) async {
+        // This would be expanded to handle all file types and visualizations
+        // For now, showing a few examples:
+
+        switch fileResult.fileType {
+        case .csv, .tsv:
+            if let structure = fileResult.analysis.structure as? TabularStructure {
+                await handleTabularData(
+                    windowID: windowID,
+                    structure: structure,
+                    visualizationType: visualizationType
+                )
+            }
+
+        case .las:
+            if let structure = fileResult.analysis.structure as? PointCloudStructure {
+                await handlePointCloudData(
+                    windowID: windowID,
+                    structure: structure,
+                    url: fileResult.fileURL
+                )
+            }
+
+        case .xlsx:
+            if let structure = fileResult.analysis.structure as? SpreadsheetStructure {
+                await handleSpreadsheetData(
+                    windowID: windowID,
+                    structure: structure,
+                    url: fileResult.fileURL
+                )
+            }
+
+        case .ipynb:
+            if let structure = fileResult.analysis.structure as? NotebookStructure {
+                await handleNotebookData(
+                    windowID: windowID,
+                    structure: structure,
+                    url: fileResult.fileURL
+                )
+            }
+
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private func handleTabularData(
+        windowID: Int,
+        structure: TabularStructure,
+        visualizationType: SpatialVisualizationType
+    ) async {
+        // For demonstration, create appropriate content based on visualization type
+        switch visualizationType {
+        case .dataTable:
+            // Create DataFrame visualization
+            let dataFrame = DataFrame(
+                columns: structure.headers,
+                rows: [] // Would be populated from actual file data
+            )
+            windowManager.updateWindowDataFrame(windowID, dataFrame: dataFrame)
+
+        case .scatterPlot3D:
+            if structure.coordinateColumns.count >= 3 {
+                // Create 3D scatter plot
+                let chartData = Chart3DData(
+                    title: "3D Scatter Plot",
+                    chartType: .scatter
+                )
+                windowManager.updateWindowChart3DData(windowID, chart3DData: chartData)
+            }
+
+        default:
+            break
+        }
+    }
+
+    @MainActor
+    private func handlePointCloudData(
+        windowID: Int,
+        structure: PointCloudStructure,
+        url: URL
+    ) async {
+        // Create point cloud visualization
+        let pointCloud = PointCloud(
+            title: url.lastPathComponent,
+            points: [] // Would be populated from LAS file
+        )
+
+        windowManager.updateWindowPointCloud(windowID, pointCloud: pointCloud)
+    }
+
+    @MainActor
+    private func handleSpreadsheetData(
+        windowID: Int,
+        structure: SpreadsheetStructure,
+        url: URL
+    ) async {
+        // Handle Excel import - could create multiple windows for each sheet
+        for _ in structure.sheets {
+            // Create a window for each sheet if importing all
+            // For now, just handle the first sheet
+            break
+        }
+    }
+
+    @MainActor
+    private func handleNotebookData(
+        windowID: Int,
+        structure: NotebookStructure,
+        url: URL
+    ) async {
+        // Extract data from notebook and create appropriate visualizations
+        windowManager.updateWindowContent(
+            windowID,
+            content: "Imported from notebook: \(url.lastPathComponent)"
+        )
+    }
+
+    private func resetImport() {
+        selectedFileURL = nil
+        analysisResult = nil
+        selectedVisualization = nil
+        importStage = .selecting
+    }
+
+    private func fileIcon(for url: URL) -> String {
+        let type = SupportedFileType(rawValue: url.pathExtension.lowercased()) ?? .unknown
+        return type.icon
+    }
+
+    private func dataTypeDescription(_ type: DataType) -> String {
+        switch type {
+        case .tabular: return "Tabular"
+        case .tabularWithCoordinates: return "Spatial Table"
+        case .pointCloud: return "Point Cloud"
+        case .timeSeries: return "Time Series"
+        case .networkData: return "Network"
+        case .geospatial: return "Geospatial"
+        case .spreadsheet: return "Spreadsheet"
+        case .model3D: return "3D Model"
+        case .notebook: return "Notebook"
+        case .matrix: return "Matrix"
+        case .hierarchical: return "Hierarchical"
+        case .structured: return "Structured"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    private func getRowCount(from analysis: DataAnalysisResult) -> Int? {
+        if let tabular = analysis.structure as? TabularStructure {
+            return tabular.rowCount
+        } else if let pointCloud = analysis.structure as? PointCloudStructure {
+            return pointCloud.pointCount
+        }
+        return nil
+    }
+
+    private func saveToRecentImports(_ url: URL) {
+        var recent = UserDefaults.standard.stringArray(forKey: "RecentImports") ?? []
+        recent.removeAll { $0 == url.path }
+        recent.insert(url.path, at: 0)
+        if recent.count > 5 {
+            recent = Array(recent.prefix(5))
+        }
+        UserDefaults.standard.set(recent, forKey: "RecentImports")
+    }
+
+    // MARK: - Properties
+
+    private var supportedUTTypes: [UTType] {
+        [
+            .commaSeparatedText,
+            .tabSeparatedText,
+            .json,
+            UTType(filenameExtension: "xlsx") ?? .data,
+            UTType(filenameExtension: "las") ?? .data,
+            UTType(filenameExtension: "ipynb") ?? .data,
+            .usdz
+        ]
+    }
+
+    private let supportedFormats = [
+        (type: "CSV/TSV", description: "Tabular data files", icon: "tablecells", color: Color.green),
+        (type: "Excel", description: "Multi-sheet workbooks", icon: "tablecells.badge.ellipsis", color: Color.green),
+        (type: "JSON", description: "Structured data", icon: "curlybraces", color: Color.orange),
+        (type: "LAS", description: "LiDAR point clouds", icon: "circle.grid.3x3.fill", color: Color.blue),
+        (type: "Notebook", description: "Jupyter notebooks", icon: "doc.text.magnifyingglass", color: Color.purple),
+        (type: "USDZ", description: "3D models", icon: "cube", color: Color.red)
+    ]
+
+    private var recentImports: [URL] {
+        let paths = UserDefaults.standard.stringArray(forKey: "RecentImports") ?? []
+        return paths.compactMap { URL(fileURLWithPath: $0) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+    }
+}
+
+// MARK: - Supporting Views
+
+struct AnalysisStep: View {
+    let title: String
+    let isComplete: Bool
+
+    var body: some View {
+        HStack {
+            Image(systemName: isComplete ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isComplete ? .green : .secondary)
+
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(isComplete ? .primary : .secondary)
+
+            Spacer()
         }
     }
 }
 
-// MARK: - Usage Instructions
+struct AnalysisStat: View {
+    let label: String
+    let value: String
+    let icon: String
 
-/*
- ENHANCED FILE IMPORT SYSTEM USAGE:
- 
- 1. SETUP:
-    - Add all the Swift files to your project
-    - Install CoreXLSX package (optional, for Excel support)
-    - Update EnvironmentView as shown in the integration guide
- 
- 2. BASIC USAGE:
-    - Use EnhancedFileImportView for UI-based import
-    - Use FileAnalyzer.analyzeFile() for programmatic import
-    - System automatically detects file type and suggests visualizations
- 
- 3. SUPPORTED FORMATS:
-    - CSV/TSV: Tabular data with automatic coordinate detection
-    - Excel: Multi-sheet workbooks with independent import
-    - JSON: Structured data with geospatial support
-    - LAS: LiDAR point clouds with GPS time
-    - Jupyter: Notebook analysis with data extraction
-    - USDZ: 3D models
- 
- 4. VISUALIZATION SUGGESTIONS:
-    - System analyzes data structure and patterns
-    - Suggests appropriate visualizations with confidence scores
-    - Prioritizes based on data characteristics
- 
- 5. CUSTOMIZATION:
-    - Create custom VisualizationConfiguration objects
-    - Override suggestions with custom recommendations
-    - Extend file type support by adding parsers
- 
- 6. PERFORMANCE:
-    - Large files are sampled for analysis
-    - Point clouds use LOD for performance
-    - Excel sheets imported independently
- 
- 7. ERROR HANDLING:
-    - Comprehensive error types for debugging
-    - User-friendly error messages
-    - Graceful fallbacks for unsupported features
- */
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(label, systemImage: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.headline)
+        }
+    }
+}
+
+struct VisualizationSuggestionCard: View {
+    let suggestion: VisualizationRecommendation
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 16) {
+                // Icon
+                Image(systemName: visualizationIcon)
+                    .font(.title2)
+                    .foregroundStyle(priorityColor)
+                    .frame(width: 40)
+
+                // Content
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(visualizationTitle)
+                            .font(.headline)
+
+                        if suggestion.priority == .high {
+                            Label("Recommended", systemImage: "star.fill")
+                                .font(.caption)
+                                .foregroundStyle(.yellow)
+                        }
+                    }
+
+                    Text(suggestion.reason)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
+                    HStack {
+                        // Confidence
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.caption)
+                            Text("\(Int(suggestion.confidence * 100))% match")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        // Window type
+                        Label(suggestion.type.windowType.displayName, systemImage: suggestion.type.windowType.icon)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // Selection indicator
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .blue : .secondary)
+            }
+            .padding()
+        }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.blue, lineWidth: 2)
+            }
+        }
+    }
+
+    private var visualizationIcon: String {
+        switch suggestion.type {
+        case .dataTable: return "tablecells"
+        case .scatterPlot2D, .scatterPlot3D: return "chart.scatter"
+        case .lineChart, .multiLineChart: return "chart.line.uptrend.xyaxis"
+        case .barChart: return "chart.bar"
+        case .heatmap, .densityHeatMap: return "square.grid.3x3.fill.square"
+        case .pointCloud3D: return "view.3d"
+        case .spatialNetwork: return "network"
+        case .model3DViewer: return "cube"
+        case .notebookSpatialLayout: return "doc.text.below.ecg"
+        default: return "chart.bar.fill"
+        }
+    }
+
+    private var visualizationTitle: String {
+        switch suggestion.type {
+        case .dataTable: return "Data Table"
+        case .scatterPlot2D: return "2D Scatter Plot"
+        case .scatterPlot3D: return "3D Scatter Plot"
+        case .lineChart: return "Line Chart"
+        case .multiLineChart: return "Multi-Line Chart"
+        case .barChart: return "Bar Chart"
+        case .heatmap: return "Heatmap"
+        case .densityHeatMap: return "Density Heatmap"
+        case .pointCloud3D: return "3D Point Cloud"
+        case .spatialNetwork: return "Spatial Network"
+        case .model3DViewer: return "3D Model Viewer"
+        case .notebookSpatialLayout: return "Spatial Notebook"
+        case .volumetric: return "Volumetric View"
+        default: return "Visualization"
+        }
+    }
+
+    private var priorityColor: Color {
+        switch suggestion.priority {
+        case .high: return .blue
+        case .medium: return .orange
+        case .low: return .gray
+        }
+    }
+}
+
+// MARK: - Preview
+
+struct EnhancedFileImportView_Previews: PreviewProvider {
+    static var previews: some View {
+        EnhancedFileImportView()
+            .environmentObject(WindowTypeManager.shared)
+    }
+}
+*/

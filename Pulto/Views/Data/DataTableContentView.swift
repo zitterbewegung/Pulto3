@@ -1723,7 +1723,7 @@ struct DataTableContentView: View {
             Task {
                 do {
                     let text = try String(contentsOf: url)
-                    guard let csv = CSVParser.parse(text) else { return }
+                    guard let csv = ImportCSVParser.parse(text) else { return }
 
                     let dtypes = Dictionary(uniqueKeysWithValues: zip(
                         csv.headers,
@@ -1798,7 +1798,7 @@ struct DataTableContentView: View {
     }
      */
     private func parseCSVContent(_ content: String) throws -> DataFrameData {
-        if let csvData = CSVParser.parse(content) {
+        if let csvData = ImportCSVParser.parse(content) {
             let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
                 let (index, type) = item
                 if index < csvData.headers.count {

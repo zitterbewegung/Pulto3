@@ -5,7 +5,7 @@
 //  Created by Joshua Herman on 7/18/25.
 //  Copyright © 2025 Apple. All rights reserved.
 //
-
+/*
 
 //
 //  ExcelParser.swift
@@ -16,6 +16,7 @@
 
 import Foundation
 import CoreXLSX
+import ZIPFoundation
 
 // Note: This assumes you'll add the CoreXLSX package dependency
 // If not using CoreXLSX, you can use alternative approaches
@@ -362,18 +363,35 @@ private class SheetXMLParserDelegate: NSObject, XMLParserDelegate {
 
 // MARK: - FileManager Extension for XLSX Unzipping
 
+
+
 extension FileManager {
     func unzipItem(at sourceURL: URL, to destinationURL: URL) throws {
-        // Use a system call to unzip or implement using Compression framework
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        task.arguments = ["-q", sourceURL.path, "-d", destinationURL.path]
-        
-        try task.run()
-        task.waitUntilExit()
-        
-        guard task.terminationStatus == 0 else {
-            throw FileAnalysisError.parsingError("Failed to unzip Excel file")
+        guard let archive = Archive(url: sourceURL, accessMode: .read) else {
+            throw FileAnalysisError.parsingError("Failed to open ZIP archive")
+        }
+
+        for entry in archive {
+            let entryPath = destinationURL.appendingPathComponent(entry.path)
+
+            switch entry.type {
+            case .directory:
+                try self.createDirectory(at: entryPath, withIntermediateDirectories: true, attributes: nil)
+            case .file:
+                try archive.extract(entry, to: entryPath)
+            case .symlink:
+                var linkData = Data()
+                try archive.extract(entry) { chunk in
+                    linkData.append(chunk)
+                }
+                guard let linkDestination = String(data: linkData, encoding: .utf8) else {
+                    throw FileAnalysisError.parsingError("Failed to read symlink destination")
+                }
+                try self.createSymbolicLink(at: entryPath, withDestinationPath: linkDestination)
+            @unknown default:
+                // Handle future types if necessary
+                break
+            }
         }
     }
 }
@@ -515,3 +533,4 @@ extension ExcelParser {
         return Double(emptyCells) / Double(totalCells) > 0.1
     }
 }
+*/
