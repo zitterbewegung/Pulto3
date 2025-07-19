@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC035F592DED4A3D001D5CF6 /* CSVData.swift */; };
 		DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */; };
 		DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* OpenWindowView.swift */; };
 		DC0E899D2DE3699000B27198 /* Pluto_1_2374.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */; };
@@ -53,7 +52,6 @@
 		2D3FD743D0652DCDC566B3F6 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		380E1188A5BB9827EF4A0778 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		961121329AB26B80BF5FA320 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		DC035F592DED4A3D001D5CF6 /* CSVData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVData.swift; sourceTree = "<group>"; };
 		DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookChartsView.swift; sourceTree = "<group>"; };
 		DC0E89982DE366E900B27198 /* OpenWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWindowView.swift; sourceTree = "<group>"; };
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
@@ -260,13 +258,13 @@
 				DCF0DDC62DE6989D00D0884D /* AppleSignInView.swift */,
 				DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */,
 				DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */,
+				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */,
 				DCF74ECF2E0619550078C4B8 /* GridConstants.swift */,
 				DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */,
 				DC28CF662E02673000F3705E /* LoadUnloadTest.swift */,
 				DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */,
 				DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */,
-				DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
 				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
@@ -278,7 +276,6 @@
 				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
 				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
-				DC035F592DED4A3D001D5CF6 /* CSVData.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
 			);
 			path = Views;
@@ -410,7 +407,6 @@
 				DC509DEB2DF12D790097C6DB /* ChartDataPoint.swift in Sources */,
 				DC6A50A52E0B607600C4FEAF /* EnvironmentView.swift in Sources */,
 				DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */,
-				DC035F5A2DED4A3D001D5CF6 /* CSVData.swift in Sources */,
 				DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */,
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,

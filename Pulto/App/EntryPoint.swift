@@ -38,6 +38,7 @@ struct EntryPoint: App {
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
     }
+    
     /*
     private var launcherWindow: some SwiftUI.Scene {
         WindowGroup(id: "launcher") {
@@ -47,7 +48,7 @@ struct EntryPoint: App {
         .defaultSize(width: 800, height: 600)
     }
     */
-
+    
     @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
         WindowGroup(for: NewWindowID.ID.self) { $id in
@@ -63,6 +64,7 @@ struct EntryPoint: App {
         .windowStyle(.plain)
         .defaultSize(width: 1_000, height: 700)
     }
+    
 
     // MARK: - visionOS-only Scenes
     #if os(visionOS)

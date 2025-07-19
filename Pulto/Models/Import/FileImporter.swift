@@ -9,6 +9,116 @@
 import SwiftUI
 import Charts
 import UniformTypeIdentifiers
+import Foundation
+
+// MARK: - File Classifier
+enum FileType: Equatable {
+    case pointCloudPLY
+    case csv(delimiter: String)
+    case usdz
+    case unknown
+
+    var description: String {
+        switch self {
+        case .pointCloudPLY:
+            return "Point Cloud (PLY) file"
+        case .csv(let del):
+            return "CSV file (delimiter: \(del))"
+        case .usdz:
+            return "USDZ 3D model file"
+        case .unknown:
+            return "Unknown file"
+        }
+    }
+}
+
+struct FileClassifier {
+
+    func classifyFile(at url: URL) -> (FileType, CSVData?, [ChartScore]?) {
+        // Start accessing the security-scoped resource
+        // Note: This is required for security-scoped URLs from fileImporter in sandboxed environments like VisionOS.
+        // If encountering issues, verify the context; it should exist on URL.
+        guard url.startAccessingSecurityScopedResource() else {
+            print("Error: Could not access security-scoped resource.")
+            return (.unknown, nil, nil)
+        }
+
+        // Ensure to stop accessing when done
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+
+        let fileExtension = url.pathExtension.lowercased()
+
+        switch fileExtension {
+        case "ply":
+            // Basic check to confirm it's a PLY file (point cloud)
+            do {
+                let data = try Data(contentsOf: url)
+                if let header = String(data: data.prefix(100), encoding: .ascii), header.lowercased().hasPrefix("ply") {
+                    return (.pointCloudPLY, nil, nil)
+                } else {
+                    return (.unknown, nil, nil)
+                }
+            } catch {
+                print("Error reading PLY file: \(error)")
+                return (.unknown, nil, nil)
+            }
+
+        case "usdz":
+            // USDZ is a zip archive, but for simplicity, assume extension is sufficient
+            // If needed, check if it's a valid zip with USD content, but that's more complex
+            return (.usdz, nil, nil)
+
+        case "csv", "tsv", "tab":
+            // Handle CSV or tab-separated files
+            do {
+                let content = try String(contentsOf: url, encoding: .utf8)
+                let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+                guard !lines.isEmpty else {
+                    return (.unknown, nil, nil)
+                }
+
+                // Determine delimiter: check first line for commas vs tabs
+                let firstLine = lines[0]
+                let commaCount = firstLine.filter { $0 == "," }.count
+                let tabCount = firstLine.filter { $0 == "\t" }.count
+
+                let delimiterChar: Character
+                let delimiterStr: String
+                if commaCount > tabCount && commaCount > 0 {
+                    delimiterChar = ","
+                    delimiterStr = ","
+                } else if tabCount > 0 {
+                    delimiterChar = "\t"
+                    delimiterStr = "\t"
+                } else {
+                    // No clear delimiter, assume comma for .csv
+                    if fileExtension == "csv" {
+                        delimiterChar = ","
+                        delimiterStr = ","
+                    } else {
+                        return (.unknown, nil, nil)
+                    }
+                }
+
+                if let data = CSVParser.parse(content, delimiter: delimiterChar) {
+                    let recommendations = ChartRecommender.recommend(for: data)
+                    return (.csv(delimiter: delimiterStr), data, recommendations)
+                } else {
+                    return (.unknown, nil, nil)
+                }
+
+            } catch {
+                print("Error reading CSV/TSV file: \(error)")
+                return (.unknown, nil, nil)
+            }
+
+        default:
+            return (.unknown, nil, nil)
+        }
+    }
+}
 
 // MARK: - Data Models
 struct CSVData: Equatable {
@@ -31,7 +141,7 @@ enum ChartRecommendation: CaseIterable, Equatable {
     case pieChart
     case areaChart
     case histogram
-    
+
     var name: String {
         switch self {
         case .lineChart: return "Line Chart"
@@ -42,7 +152,7 @@ enum ChartRecommendation: CaseIterable, Equatable {
         case .histogram: return "Histogram"
         }
     }
-    
+
     var description: String {
         switch self {
         case .lineChart: return "Best for showing trends over time"
@@ -53,7 +163,7 @@ enum ChartRecommendation: CaseIterable, Equatable {
         case .histogram: return "Excellent for showing distribution of numeric data"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .lineChart: return "chart.line.uptrend.xyaxis"
@@ -72,71 +182,71 @@ struct ChartScore: Equatable {
     let reasoning: String
 }
 
-// MARK: - CSV Parser
+// MARK: - CSV Parser (Modified to handle custom delimiter)
 class CSVParser {
-    static func parse(_ content: String) -> CSVData? {
+    static func parse(_ content: String, delimiter: Character = ",") -> CSVData? {
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
         guard lines.count > 1 else { return nil }
-        
-        let headers = parseRow(lines[0])
+
+        let headers = parseRow(lines[0], delimiter: delimiter)
         var rows: [[String]] = []
-        
+
         for i in 1..<lines.count {
-            rows.append(parseRow(lines[i]))
+            rows.append(parseRow(lines[i], delimiter: delimiter))
         }
-        
+
         let columnTypes = detectColumnTypes(headers: headers, rows: rows)
-        
+
         return CSVData(headers: headers, rows: rows, columnTypes: columnTypes)
     }
-    
-    private static func parseRow(_ row: String) -> [String] {
+
+    private static func parseRow(_ row: String, delimiter: Character) -> [String] {
         var result: [String] = []
         var current = ""
         var inQuotes = false
-        
+
         for char in row {
             if char == "\"" {
                 inQuotes.toggle()
-            } else if char == "," && !inQuotes {
+            } else if char == delimiter && !inQuotes {
                 result.append(current.trimmingCharacters(in: .whitespaces))
                 current = ""
             } else {
                 current.append(char)
             }
         }
-        
+
         result.append(current.trimmingCharacters(in: .whitespaces))
         return result
     }
-    
+
     private static func detectColumnTypes(headers: [String], rows: [[String]]) -> [ColumnType] {
         return headers.indices.map { index in
             detectColumnType(at: index, rows: rows)
         }
     }
-    
+
     private static func detectColumnType(at index: Int, rows: [[String]]) -> ColumnType {
         var numericCount = 0
         var dateCount = 0
         let totalCount = rows.count
-        
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let altDateFormatter = DateFormatter()
         altDateFormatter.dateFormat = "MM/dd/yyyy"
-        
+
         for row in rows {
             guard index < row.count else { continue }
             let value = row[index]
-            
+
             if Double(value) != nil {
                 numericCount += 1
             } else if dateFormatter.date(from: value) != nil || altDateFormatter.date(from: value) != nil {
                 dateCount += 1
             }
         }
-        
+
         if Double(numericCount) / Double(totalCount) > 0.8 {
             return .numeric
         } else if Double(dateCount) / Double(totalCount) > 0.8 {
@@ -151,12 +261,12 @@ class CSVParser {
 class ChartRecommender {
     static func recommend(for data: CSVData) -> [ChartScore] {
         var scores: [ChartScore] = []
-        
+
         let numericColumns = data.columnTypes.filter { $0 == .numeric }.count
         let categoricalColumns = data.columnTypes.filter { $0 == .categorical }.count
         let dateColumns = data.columnTypes.filter { $0 == .date }.count
         let rowCount = data.rows.count
-        
+
         // Line Chart recommendation
         if dateColumns > 0 && numericColumns > 0 {
             scores.append(ChartScore(
@@ -165,7 +275,7 @@ class ChartRecommender {
                 reasoning: "You have date and numeric columns - perfect for showing trends over time"
             ))
         }
-        
+
         // Bar Chart recommendation
         if categoricalColumns > 0 && numericColumns > 0 {
             scores.append(ChartScore(
@@ -174,7 +284,7 @@ class ChartRecommender {
                 reasoning: "Categorical and numeric data work well for comparing values across categories"
             ))
         }
-        
+
         // Scatter Plot recommendation
         if numericColumns >= 2 {
             scores.append(ChartScore(
@@ -183,7 +293,7 @@ class ChartRecommender {
                 reasoning: "Multiple numeric columns can show relationships and correlations"
             ))
         }
-        
+
         // Pie Chart recommendation
         if categoricalColumns > 0 && numericColumns > 0 && rowCount < 10 {
             scores.append(ChartScore(
@@ -192,7 +302,7 @@ class ChartRecommender {
                 reasoning: "Small dataset with categories is suitable for showing proportions"
             ))
         }
-        
+
         // Area Chart recommendation
         if dateColumns > 0 && numericColumns > 0 {
             scores.append(ChartScore(
@@ -201,7 +311,7 @@ class ChartRecommender {
                 reasoning: "Time-series data can be visualized with filled areas to show cumulative values"
             ))
         }
-        
+
         // Histogram recommendation
         if numericColumns > 0 {
             scores.append(ChartScore(
@@ -210,7 +320,7 @@ class ChartRecommender {
                 reasoning: "Numeric data can be binned to show distribution patterns"
             ))
         }
-        
+
         return scores.sorted { $0.score > $1.score }
     }
 }
@@ -219,7 +329,7 @@ class ChartRecommender {
 struct SampleChartView: View {
     let data: CSVData
     let recommendation: ChartRecommendation
-    
+
     var body: some View {
         VStack {
             switch recommendation {
@@ -245,7 +355,7 @@ struct SampleChartView: View {
 
 struct LineChartView: View {
     let data: CSVData
-    
+
     var body: some View {
         if let xIndex = data.columnTypes.firstIndex(where: { $0 == .date || $0 == .numeric }),
            let yIndex = data.columnTypes.firstIndex(where: { $0 == .numeric }) {
@@ -270,7 +380,7 @@ struct LineChartView: View {
 
 struct BarChartView: View {
     let data: CSVData
-    
+
     var body: some View {
         if let catIndex = data.columnTypes.firstIndex(where: { $0 == .categorical }),
            let numIndex = data.columnTypes.firstIndex(where: { $0 == .numeric }) {
@@ -295,10 +405,10 @@ struct BarChartView: View {
 
 struct ScatterPlotView: View {
     let data: CSVData
-    
+
     var body: some View {
         let numericIndices = data.columnTypes.enumerated().compactMap { $0.element == .numeric ? $0.offset : nil }
-        
+
         if numericIndices.count >= 2 {
             Chart {
                 ForEach(Array(data.rows.prefix(50).enumerated()), id: \.offset) { index, row in
@@ -321,7 +431,7 @@ struct ScatterPlotView: View {
 
 struct PieChartView: View {
     let data: CSVData
-    
+
     var body: some View {
         Text("Pie Chart Preview")
             .font(.caption)
@@ -332,7 +442,7 @@ struct PieChartView: View {
 
 struct AreaChartView: View {
     let data: CSVData
-    
+
     var body: some View {
         if let xIndex = data.columnTypes.firstIndex(where: { $0 == .date || $0 == .numeric }),
            let yIndex = data.columnTypes.firstIndex(where: { $0 == .numeric }) {
@@ -357,13 +467,13 @@ struct AreaChartView: View {
 
 struct HistogramView: View {
     let data: CSVData
-    
+
     var body: some View {
         if let numIndex = data.columnTypes.firstIndex(where: { $0 == .numeric }) {
             let values = data.rows.compactMap { row in
                 numIndex < row.count ? Double(row[numIndex]) : nil
             }
-            
+
             if !values.isEmpty {
                 Chart {
                     ForEach(Array(values.prefix(30).enumerated()), id: \.offset) { index, value in
@@ -385,7 +495,6 @@ struct HistogramView: View {
     }
 }
 
-// CSVChartRecommenderView is defined in its own file - CSVChartRecommenderView.swift
 // MARK: - Main View
 struct CSVChartRecommenderView: View {
     @State private var csvData: CSVData?
@@ -393,6 +502,7 @@ struct CSVChartRecommenderView: View {
     @State private var selectedRecommendation: ChartRecommendation?
     @State private var isImporting = false
     @State private var errorMessage: String?
+    @State private var nonCSVType: FileType?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -401,25 +511,57 @@ struct CSVChartRecommenderView: View {
                 VStack(spacing: 20) {
 
 
-                    if csvData == nil {
+                    if let type = nonCSVType {
+                        // Non-CSV file imported
+                        VStack(spacing: 30) {
+                            Image(systemName: "doc")
+                                .font(.system(size: 80))
+                                .foregroundColor(.blue)
+
+                            Text("File Classified")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            Text("This is a \(type.description)")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Text("Chart recommendations are only available for CSV/TSV files.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+
+                            Button(action: { isImporting = true }) {
+                                Label("Import Another File", systemImage: "icloud.and.arrow.down")
+                                    .font(.headline)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .padding()
+                    } else if csvData == nil {
                         // Welcome screen
                         VStack(spacing: 30) {
                             Image(systemName: "chart.xyaxis.line")
                                 .font(.system(size: 80))
                                 .foregroundColor(.blue)
 
-                            Text("CSV Chart Recommender")
+                            Text("File Classifier and Chart Recommender")
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
 
-                            Text("Import a CSV file from iCloud to get intelligent chart recommendations")
+                            Text("Import a file from iCloud to classify it and get chart recommendations for CSV/TSV")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
 
                             Button(action: { isImporting = true }) {
-                                Label("Import CSV from iCloud", systemImage: "icloud.and.arrow.down")
+                                Label("Import File from iCloud", systemImage: "icloud.and.arrow.down")
                                     .font(.headline)
                                     .padding()
                                     .background(Color.blue)
@@ -495,7 +637,7 @@ struct CSVChartRecommenderView: View {
                         // Bottom toolbar
                         HStack {
                             Button(action: { isImporting = true }) {
-                                Label("Import New CSV", systemImage: "arrow.up.doc")
+                                Label("Import New File", systemImage: "arrow.up.doc")
                             }
 
                             Spacer()
@@ -518,11 +660,16 @@ struct CSVChartRecommenderView: View {
                         }
                     }
                 }
-                .navigationTitle("Chart Recommender")
+                .navigationTitle("File Classifier and Chart Recommender")
                 .navigationBarTitleDisplayMode(.inline)
                 .fileImporter(
                     isPresented: $isImporting,
-                    allowedContentTypes: [UTType.commaSeparatedText],
+                    allowedContentTypes: [
+                        UTType.commaSeparatedText,
+                        UTType.tabSeparatedText,
+                        UTType.usdz,
+                        UTType(filenameExtension: "ply") ?? UTType.data
+                    ],
                     allowsMultipleSelection: false
                 ) { result in
                     handleFileImport(result)
@@ -535,28 +682,44 @@ struct CSVChartRecommenderView: View {
             }
         }
     private func handleFileImport(_ result: Result<[URL], Error>) {
+        nonCSVType = nil
+        csvData = nil
+        recommendations = []
+        selectedRecommendation = nil
+
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            
+
             do {
-                let content = try String(contentsOf: url)
-                if let data = CSVParser.parse(content) {
-                    csvData = data
-                    recommendations = ChartRecommender.recommend(for: data)
-                    selectedRecommendation = recommendations.first?.recommendation
-                } else {
-                    errorMessage = "Failed to parse CSV file"
+                // Note: startAccessingSecurityScopedResource is called inside the classifier,
+                // but if needed here for additional access, it can be added.
+                let classifier = FileClassifier()
+                let (type, data, recs) = classifier.classifyFile(at: url)
+
+                switch type {
+                case .csv(_):
+                    if let data = data, let recommendationsList = recs, !recommendationsList.isEmpty {
+                        csvData = data
+                        recommendations = recommendationsList
+                        selectedRecommendation = recommendations.first?.recommendation
+                    } else {
+                        errorMessage = "Failed to parse CSV/TSV file or no recommendations available"
+                    }
+                case .unknown:
+                    errorMessage = "Unknown file type"
+                default:
+                    nonCSVType = type
                 }
             } catch {
-                errorMessage = "Error reading file: \(error.localizedDescription)"
+                errorMessage = "Error processing file: \(error.localizedDescription)"
             }
-            
+
         case .failure(let error):
             errorMessage = "Import failed: \(error.localizedDescription)"
         }
     }
-    
+
     private func generateFullChart() {
         // This would typically generate a more detailed chart view
         // For now, it's a placeholder for future implementation
@@ -568,31 +731,31 @@ struct RecommendationCardView: View {
     let score: ChartScore
     let selectedRecommendation: ChartRecommendation?
     let onSelection: () -> Void
-    
+
     private var isSelected: Bool {
         selectedRecommendation == score.recommendation
     }
-    
+
     private var iconColor: Color {
         isSelected ? .white : .blue
     }
-    
+
     private var titleColor: Color {
         isSelected ? .white : .primary
     }
-    
+
     private var descriptionColor: Color {
         isSelected ? .white.opacity(0.8) : .secondary
     }
-    
+
     private var scoreColor: Color {
         isSelected ? .white : .green
     }
-    
+
     private var backgroundColor: Color {
         isSelected ? Color.blue : Color.gray.opacity(0.1)
     }
-    
+
     var body: some View {
         Button(action: onSelection) {
             HStack {
@@ -600,20 +763,20 @@ struct RecommendationCardView: View {
                     .font(.title2)
                     .foregroundColor(iconColor)
                     .frame(width: 40)
-                
+
                 VStack(alignment: .leading, spacing: 5) {
                     Text(score.recommendation.name)
                         .font(.headline)
                         .foregroundColor(titleColor)
-                    
+
                     Text(score.reasoning)
                         .font(.caption)
                         .foregroundColor(descriptionColor)
                         .lineLimit(2)
                 }
-                
+
                 Spacer()
-                
+
                 VStack {
                     Text("\(Int(score.score * 100))%")
                         .font(.headline)
@@ -635,7 +798,7 @@ struct DataSummaryItem: View {
     let icon: String
     let label: String
     let value: String
-    
+
     var body: some View {
         VStack(spacing: 5) {
             Image(systemName: icon)
