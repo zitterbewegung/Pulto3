@@ -1,3 +1,5 @@
+// File: EnvironmentView.swift
+
 //
 //  EnvironmentView.swift
 //  Pulto
@@ -10,6 +12,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
+import RealityKit
 
 // MARK: - Project Tab Enum
 enum ProjectTab: String, CaseIterable {
@@ -151,7 +154,7 @@ struct EnvironmentView: View {
     @State private var showWorkspaceDialog = false
     @State private var showTemplateGallery = false
     @State private var showNotebookImport  = false
-    @State private var showFileImporter     = false
+    @State private var showClassifierSheet = false
     @State private var showSettings          = false
     @State private var showAppleSignIn      = false
     @State private var showWelcome           = false
@@ -180,7 +183,7 @@ struct EnvironmentView: View {
 
                 Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
                     DataTab(
-                        showFileImporter: $showFileImporter,
+                        showClassifierSheet: $showClassifierSheet,
                         createBlankTable: createBlankDataTable
                     )
                 }
@@ -216,6 +219,10 @@ struct EnvironmentView: View {
             NotebookImportDialog(isPresented: $showNotebookImport,
                                  windowManager: windowManager)
         }
+        .sheet(isPresented: $showClassifierSheet) {
+            FileClassifierAndRecommenderView()
+                .environmentObject(windowManager)
+        }
         .sheet(isPresented: $showWelcome) {
             WelcomeSheet(isPresented: $showWelcome)
         }
@@ -226,12 +233,6 @@ struct EnvironmentView: View {
             AppleSignInView(isPresented: $showAppleSignIn)
                 .frame(width: 700, height: 800)
         }
-        .fileImporter(
-            isPresented: $showFileImporter,
-            allowedContentTypes: supportedFileTypes,
-            allowsMultipleSelection: false,
-            onCompletion: handleFileImport
-        )
     }
 
     // MARK: - Settings Sheet
@@ -331,7 +332,7 @@ struct EnvironmentView: View {
         showWorkspaceDialog = false
         showTemplateGallery = false
         showNotebookImport  = false
-        showFileImporter    = false
+        showClassifierSheet = false
         showSettings        = false
         showAppleSignIn     = false
         showWelcome         = false
@@ -387,16 +388,6 @@ struct EnvironmentView: View {
 
     @MainActor
     private func createBlankDataTable() { createStandardWindow(.dataFrame) }
-
-    @MainActor
-    private func handleFileImport(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            if let url = urls.first { print("Importing file:", url.lastPathComponent) }
-        case .failure(let error):
-            print("Import failed:", error)
-        }
-    }
 
     private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
@@ -528,7 +519,7 @@ struct CreateTab: View {
 
 // MARK: - Data Tab
 struct DataTab: View {
-    @Binding var showFileImporter: Bool
+    @Binding var showClassifierSheet: Bool
     let createBlankTable: () -> Void
 
     var body: some View {
@@ -543,7 +534,7 @@ struct DataTab: View {
                     EnvironmentActionCard(
                         title: "Import File", subtitle: "CSV, JSON, Images, 3D",
                         icon:  "doc.badge.plus", color: .blue) {
-                        showFileImporter = true
+                        showClassifierSheet = true
                     }
                     EnvironmentActionCard(
                         title: "Blank Table", subtitle: "Start with sample data",

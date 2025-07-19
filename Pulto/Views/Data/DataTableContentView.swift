@@ -584,7 +584,7 @@ struct DataTableContentView: View {
                 }
                 .sheet(isPresented: $showingCSVRecommender) {
                     if #available(iOS 16.0, macOS 13.0, *) {
-                        CSVChartRecommenderView()
+                        FileClassifierAndRecommenderView()
                     } else {
                         Text("CSV Chart Recommender requires iOS 16.0 or macOS 13.0")
                             .padding()

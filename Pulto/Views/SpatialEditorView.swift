@@ -54,7 +54,7 @@ extension PointCloudPoint: Equatable {
         lhs.intensity == rhs.intensity
     }
 }
-
+/*
 extension PointCloudData: Equatable {
     static func == (lhs: PointCloudData, rhs: PointCloudData) -> Bool {
         lhs.totalPoints == rhs.totalPoints &&
@@ -62,7 +62,7 @@ extension PointCloudData: Equatable {
         lhs.points.count == rhs.points.count
     }
 }
-
+*/
 extension ChartData: Equatable {
     static func == (lhs: ChartData, rhs: ChartData) -> Bool {
         lhs.title == rhs.title &&
