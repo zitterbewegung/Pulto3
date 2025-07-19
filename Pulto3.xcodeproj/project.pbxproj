@@ -134,13 +134,6 @@
 				generateSamplePointCloud.swift,
 			);
 		};
-		DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = DF58AE192BCD826D00C8F737 /* Resources */;
-			membershipExceptions = (
-				"WindowTypeManager+Replace.swift",
-			);
-		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -148,7 +141,7 @@
 		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
 		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCA420E72E214A9600C57416 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
-		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094592E206D300000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
+		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
 		DC7094F42E20A5F10000CC3A /* Data */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Data; sourceTree = "<group>"; };
 		DCF810432E030A1900258CAE /* Models */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC85D57B2E03852300559301 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC7094512E2010720000CC3A /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Models; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */

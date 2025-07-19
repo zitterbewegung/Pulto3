@@ -8,6 +8,7 @@ import SwiftUI
 import Foundation
 import Charts
 import UniformTypeIdentifiers
+import RealityKit
 
 // ─────────────────────────────────────────────────────────────
 // MARK: - Window metadata
@@ -1292,6 +1293,70 @@ class PointCloudDemo {
             print("Error saving \(filename): \(error)")
         }
     }
+
+    // New function to load point cloud from file (supports CSV and simple ASCII PLY for demo)
+    static func loadPointCloud(from url: URL) -> [PointCloudData.PointData] {
+        let extensionType = url.pathExtension.lowercased()
+        var points: [PointCloudData.PointData] = []
+
+        do {
+            let content = try String(contentsOf: url)
+
+            if extensionType == "csv" || extensionType == "xyz" {
+                let lines = content.components(separatedBy: .newlines)
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+                    let components = trimmed.components(separatedBy: CharacterSet(charactersIn: ", "))
+                    if components.count >= 3,
+                       let x = Double(components[0]),
+                       let y = Double(components[1]),
+                       let z = Double(components[2]) {
+                        let intensity = components.count > 3 ? Double(components[3]) : nil
+                        points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
+                    }
+                }
+            } else if extensionType == "ply" {
+                // Simple ASCII PLY parser for demo (assumes vertex x y z [intensity])
+                let lines = content.components(separatedBy: .newlines)
+                var inHeader = true
+                var vertexCount = 0
+                var hasIntensity = false
+
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed == "end_header" {
+                        inHeader = false
+                        continue
+                    }
+                    if inHeader {
+                        if trimmed.hasPrefix("element vertex ") {
+                            vertexCount = Int(trimmed.components(separatedBy: " ")[2]) ?? 0
+                        } else if trimmed == "property float intensity" {
+                            hasIntensity = true
+                        }
+                        continue
+                    }
+                    if !trimmed.isEmpty {
+                        let components = trimmed.components(separatedBy: " ")
+                        if components.count >= 3,
+                           let x = Double(components[0]),
+                           let y = Double(components[1]),
+                           let z = Double(components[2]) {
+                            let intensity = hasIntensity && components.count > 3 ? Double(components[3]) : nil
+                            points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
+                        }
+                    }
+                }
+            } else {
+                print("Unsupported format: \(extensionType)")
+            }
+        } catch {
+            print("Failed to load file: \(error)")
+        }
+
+        return points
+    }
 }
 
 // Break down the sidebar into smaller components
@@ -1748,11 +1813,11 @@ struct NewWindow: View {
                                         endPoint: .bottomTrailing
                                     ))
 
-                                Text("Chart 3D Viewer")
+                                Text("Point Cloud Viewer")
                                     .font(.largeTitle)
                                     .fontWeight(.bold)
 
-                                if let pointCloud = window.state.chart3DData {
+                                if let pointCloud = window.state.pointCloudData {
                                     VStack(spacing: 12) {
                                         Text(pointCloud.title)
                                             .font(.title2)
@@ -1760,18 +1825,18 @@ struct NewWindow: View {
 
                                         HStack(spacing: 40) {
                                             VStack {
-                                                //Text("\(pointCloud.totalPoints)")
-                                                //    .font(.title)
-                                                //    .fontWeight(.semibold)
+                                                Text("\(pointCloud.totalPoints)")
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
                                                 Text("Points")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
                                             }
 
                                             VStack {
-                                                 //Text(pointCloud.demoType)
-                                                 //   .font(.title)
-                                                 //   .fontWeight(.semibold)
+                                                 Text(pointCloud.demoType)
+                                                    .font(.title)
+                                                    .fontWeight(.semibold)
                                                 Text("Type")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
@@ -1780,7 +1845,7 @@ struct NewWindow: View {
                                         .padding(.top)
                                     }
                                 } else if window.state.pointCloudBookmark != nil {
-                                    Text("Imported 3D Chart")
+                                    Text("Imported Point Cloud")
                                         .font(.title2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1794,7 +1859,7 @@ struct NewWindow: View {
                                     // Open the volumetric window (visionOS-safe)
                                     openWindow(id: "volumetric-pointclouddemo", value: id)
                                 } label: {
-                                    Label("Open Chart3D View", systemImage: "view.3d")
+                                    Label("Open Point Cloud View", systemImage: "view.3d")
                                         .font(.headline)
                                         .padding()
                                         .background(.purple.opacity(0.2))
@@ -1829,24 +1894,25 @@ struct NewWindow: View {
                                     let supportedExtensions = ["ply", "pcd", "xyz", "csv"]
                                     if supportedExtensions.contains(url.pathExtension.lowercased()) {
                                         Task {
-                                            do {
-                                                let bookmark = try url.bookmarkData(options: .minimalBookmark)
-                                                windowTypeManager.updatePointCloudBookmark(for: id, bookmark: bookmark)
+                                            // Load the point cloud data directly (no bookmark needed, access granted here)
+                                            let loadedPoints = PointCloudDemo.loadPointCloud(from: url)
 
-                                                // Load the point cloud data and convert it to Chart3DData
-                                                let pointCloudData = PointCloudDemo2.loadPointCloud(from: url)
-                                                let chart3DData = convertPointCloudToChart3D(pointCloudData, fileName: url.lastPathComponent)
+                                            // Create PointCloudData
+                                            var pointCloudData = PointCloudData(
+                                                title: "Imported Point Cloud: \(url.lastPathComponent)",
+                                                demoType: "imported",
+                                                parameters: ["file": 1.0] // Placeholder
+                                            )
+                                            pointCloudData.points = loadedPoints
+                                            pointCloudData.totalPoints = loadedPoints.count
 
-                                                // Update the window with the converted data
-                                                windowTypeManager.updateWindowChart3DData(id, chart3DData: chart3DData)
+                                            // Update the window with the data
+                                            windowTypeManager.updateWindowPointCloud(id, pointCloud: pointCloudData)
 
-                                                // Automatically open the volumetric view with the loaded data
-                                                openWindow(id: "volumetric-pointclouddemo", value: id)
+                                            // Automatically open the volumetric view with the loaded data
+                                            openWindow(id: "volumetric-pointclouddemo", value: id)
 
-                                                print("Successfully imported point cloud: \(url.lastPathComponent)")
-                                            } catch {
-                                                print("Failed to import point cloud: \(error)")
-                                            }
+                                            print("Successfully imported point cloud: \(url.lastPathComponent)")
                                         }
                                     } else {
                                         print("Unsupported file type: \(url.pathExtension)")
@@ -1973,17 +2039,53 @@ struct NewWindow: View {
     }
 }
 
-// MARK: - Helper Functions
+// MARK: - Volumetric Point Cloud View (new addition to display the point cloud)
+struct VolumetricPointCloudView: View {
+    let windowID: Int
+    @ObservedObject var manager = WindowTypeManager.shared
 
-private func convertPointCloudToChart3D(_ pointCloudData: [(x: Double, y: Double, z: Double, intensity: Double?)], fileName: String) -> Chart3DData {
-    let points = pointCloudData.map { point in
-        Point3D(x: Float(point.x), y: Float(point.y), z: Float(point.z))
+    var body: some View {
+        if let window = manager.getWindow(for: windowID),
+           let pointCloudData = window.state.pointCloudData {
+            RealityView { content in
+                let root = Entity()
+
+                for point in pointCloudData.points {
+                    let color = colorForIntensity(point.intensity)
+                    let material = SimpleMaterial(color: color, isMetallic: false)
+                    let sphere = ModelEntity(mesh: .generateSphere(radius: 0.005), materials: [material])
+                    sphere.position = SIMD3(Float(point.x), Float(point.y), Float(point.z))
+                    root.addChild(sphere)
+                }
+
+                content.add(root)
+            }
+            .ornament(attachmentAnchor: .scene(.bottom)) {
+                Text(pointCloudData.title)
+                    .font(.headline)
+                    .padding()
+            }
+        } else {
+            Text("No point cloud data available")
+                .font(.title)
+                .foregroundStyle(.red)
+        }
     }
 
-    let title = "Point Cloud: \(fileName)"
-    let chartType = "scatter"
-
-    return Chart3DData(title: title, chartType: chartType, points: points)
+    private func colorForIntensity(_ intensity: Double?) -> UIColor {
+        if let intensity = intensity {
+            let gray = CGFloat(intensity)
+            return UIColor(white: gray, alpha: 1.0)
+        } else {
+            return .white
+        }
+    }
 }
 
+// MARK: - Helper Functions
+
 // MARK: - Preview Provider
+
+#Preview {
+    NewWindow(id: 1)
+}
