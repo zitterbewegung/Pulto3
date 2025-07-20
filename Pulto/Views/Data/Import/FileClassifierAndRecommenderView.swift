@@ -378,7 +378,7 @@ struct FileClassifierAndRecommenderView: View {
             if let pointCloud = parsePLY(at: url) {
                 windowManager.updateWindowPointCloud(id, pointCloud: pointCloud)
             }
-            openWindow(id: "volumetric-pointcloud", value: id)
+            openWindow(id: "volumetric-pointclouddemo", value: id)
             windowManager.markWindowAsOpened(id)
 
         case .usdz:

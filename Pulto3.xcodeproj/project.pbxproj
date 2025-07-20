@@ -118,7 +118,7 @@
 		DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				demo.csv,
+				Import/pointcloud.csv,
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};

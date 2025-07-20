@@ -582,7 +582,8 @@ struct PointCloudPlotView: View {
     @State private var importedPoints: [(x: Double, y: Double, z: Double, intensity: Double?)] = []
     @State private var loadedFileName: String = ""
     @State private var loadingError: String?
-    
+    @StateObject private var windowManager = WindowTypeManager.shared
+
     let windowID: Int
     let fileURL: URL?
 
@@ -607,6 +608,13 @@ struct PointCloudPlotView: View {
     }
 
     var currentPointCloud: [(x: Double, y: Double, z: Double, intensity: Double?)] {
+        // FIRST: Check if there's imported data from WindowManager
+        if let storedPointCloud = windowManager.getWindowPointCloud(for: windowID) {
+            // Convert PointCloudData to the format expected by this view
+            return storedPointCloud.points.map { point in
+                (x: Double(point.x), y: Double(point.y), z: Double(point.z), intensity: point.intensity != nil ? Double(point.intensity!) : nil)
+            }
+        }
         switch selectedDemo {
         case 0:
             return PointCloudDemo2.generateSpherePointCloud(radius: 10, points: 500)
