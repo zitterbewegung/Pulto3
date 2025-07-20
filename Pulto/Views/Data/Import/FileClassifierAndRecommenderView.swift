@@ -14,6 +14,7 @@ import Charts
 import UniformTypeIdentifiers
 import RealityKit
 
+
 // MARK: - File Classifier and Recommender Integration
 // The following code is the integrated FileClassifierAndRecommenderView
 // Place this in the same file or a separate one and import if needed.
@@ -307,10 +308,15 @@ struct FileClassifierAndRecommenderView: View {
             .fileImporter(
                 isPresented: $isImporting,
                 allowedContentTypes: [
-                    UTType.commaSeparatedText,
-                    UTType.tabSeparatedText,
-                    UTType.usdz,
-                    UTType(filenameExtension: "ply") ?? UTType.data
+                    .commaSeparatedText,    // CSV files
+                    .tabSeparatedText,      // TSV files
+                    .plainText,             // TSV files might be detected as plain text
+                    .text,                  // Alternative text type
+                    .usdz,                  // USDZ files (3D models)
+                    .data,                  // Fallback for any file type
+                    .plyFile,               // Custom PLY type
+                    .pcdFile,               // Custom PCD type
+                    .xyzFile                // Custom XYZ type
                 ],
                 allowsMultipleSelection: false
             ) { result in
@@ -329,39 +335,230 @@ struct FileClassifierAndRecommenderView: View {
         }
     }
 
-    private func handleFileImport(_ result: Result<[URL], Error>) {
-        nonCSVType = nil
-        csvData = nil
-        recommendations = []
-        selectedRecommendation = nil
+     // Enhanced handleFileImport with TSV debugging
+     private func handleFileImport(_ result: Result<[URL], Error>) {
+         nonCSVType = nil
+         csvData = nil
+         recommendations = []
+         selectedRecommendation = nil
 
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            importedURL = url
+         switch result {
+         case .success(let urls):
+             guard let url = urls.first else { return }
+             importedURL = url
 
-            let classifier = FileClassifier()
-            let (type, data, recs) = classifier.classifyFile(at: url)
+             // Enhanced DEBUG: Print detailed file information
+             print("📁 Selected file: \(url.lastPathComponent)")
+             print("📁 File extension: \(url.pathExtension.lowercased())")
+             print("📁 Full path: \(url.path)")
+             print("📁 File size: \(getFileSize(url)) bytes")
 
-            switch type {
-            case .csv(_):
-                if let data = data, let recommendationsList = recs, !recommendationsList.isEmpty {
-                    csvData = data
-                    recommendations = recommendationsList
-                    selectedRecommendation = recommendations.first?.recommendation
-                } else {
-                    errorMessage = "Failed to parse CSV/TSV file or no recommendations available"
-                }
-            case .unknown:
-                errorMessage = "Unknown file type"
-            default:
-                nonCSVType = type
-            }
+             // Check if it's a TSV file and handle it directly
+             let fileExtension = url.pathExtension.lowercased()
+             if fileExtension == "tsv" || fileExtension == "tab" {
+                 print("📁 Detected TSV file, handling directly...")
+                 handleTSVFile(at: url)
+                 return
+             }
 
-        case .failure(let error):
-            errorMessage = "Import failed: \(error.localizedDescription)"
-        }
-    }
+             let classifier = FileClassifier()
+             let (type, data, recs) = classifier.classifyFile(at: url)
+
+             // Enhanced DEBUG: Print classification result
+             print("📁 Classified as: \(type)")
+             print("📁 Has data: \(data != nil)")
+             print("📁 Has recommendations: \(recs?.count ?? 0)")
+
+             switch type {
+             case .csv(_):
+                 if let data = data, let recommendationsList = recs, !recommendationsList.isEmpty {
+                     csvData = data
+                     recommendations = recommendationsList
+                     selectedRecommendation = recommendations.first?.recommendation
+                     print("✅ Successfully loaded CSV/TSV with \(data.rows.count) rows")
+                 } else {
+                     errorMessage = "Failed to parse CSV/TSV file or no recommendations available"
+                     print("❌ Failed to parse CSV/TSV: data=\(data != nil), recs=\(recs?.count ?? 0)")
+                 }
+             case .unknown:
+                 errorMessage = "Unknown file type: \(url.pathExtension)"
+                 print("❌ Unknown file type: \(url.pathExtension)")
+             default:
+                 nonCSVType = type
+                 print("📁 Non-CSV type: \(type)")
+             }
+
+         case .failure(let error):
+             errorMessage = "Import failed: \(error.localizedDescription)"
+             print("📁 Import error: \(error)")
+         }
+     }
+
+     // Direct TSV handling function
+     private func handleTSVFile(at url: URL) {
+         guard url.startAccessingSecurityScopedResource() else {
+             errorMessage = "Cannot access file"
+             return
+         }
+         defer { url.stopAccessingSecurityScopedResource() }
+
+         do {
+             let content = try String(contentsOf: url, encoding: .utf8)
+             print("📄 TSV file content preview (first 200 chars):")
+             print(String(content.prefix(200)))
+
+             let csvData = parseTSVContent(content)
+             if let csvData = csvData {
+                 self.csvData = csvData
+                 self.recommendations = generateTSVRecommendations(for: csvData)
+                 self.selectedRecommendation = recommendations.first?.recommendation
+                 print("✅ Successfully parsed TSV file with \(csvData.rows.count) rows and \(csvData.headers.count) columns")
+             } else {
+                 errorMessage = "Failed to parse TSV file"
+                 print("❌ Failed to parse TSV content")
+             }
+         } catch {
+             errorMessage = "Error reading TSV file: \(error.localizedDescription)"
+             print("❌ TSV read error: \(error)")
+         }
+     }
+
+     // TSV parsing function
+     private func parseTSVContent(_ content: String) -> CSVData? {
+         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+
+         guard !lines.isEmpty else {
+             print("❌ TSV file is empty")
+             return nil
+         }
+
+         // Parse headers (first line)
+         let headers = lines[0].components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespaces) }
+         print("📄 TSV Headers: \(headers)")
+
+         guard !headers.isEmpty else {
+             print("❌ No headers found in TSV")
+             return nil
+         }
+
+         // Parse data rows
+         var rows: [[String]] = []
+         for (index, line) in lines.dropFirst().enumerated() {
+             let values = line.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespaces) }
+
+             // Pad with empty strings if row has fewer columns than headers
+             var paddedValues = values
+             while paddedValues.count < headers.count {
+                 paddedValues.append("")
+             }
+
+             // Truncate if row has more columns than headers
+             if paddedValues.count > headers.count {
+                 paddedValues = Array(paddedValues.prefix(headers.count))
+             }
+
+             rows.append(paddedValues)
+
+             if index < 3 { // Debug first few rows
+                 print("📄 TSV Row \(index): \(paddedValues)")
+             }
+         }
+
+         print("📄 Parsed \(rows.count) data rows")
+
+         // Determine column types
+         let columnTypes = determineColumnTypes(headers: headers, rows: rows)
+         print("📄 Column types: \(columnTypes)")
+
+         return CSVData(
+             headers: headers,
+             rows: rows,
+             columnTypes: columnTypes
+         )
+     }
+
+     // Helper function to determine column types for TSV
+     private func determineColumnTypes(headers: [String], rows: [[String]]) -> [ColumnType] {
+         return headers.enumerated().map { index, header in
+             // Sample first few non-empty values in this column
+             let sampleValues = rows.prefix(min(10, rows.count))
+                 .compactMap { row in
+                     index < row.count ? row[index] : nil
+                 }
+                 .filter { !$0.isEmpty }
+
+             // Check if most values are numeric
+             let numericCount = sampleValues.compactMap { Double($0) }.count
+             let totalSamples = sampleValues.count
+
+             if totalSamples == 0 {
+                 return .categorical
+             }
+
+             // If 80% or more values are numeric, consider it numeric
+             return Double(numericCount) / Double(totalSamples) >= 0.8 ? .numeric : .categorical
+         }
+     }
+
+     // Generate recommendations for TSV data
+     private func generateTSVRecommendations(for data: CSVData) -> [ChartScore] {
+         // Use the same logic as CSV recommendations
+         // This is a simplified version - you might want to use your existing recommendation engine
+
+         let numericColumns = data.columnTypes.enumerated().compactMap { index, type in
+             type == .numeric ? index : nil
+         }
+
+         var recommendations: [ChartScore] = []
+
+         if numericColumns.count >= 2 {
+             recommendations.append(ChartScore(
+                 recommendation: .scatterPlot,
+                 score: 0.9,
+                 reasoning: "Multiple numeric columns suitable for scatter plot analysis"
+             ))
+
+             recommendations.append(ChartScore(
+                 recommendation: .lineChart,
+                 score: 0.8,
+                 reasoning: "Numeric data can show trends over sequence"
+             ))
+         }
+
+         if numericColumns.count >= 1 {
+             recommendations.append(ChartScore(
+                 recommendation: .barChart,
+                 score: 0.7,
+                 reasoning: "Numeric values can be displayed as bars"
+             ))
+
+             recommendations.append(ChartScore(
+                 recommendation: .histogram,
+                 score: 0.6,
+                 reasoning: "Show distribution of numeric values"
+             ))
+         }
+
+         if data.headers.count <= 10 && data.rows.count <= 20 {
+             recommendations.append(ChartScore(
+                 recommendation: .pieChart,
+                 score: 0.5,
+                 reasoning: "Small dataset suitable for categorical breakdown"
+             ))
+         }
+
+         return recommendations.sorted { $0.score > $1.score }
+     }
+
+     // Helper function to get file size
+     private func getFileSize(_ url: URL) -> Int {
+         do {
+             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+             return attributes[.size] as? Int ?? 0
+         } catch {
+             return 0
+         }
+     }
 
     private func handleNonCSVType(_ type: FileType) {
         guard let url = importedURL else {
@@ -393,6 +590,7 @@ struct FileClassifierAndRecommenderView: View {
             windowManager.markWindowAsOpened(id)
 
         default:
+            print("📁 Unhandled file type: \(type)")
             break
         }
 

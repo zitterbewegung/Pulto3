@@ -318,3 +318,9 @@ class ChartRecommender {
         return scores.sorted { $0.score > $1.score }
     }
 }
+// Custom UTType extensions for point cloud files
+extension UTType {
+    static let plyFile = UTType(filenameExtension: "ply") ?? UTType.plainText
+    static let pcdFile = UTType(filenameExtension: "pcd") ?? UTType.plainText
+    static let xyzFile = UTType(filenameExtension: "xyz") ?? UTType.plainText
+}
