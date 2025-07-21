@@ -1184,4 +1184,11 @@ class WindowTypeManager: ObservableObject {
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
         }
     }
+    // Add this method to your existing WindowTypeManager class
+    func removeWindowTag(_ windowID: Int, tag: String) {
+        guard var window = windows[windowID] else { return }
+        window.state.tags.removeAll { $0 == tag }
+        window.state.lastModified = Date()
+        windows[windowID] = window
+    }
 }

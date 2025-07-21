@@ -1,4 +1,13 @@
 //
+//  WindowTypeManager+CoreTracking.swift
+//  Pulto3
+//
+//  Created by Joshua Herman on 7/21/25.
+//  Copyright © 2025 Apple. All rights reserved.
+//
+
+
+//
 //  WindowTypeManagerExtension.swift
 //  Pulto3
 //
