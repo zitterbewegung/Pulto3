@@ -12,7 +12,7 @@ import RealityKit
 @main
 struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
-
+    @StateObject private var spatialManager = VisionOSSpatialManager.shared
     // MARK: Scene graph
     @SceneBuilder
     var body: some SwiftUI.Scene {
@@ -30,15 +30,17 @@ struct EntryPoint: App {
     }
 
     // MARK: - 2-D Scenes
+    // With spatial management of location of windows for mainWindow scene:
     private var mainWindow: some SwiftUI.Scene {
         WindowGroup(id: "main") {
             ProjectAwareEnvironmentView(windowManager: windowManager)
                 .environmentObject(windowManager)
+                .environmentObject(spatialManager) // ADD THIS LINE
         }
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
     }
-    
+
     /*
     private var launcherWindow: some SwiftUI.Scene {
         WindowGroup(id: "launcher") {
@@ -48,12 +50,15 @@ struct EntryPoint: App {
         .defaultSize(width: 800, height: 600)
     }
     */
+
     
+
     @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
         WindowGroup(for: NewWindowID.ID.self) { $id in
             if let id = id {
                 NewWindow(id: id)
+                
             }
         }
 
@@ -590,3 +595,12 @@ struct ProjectAwareEnvironmentView: View {
         }
     }
 }
+/*
+// ADD this new method:
+private func setupVisionOSSpatialIntegration() {
+    Task { @MainActor in
+        spatialManager.configure(with: windowManager)
+        print("✅ VisionOS: Spatial computing integration configured")
+    }
+}
+*/
