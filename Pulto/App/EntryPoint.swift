@@ -13,6 +13,7 @@ import RealityKit
 struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var spatialManager = VisionOSSpatialManager.shared
+
     // MARK: Scene graph
     @SceneBuilder
     var body: some SwiftUI.Scene {
@@ -27,18 +28,31 @@ struct EntryPoint: App {
 
     init() {
         setupProjectNotifications()
+        // Note: In visionOS versions prior to 2.0, the first WindowGroup typically opens automatically
+        // The main window should still appear on app launch due to being the first scene
     }
 
     // MARK: - 2-D Scenes
     // With spatial management of location of windows for mainWindow scene:
     private var mainWindow: some SwiftUI.Scene {
-        WindowGroup(id: "main") {
+        let windowGroup = WindowGroup(id: "main") {
             ProjectAwareEnvironmentView(windowManager: windowManager)
                 .environmentObject(windowManager)
-                .environmentObject(spatialManager) // ADD THIS LINE
+                .environmentObject(spatialManager)
+                .onAppear {
+                    // Ensure the window is marked as opened when it appears
+                    print("✅ Main EnvironmentView window opened")
+                }
         }
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
+
+        // Use defaultLaunchBehavior only if available (visionOS 2.0+)
+        if #available(visionOS 26, *) {
+            return windowGroup.defaultLaunchBehavior(.presented)
+        } else {
+            return windowGroup
+        }
     }
 
     /*
@@ -51,14 +65,14 @@ struct EntryPoint: App {
     }
     */
 
-    
+
 
     @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
         WindowGroup(for: NewWindowID.ID.self) { $id in
             if let id = id {
                 NewWindow(id: id)
-                
+
             }
         }
 
@@ -69,7 +83,7 @@ struct EntryPoint: App {
         .windowStyle(.plain)
         .defaultSize(width: 1_000, height: 700)
     }
-    
+
 
     // MARK: - visionOS-only Scenes
     #if os(visionOS)
@@ -150,7 +164,7 @@ struct EntryPoint: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
-        
+
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
             if
@@ -595,12 +609,3 @@ struct ProjectAwareEnvironmentView: View {
         }
     }
 }
-/*
-// ADD this new method:
-private func setupVisionOSSpatialIntegration() {
-    Task { @MainActor in
-        spatialManager.configure(with: windowManager)
-        print("✅ VisionOS: Spatial computing integration configured")
-    }
-}
-*/
