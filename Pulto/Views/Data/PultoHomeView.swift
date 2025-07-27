@@ -361,34 +361,7 @@ struct VisionOSButtonStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
-/*
-// MARK: - VisionOS Window Component
-struct VisionOSWindow<Content: View>: View {
-    let content: Content
-    let depth: CGFloat
-    
-    init(depth: CGFloat = 0, @ViewBuilder content: () -> Content) {
-        self.content = content()
-        self.depth = depth
-    }
-    
-    var body: some View {
-        content
-            .background {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
-                    }
-                    .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
-                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .scaleEffect(depth > 0 ? 1.0 + (depth * 0.02) : 1.0)
-    }
-}
-*/
+
 // MARK: - Main View
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
@@ -410,7 +383,7 @@ struct PultoHomeView: View {
 
                 ScrollView {
                     VStack(spacing: 24) {
-                        HeaderView(viewModel: viewModel, onLoginTap: {
+                        SimpleHeaderView(viewModel: viewModel, onLoginTap: {
                             closeAllSheets()
                             showAppleSignIn = true
                         }, onSettingsTap: {
@@ -426,20 +399,30 @@ struct PultoHomeView: View {
                                 closeAllSheets()
                                 openWindow(id: "main")
                             },
-                            closeAllSheets: closeAllSheets
+                            closeAllSheets: closeAllSheets,
+                            createNewProject: createNewProject
                         )
 
                         if viewModel.isLoadingProjects {
-                            VisionOSWindow {
-                                VStack(spacing: 12) {
-                                    ProgressView()
-                                        .scaleEffect(1.2)
-                                    Text("Loading projects...")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(24)
+                            VStack(spacing: 12) {
+                                ProgressView()
+                                    .scaleEffect(1.2)
+                                Text("Loading projects...")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
                             }
+                            .padding(24)
+                            .background {
+                                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                    .fill(.regularMaterial)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                                    }
+                                    .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
                         } else if !viewModel.recentProjects.isEmpty {
                             RecentProjectsSection(
                                 projects: viewModel.recentProjects,
@@ -502,7 +485,7 @@ struct PultoHomeView: View {
                 .frame(width: 600, height: 500)
             }
             .sheet(isPresented: $showLogin) {
-                LoginView(
+                SimpleLoginView(
                     isLoggedIn: $viewModel.isUserLoggedIn,
                     userName: $viewModel.userName
                 )
@@ -554,130 +537,143 @@ struct PultoHomeView: View {
             openWindow(id: "main")
         }
     }
+    
+    private func createNewProject() {
+        Task {
+            do {
+                // Generate a unique project name with timestamp
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyyMMdd_HHmmss"
+                let timestamp = formatter.string(from: Date())
+                let projectName = "New_Project_\(timestamp)"
+                
+                // Create the project with automatic notebook generation
+                if let notebookURL = windowManager.createNewProjectWithNotebook(projectName: projectName) {
+                    print("✅ Created new project with notebook: \(notebookURL.lastPathComponent)")
+                    
+                    // Create a new project object
+                    let newProject = Project(
+                        name: projectName.replacingOccurrences(of: "_", with: " "),
+                        type: "Data Visualization",
+                        icon: "chart.bar.doc.horizontal",
+                        color: .blue,
+                        lastModified: Date(),
+                        visualizations: 3, // Template windows created
+                        dataPoints: 0,
+                        collaborators: 1,
+                        filename: notebookURL.lastPathComponent
+                    )
+                    
+                    // Add to recent projects
+                    await viewModel.addRecentProject(newProject)
+                    
+                    // Set as selected project
+                    windowManager.setSelectedProject(newProject)
+                    
+                    print("✅ New project '\(newProject.name)' created successfully")
+                } else {
+                    print("❌ Failed to create notebook for new project")
+                    // Still continue to open the workspace even if notebook creation failed
+                }
+                
+                // Close all sheets and open the workspace
+                await MainActor.run {
+                    closeAllSheets()
+                    openWindow(id: "main")
+                }
+                
+            } catch {
+                print("❌ Error creating new project: \(error)")
+                // Still try to open the workspace
+                await MainActor.run {
+                    closeAllSheets()
+                    openWindow(id: "main")
+                }
+            }
+        }
+    }
 }
-/*
-// MARK: - Header View
-struct HeaderView: View {
+
+// MARK: - Simple Header View
+struct SimpleHeaderView: View {
     @ObservedObject var viewModel: PultoHomeViewModel
     let onLoginTap: () -> Void
     let onSettingsTap: () -> Void
 
     var body: some View {
-        VisionOSWindow(depth: 1) {
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Pulto")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+        HStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pulto")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-
-                    Text("Spatial Data Visualization Platform")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 16) {
-                    SettingsButton(onTap: onSettingsTap)
-
-                    UserProfileButton(
-                        userName: viewModel.userName,
-                        isLoggedIn: viewModel.isUserLoggedIn,
-                        onTap: onLoginTap
                     )
-                }
+
+                Text("Spatial Data Visualization Platform")
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
             }
-            .padding(24)
-        }
-    }
-}
 
-// MARK: - User Profile Button
-struct UserProfileButton: View {
-    let userName: String
-    let isLoggedIn: Bool
-    let onTap: () -> Void
-    @State private var isHovered = false
+            Spacer()
 
-    var body: some View {
-        Button(action: onTap) {
             HStack(spacing: 16) {
-                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
-                    .font(.title)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.blue)
+                Button {
+                    onSettingsTap()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.title)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.plain)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(isLoggedIn ? userName : "Sign In")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
+                Button(action: onLoginTap) {
+                    HStack(spacing: 16) {
+                        Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
+                            .font(.title)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.blue)
 
-                    if isLoggedIn {
-                        Text("View Profile")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(viewModel.isUserLoggedIn ? viewModel.userName : "Sign In")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+
+                            if viewModel.isUserLoggedIn {
+                                Text("View Profile")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
         }
-        .buttonStyle(.plain)
+        .padding(24)
         .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(.regularMaterial)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
                 }
+                .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
 }
 
-struct SettingsButton: View {
-    let onTap: () -> Void
-    @State private var isHovered = false
-    
-    var body: some View {
-        Button {
-            onTap()
-        } label: {
-            Image(systemName: "gearshape")
-                .font(.title)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
-                }
-        }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-    }
-}
- */
 // MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
     @Binding var showCreateProject: Bool
@@ -685,47 +681,57 @@ struct PrimaryActionsGrid: View {
     @Binding var showProjectBrowser: Bool
     let onOpenProject: () -> Void
     let closeAllSheets: () -> Void
+    let createNewProject: () -> Void
 
     var body: some View {
-        VisionOSWindow(depth: 2) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Get Started")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Get Started")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
 
-                HStack(spacing: 16) {
-                    HomeActionCard(
-                        title: "Create New",
-                        subtitle: "Start a visualization",
-                        icon: "plus.square.on.square",
-                        color: .blue,
-                        action: onOpenProject
-                    )
+            HStack(spacing: 16) {
+                HomeActionCard(
+                    title: "Create New",
+                    subtitle: "Start a visualization",
+                    icon: "plus.square.on.square",
+                    color: .blue,
+                    action: createNewProject
+                )
 
-                    HomeActionCard(
-                        title: "Open Project", 
-                        subtitle: "Browse existing projects",
-                        icon: "square.and.arrow.down.on.square",
-                        color: .purple
-                    ) {
-                        closeAllSheets()
-                        showProjectBrowser = true
-                    }
+                HomeActionCard(
+                    title: "Open Project", 
+                    subtitle: "Browse existing projects",
+                    icon: "square.and.arrow.down.on.square",
+                    color: .purple
+                ) {
+                    closeAllSheets()
+                    showProjectBrowser = true
+                }
 
-                    HomeActionCard(
-                        title: "Import",
-                        subtitle: "Import jupyter notebooks",
-                        icon: "folder.badge.gearshape",
-                        color: .green
-                    ) {
-                        closeAllSheets()
-                        showTemplates = true
-                    }
+                HomeActionCard(
+                    title: "Import",
+                    subtitle: "Import jupyter notebooks",
+                    icon: "folder.badge.gearshape",
+                    color: .green
+                ) {
+                    closeAllSheets()
+                    showTemplates = true
                 }
             }
-            .padding(24)
         }
+        .padding(24)
+        .background {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
 }
 
@@ -790,36 +796,45 @@ struct RecentProjectsSection: View {
     let onViewAll: () -> Void 
 
     var body: some View {
-        VisionOSWindow(depth: 1) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Recent Projects")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Recent Projects")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
 
-                    Spacer()
+                Spacer()
 
-                    Button("View All") {
-                        onViewAll() 
-                    }
-                    .buttonStyle(VisionOSButtonStyle(.secondary))
+                Button("View All") {
+                    onViewAll() 
                 }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 16) {
-                        ForEach(Array(projects.prefix(6))) { project in
-                            SpatialProjectCard(
-                                project: project,
-                                onTap: { onProjectTap(project) } 
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                }
+                .buttonStyle(VisionOSButtonStyle(.secondary))
             }
-            .padding(24)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 16) {
+                    ForEach(Array(projects.prefix(6))) { project in
+                        SpatialProjectCard(
+                            project: project,
+                            onTap: { onProjectTap(project) } 
+                        )
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
         }
+        .padding(24)
+        .background {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
 }
 
@@ -969,8 +984,8 @@ struct Project: Identifiable, Codable {
     }
 }
 
-// MARK: - Login View
-struct LoginView: View {
+// MARK: - Simple Login View
+struct SimpleLoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var userName: String
     @Environment(\.dismiss) private var dismiss
@@ -978,34 +993,43 @@ struct LoginView: View {
     @State private var showingAppleSignIn = false
 
     var body: some View {
-        VisionOSWindow {
-            VStack(spacing: 20) {
-                Text("Sign In to Pulto")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .padding(.top, 20)
+        VStack(spacing: 20) {
+            Text("Sign In to Pulto")
+                .font(.title)
+                .fontWeight(.bold)
+                .padding(.top, 20)
 
-                VStack(spacing: 16) {
-                    TextField("Username", text: $userName)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 280)
+            VStack(spacing: 16) {
+                TextField("Username", text: $userName)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 280)
 
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 280)
+                SecureField("Password", text: $password)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 280)
 
-                    Button("Sign In") {
-                        showingAppleSignIn = true
-                    }
-                    .buttonStyle(VisionOSButtonStyle(.primary))
-                    .controlSize(.large)
+                Button("Sign In") {
+                    showingAppleSignIn = true
                 }
-                .padding()
-                
-                Spacer()
+                .buttonStyle(VisionOSButtonStyle(.primary))
+                .controlSize(.large)
             }
-            .padding(24)
+            .padding()
+            
+            Spacer()
         }
+        .padding(24)
+        .background {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .sheet(isPresented: $showingAppleSignIn) {
             AppleSignInView()
                 .frame(width: 600, height: 700)

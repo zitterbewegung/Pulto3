@@ -930,14 +930,24 @@ class WindowTypeManager: ObservableObject {
             ],
             "language_info": [
                 "name": "python",
-                "version": "3.8.0"
+                "version": "3.8.0",
+                "mimetype": "text/x-python",
+                "codemirror_mode": [
+                    "name": "ipython",
+                    "version": 3
+                ],
+                "pygments_lexer": "ipython3",
+                "nbconvert_exporter": "python",
+                "file_extension": ".py"
             ],
             "visionos_export": [
                 "export_date": ISO8601DateFormatter().string(from: Date()),
                 "total_windows": windows.count,
                 "window_types": Array(Set(windows.values.map { $0.windowType.rawValue })),
                 "export_templates": Array(Set(windows.values.map { $0.state.exportTemplate.rawValue })),
-                "all_tags": Array(Set(windows.values.flatMap { $0.state.tags }))
+                "all_tags": Array(Set(windows.values.flatMap { $0.state.tags })),
+                "created_by": "Pulto Spatial Data Platform",
+                "platform_version": "1.0"
             ]
         ]
 
@@ -945,7 +955,7 @@ class WindowTypeManager: ObservableObject {
             "cells": cells,
             "metadata": metadata,
             "nbformat": 4,
-            "nbformat_minor": 4
+            "nbformat_minor": 5
         ]
     }
 
@@ -1149,6 +1159,117 @@ class WindowTypeManager: ObservableObject {
         }
     }
 
+    // MARK: - Project Creation with Notebook Generation
+    
+    func createNewProjectWithNotebook(projectName: String) -> URL? {
+        print("🚀 Creating new project: \(projectName)")
+        
+        // Create a basic project structure with template windows
+        createTemplateWindows()
+        
+        // Generate and save the notebook
+        let sanitizedName = projectName.replacingOccurrences(of: " ", with: "_")
+        let notebookURL = saveNotebookToFile(filename: sanitizedName)
+        
+        if let url = notebookURL {
+            print("📓 Notebook created at: \(url.path)")
+            print("📊 Project contains \(getAllWindows().count) template windows")
+        } else {
+            print("❌ Failed to create notebook file")
+        }
+        
+        return notebookURL
+    }
+    
+    private func createTemplateWindows() {
+        // Create a welcome markdown window
+        let welcomeWindowID = getNextWindowID()
+        let welcomeWindow = createWindow(.spatial, id: welcomeWindowID)
+        updateWindowTemplate(welcomeWindowID, template: .markdown)
+        updateWindowContent(welcomeWindowID, content: """
+        # Welcome to Your New Spatial Data Project!
+        
+        This is your new spatial data visualization project. You can:
+        
+        - Add charts and visualizations
+        - Import 3D models and point clouds
+        - Create interactive data tables
+        - Build spatial interfaces
+        
+        ## Getting Started
+        
+        1. Use the "+" button to add new windows
+        2. Import your data files
+        3. Create visualizations
+        4. Export to Jupyter notebook when ready
+        
+        Happy visualizing! 🚀
+        """)
+        addWindowTag(welcomeWindowID, tag: "welcome")
+        addWindowTag(welcomeWindowID, tag: "getting-started")
+        
+        // Create a sample chart window
+        let chartWindowID = getNextWindowID()
+        let chartWindow = createWindow(.charts, id: chartWindowID)
+        updateWindowTemplate(chartWindowID, template: .matplotlib)
+        updateWindowContent(chartWindowID, content: """
+        # Sample Chart
+        # This is a template chart to get you started
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        # Generate sample data
+        x = np.linspace(0, 4*np.pi, 100)
+        y = np.sin(x)
+        
+        # Create the plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(x, y, 'b-', linewidth=2, label='sin(x)')
+        plt.title('Welcome Chart - Getting Started')
+        plt.xlabel('X values')
+        plt.ylabel('Y values')
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.show()
+        
+        print("Welcome to your new project!")
+        """)
+        addWindowTag(chartWindowID, tag: "sample")
+        addWindowTag(chartWindowID, tag: "chart")
+        
+        // Create a data table template
+        let dataWindowID = getNextWindowID()
+        let dataWindow = createWindow(.column, id: dataWindowID)
+        updateWindowTemplate(dataWindowID, template: .pandas)
+        updateWindowContent(dataWindowID, content: """
+        # Sample Data Table
+        # This shows how to work with DataFrames
+        
+        import pandas as pd
+        import numpy as np
+        
+        # Create sample data
+        data = {
+            'Name': ['Project A', 'Project B', 'Project C', 'Project D'],
+            'Value': [23.5, 45.2, 67.8, 32.1],
+            'Category': ['Research', 'Development', 'Analysis', 'Modeling'],
+            'Date': pd.date_range('2024-01-01', periods=4, freq='M')
+        }
+        
+        df = pd.DataFrame(data)
+        
+        print("Sample DataFrame:")
+        print(df)
+        print("\\nDataFrame Info:")
+        print(df.info())
+        """)
+        addWindowTag(dataWindowID, tag: "sample")
+        addWindowTag(dataWindowID, tag: "data")
+        
+        print("✅ Created template windows for new project")
+    }
+
     // MARK: - 3-D Model payload --------------------------------------------
     @MainActor
     func updateWindowModel3D(_ id: Int,
@@ -1158,7 +1279,7 @@ class WindowTypeManager: ObservableObject {
         // 1. Fetch the window (dictionaries return an optional).
         guard var win = windows[id] else { return }
 
-        // 2. Respect the caller’s choice not to overwrite.
+        // 2. Respect the caller's choice not to overwrite.
         if win.state.model3DData != nil && !replaceExisting { return }
 
         // 3. Update the payload and meta-data.

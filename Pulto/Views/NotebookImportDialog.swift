@@ -37,7 +37,7 @@ struct NotebookImportDialog: View {
     @Binding var isPresented: Bool
     @ObservedObject var windowManager: WindowTypeManager
     @Environment(\.dismiss) var dismiss
-    @Environment(\.openWindow) private var openWindow  // Add this to open windows
+    @Environment(\.openWindow) private var openWindow
 
     @State private var availableNotebooks: [NotebookFile] = []
     @State private var selectedNotebook: NotebookFile?
