@@ -484,11 +484,12 @@ struct WorkspaceTab: View {
 struct CreateTab: View {
     let createWindow: (StandardWindowType) -> Void
     @State private var selectedType: StandardWindowType? = nil
+    @State private var showNotebookImport = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Create an new Visualization")
+                Text("Create a new Visualization")
                     .font(.title2)
                     .fontWeight(.semibold)
                 Text("Choose a visualization type for your data")
@@ -498,6 +499,12 @@ struct CreateTab: View {
                 LazyVGrid(columns: [
                     GridItem(.flexible()), GridItem(.flexible())
                 ], spacing: 16) {
+                    // Import Jupyter Notebook Card
+                    NotebookImportCard(
+                        isSelected: false,
+                        action: { showNotebookImport = true }
+                    )
+                    
                     ForEach(StandardWindowType.allCases, id: \.self) { type in
                         WindowTypeCard(
                             type:       type,
@@ -513,6 +520,10 @@ struct CreateTab: View {
                 }
             }
             .padding()
+        }
+        .sheet(isPresented: $showNotebookImport) {
+            NotebookImportDialog(isPresented: $showNotebookImport,
+                                 windowManager: WindowTypeManager.shared)
         }
     }
 }
@@ -823,21 +834,15 @@ struct EnvironmentActionCard: View {
 
 // MARK: - Standard Window Types
 enum StandardWindowType: String, CaseIterable {
-    case charts     = "Charts"
     case dataFrame  = "Data Table"
-    //case metrics    = "Metrics"
     case pointCloud = "Point Cloud"
-    //case spatial    = "Spatial"
     case model3d    = "3D Model"
 
     var displayName: String { rawValue }
 
     var icon: String {
         switch self {
-        case .charts:     return "chart.line.uptrend.xyaxis"
         case .dataFrame:  return "tablecells"
-        //case .metrics:    return "gauge"
-        //case .spatial:    return "rectangle.3.group"
         case .pointCloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
         }
@@ -845,10 +850,7 @@ enum StandardWindowType: String, CaseIterable {
 
     var iconColor: Color {
         switch self {
-        case .charts:     return .blue
         case .dataFrame:  return .green
-        //case .metrics:    return .orange
-        //case .spatial:    return .purple
         case .pointCloud: return .cyan
         case .model3d:    return .red
         }
@@ -856,10 +858,7 @@ enum StandardWindowType: String, CaseIterable {
 
     var description: String {
         switch self {
-        case .charts:     return "Charts and graphs"
         case .dataFrame:  return "Tabular data viewer"
-        //case .metrics:    return "Performance metrics"
-        //case .spatial:    return "3D Charts"
         case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
         }
@@ -867,10 +866,7 @@ enum StandardWindowType: String, CaseIterable {
 
     func toWindowType() -> WindowType {
         switch self {
-        case .charts:     return .charts
         case .dataFrame:  return .column
-        //case .metrics:    return .volume
-        //case .spatial:    return .spatial
         case .pointCloud: return .pointcloud
         case .model3d:    return .model3d
         }
@@ -1252,6 +1248,47 @@ struct WelcomeStep: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Notebook Import Card
+struct NotebookImportCard: View {
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 16) {
+                Image(systemName: "doc.badge.arrow.up")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.orange)
+
+                Text("Import Jupyter Notebook")
+                    .font(.headline)
+
+                Text("Import workspace from notebook")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .padding()
+        }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.orange.opacity(0.7), lineWidth: 3)
+            }
+        }
+        .scaleEffect(isSelected ? 0.98 : (isHovered ? 1.02 : 1.0))
+        .animation(.easeInOut(duration: 0.1),  value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { isHovered = $0 }
     }
 }
 

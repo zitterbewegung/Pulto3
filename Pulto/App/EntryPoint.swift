@@ -48,11 +48,11 @@ struct EntryPoint: App {
         .defaultSize(width: 1_400, height: 900)
 
         // Use defaultLaunchBehavior only if available (visionOS 2.0+)
-        if #available(visionOS 26, *) {
-            return windowGroup.defaultLaunchBehavior(.presented)
-        } else {
-            return windowGroup
-        }
+        //if #available(visionOS 2, *) {
+        //    return windowGroup.defaultLaunchBehavior(.presented)
+        //} else {
+        return windowGroup
+        //}
     }
 
     /*
