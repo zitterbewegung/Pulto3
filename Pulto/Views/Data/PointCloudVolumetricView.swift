@@ -158,11 +158,11 @@ struct PointCloudVolumetricView: View {
         .onAppear {
             model.colorMode = colorMode
         }
-        .onChange(of: colorMode) { newValue in
+        .onChange(of: colorMode) { _, newValue in
             model.colorMode = newValue
             model.needsUpdate = true
         }
-        .onChange(of: pointSize) { newValue in
+        .onChange(of: pointSize) { _, newValue in
             model.pointSize = newValue
             model.needsUpdate = true
         }

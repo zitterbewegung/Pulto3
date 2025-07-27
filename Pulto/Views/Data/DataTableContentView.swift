@@ -936,7 +936,7 @@ struct DataTableContentView: View {
                     return
                 }
 
-                guard let content = String(data: data, encoding: .utf8) else {
+                guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                     importError = "Failed to decode CSV data"
                     return
                 }
@@ -983,7 +983,7 @@ struct DataTableContentView: View {
                     let importedData = try convertJSONToDataFrame(json: jsonObject)
                     onDataImported(importedData)
                     dismiss()
-                } else if let content = String(data: data, encoding: .utf8) {
+                } else if let content = try? String(contentsOf: url, encoding: .utf8) {
                     // Try to parse as direct CSV
                     let importedData = try parseDelimitedText(content, delimiter: customDelimiter, hasHeaders: hasHeaders)
                     onDataImported(importedData)
@@ -1078,24 +1078,27 @@ struct DataTableContentView: View {
                     }
                     defer { url.stopAccessingSecurityScopedResource() }
 
-                    let content = try String(contentsOf: url)
                     let fileExtension = url.pathExtension.lowercased()
 
                     let importedData: DataFrameData
 
                     switch fileExtension {
                     case "csv":
-                        importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
+                        importedData = try parseCSVContent(url)
                     case "tsv", "txt":
-                        importedData = try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+                        importedData = try parseTSVContent(url)
                     case "json":
-                        importedData = try parseJSONData(content)
+                        importedData = try parseJSONContent(url)
                     default:
                         // Try to auto-detect delimiter for unknown extensions
-                        if content.contains(",") {
-                            importedData = try parseDelimitedText(content, delimiter: ",", hasHeaders: true)
-                        } else if content.contains("\t") {
-                            importedData = try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+                        if let content = try? String(contentsOf: url, encoding: .utf8) {
+                            if content.contains(",") {
+                                importedData = try parseCSVContent(url)
+                            } else if content.contains("\t") {
+                                importedData = try parseTSVContent(url)
+                            } else {
+                                throw ImportError.invalidFormat
+                            }
                         } else {
                             throw ImportError.invalidFormat
                         }
@@ -1109,6 +1112,70 @@ struct DataTableContentView: View {
 
             case .failure(let error):
                 importError = "Import failed: \(error.localizedDescription)"
+            }
+        }
+
+        private func parseCSVContent(_ url: URL) throws -> DataFrameData {
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+                throw ImportError.invalidFormat
+            }
+            guard let csvData = CSVParser.parse(content) else { return try parseDelimitedText(content, delimiter: ",", hasHeaders: true) }
+            let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
+                let (index, type) = item
+                if index < csvData.headers.count {
+                    switch type {
+                    case .numeric:
+                        result[csvData.headers[index]] = "float"
+                    case .categorical:
+                        result[csvData.headers[index]] = "string"
+                    case .date:
+                        result[csvData.headers[index]] = "string"
+                    case .unknown:
+                        result[csvData.headers[index]] = "string"
+                    }
+                }
+            }
+
+            return DataFrameData(
+                columns: csvData.headers,
+                rows: csvData.rows,
+                dtypes: dtypes
+            )
+        }
+
+        private func parseTSVContent(_ url: URL) throws -> DataFrameData {
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+                throw ImportError.invalidFormat
+            }
+            return try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+        }
+
+        private func parseJSONContent(_ url: URL) throws -> DataFrameData {
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+                throw DataImportError.invalidFormat
+            }
+            guard let data = content.data(using: .utf8) else {
+                throw DataImportError.invalidFormat
+            }
+
+            let json = try JSONSerialization.jsonObject(with: data)
+
+            if let array = json as? [[String: Any]] {
+                let columns = Array(Set(array.flatMap { $0.keys })).sorted()
+                let rows = array.map { object in
+                    columns.map { column in
+                        if let value = object[column] {
+                            return String(describing: value)
+                        } else {
+                            return ""
+                        }
+                    }
+                }
+
+                let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
+                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
+            } else {
+                throw DataImportError.invalidFormat
             }
         }
 
@@ -1138,32 +1205,6 @@ struct DataTableContentView: View {
             let dtypes = autoDetectDataTypes(columns: columns, rows: dataRows)
 
             return DataFrameData(columns: columns, rows: dataRows, dtypes: dtypes)
-        }
-
-        private func parseJSONData(_ content: String) throws -> DataFrameData {
-            guard let data = content.data(using: .utf8) else {
-                throw ImportError.invalidFormat
-            }
-
-            let json = try JSONSerialization.jsonObject(with: data)
-
-            if let array = json as? [[String: Any]] {
-                let columns = Array(Set(array.flatMap { $0.keys })).sorted()
-                let rows = array.map { object in
-                    columns.map { column in
-                        if let value = object[column] {
-                            return String(describing: value)
-                        } else {
-                            return ""
-                        }
-                    }
-                }
-
-                let dtypes = autoDetectDataTypes(columns: columns, rows: rows)
-                return DataFrameData(columns: columns, rows: rows, dtypes: dtypes)
-            } else {
-                throw DataImportError.invalidFormat
-            }
         }
 
         private func autoDetectDataTypes(columns: [String], rows: [[String]]) -> [String: String] {
@@ -1706,21 +1747,27 @@ struct DataTableContentView: View {
             }
 
             do {
-                let content = try String(contentsOf: url)
+                // Ensure we can access the file
+                guard url.startAccessingSecurityScopedResource() else {
+                    importError = "Cannot access the selected file"
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+
                 let fileExtension = url.pathExtension.lowercased()
 
                 let importedData: DataFrameData
 
                 switch fileExtension {
                 case "csv":
-                    importedData = try parseCSVContent(content)
+                    importedData = try parseCSVContent(url)
                 case "tsv", "txt":
-                    importedData = try parseTSVContent(content)
+                    importedData = try parseTSVContent(url)
                 case "json":
-                    importedData = try parseJSONContent(content)
+                    importedData = try parseJSONContent(url)
                 default:
                     // Try CSV as default
-                    importedData = try parseCSVContent(content)
+                    importedData = try parseCSVContent(url)
                 }
 
                 sampleData = importedData
@@ -1738,7 +1785,11 @@ struct DataTableContentView: View {
         }
     }
 
-    private func parseCSVContent(_ content: String) throws -> DataFrameData {
+    private func parseCSVContent(_ url: URL) throws -> DataFrameData {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            throw DataImportError.invalidFormat
+        }
+        
         if let csvData = CSVParser.parse(content) {
             let dtypes = csvData.columnTypes.enumerated().reduce(into: [String: String]()) { result, item in
                 let (index, type) = item
@@ -1767,16 +1818,16 @@ struct DataTableContentView: View {
         }
     }
 
-    private func parseTSVContent(_ content: String) throws -> DataFrameData {
-        return try parseDelimitedText(content, delimiter: "\t", hasHeaders: true)
+    private func parseTSVContent(_ url: URL) throws -> DataFrameData {
+        return try parseDelimitedText(try String(contentsOf: url, encoding: .utf8), delimiter: "\t", hasHeaders: true)
     }
 
-    private func parseJSONContent(_ content: String) throws -> DataFrameData {
-        guard let data = content.data(using: .utf8) else {
+    private func parseJSONContent(_ url: URL) throws -> DataFrameData {
+        guard let data = try? String(contentsOf: url, encoding: .utf8) else {
             throw DataImportError.invalidFormat
         }
 
-        let json = try JSONSerialization.jsonObject(with: data)
+        let json = try JSONSerialization.jsonObject(with: data.data(using: .utf8)!)
 
         if let array = json as? [[String: Any]] {
             let columns = Array(Set(array.flatMap { $0.keys })).sorted()
