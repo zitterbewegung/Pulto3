@@ -558,12 +558,9 @@ struct CreateAndDataTab: View {
                 // Project Creation Section
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Create Project")
+                        Text("Import or Create New Project")
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Text("Start a new project or import existing work")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
                     }
 
                     // Project Actions - 3 column grid
@@ -580,29 +577,6 @@ struct CreateAndDataTab: View {
                             icon:  "doc.text.fill", color: .red) {
                             sheetManager.presentSheet(.templateGallery)
                         }
-                        NotebookImportActionCard(
-                            action: { sheetManager.presentSheet(.notebookImport) }
-                        )
-                    }
-                }
-
-                Divider()
-
-                // Import Data Section
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Import Data")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Text("Import your data files to create visualizations")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    // Import Actions - single button in full width
-                    LazyVGrid(columns: [
-                        GridItem(.flexible())
-                    ], spacing: 16) {
                         EnvironmentActionCard(
                             title: "Import File", subtitle: "CSV, JSON, Images, 3D",
                             icon:  "doc.badge.plus", color: .blue) {
@@ -616,12 +590,9 @@ struct CreateAndDataTab: View {
                 // Create Visualizations Section
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Create Visualizations")
+                        Text("Create Visualizations from existing files.")
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Text("Create data views and visualizations")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
                     }
 
                     // Visualization Actions - 3 column grid for data view types
@@ -1331,44 +1302,6 @@ struct NotebookImportCard: View {
         .onHover { isHovered = $0 }
     }
 }
-
-// MARK: - Notebook Import Action Card
-struct NotebookImportActionCard: View {
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 16) {
-                Image(systemName: "doc.badge.arrow.up")
-                    .font(.system(size: 32))
-                    .foregroundColor(.orange)
-
-                VStack(spacing: 4) {
-                    Text("Import Notebook")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    Text("Jupyter files")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 140)
-            .padding()
-        }
-        .buttonStyle(.plain)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { isHovered = $0 }
-    }
-}
-
 
 // MARK: - Previews
 struct EnvironmentView_Previews: PreviewProvider {
