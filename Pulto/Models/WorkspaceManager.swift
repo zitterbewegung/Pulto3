@@ -187,6 +187,37 @@ class WorkspaceManager: ObservableObject {
         }.sorted { $0.modifiedDate > $1.modifiedDate }
     }
     
+    /// Refreshes metadata for all workspaces by re-reading their files
+    /// This fixes the "0 views" issue for existing workspaces  
+    func refreshWorkspaceMetadata() {
+        print("🔄 WorkspaceManager: Refreshing workspace metadata...")
+        
+        for i in 0..<workspaces.count {
+            if let fileURL = workspaces[i].fileURL,
+               let refreshedMetadata = createMetadataFromFile(fileURL) {
+                // Preserve important user-set fields
+                var updatedMetadata = refreshedMetadata
+                updatedMetadata.id = workspaces[i].id
+                updatedMetadata.name = workspaces[i].name
+                updatedMetadata.description = workspaces[i].description
+                updatedMetadata.category = workspaces[i].category
+                updatedMetadata.isTemplate = workspaces[i].isTemplate
+                updatedMetadata.tags = workspaces[i].tags
+                
+                let oldCount = workspaces[i].totalWindows
+                workspaces[i] = updatedMetadata
+                
+                print("✅ WorkspaceManager: Updated '\(updatedMetadata.name)' - \(oldCount) → \(updatedMetadata.totalWindows) windows")
+            } else {
+                print("❌ WorkspaceManager: Failed to refresh '\(workspaces[i].name)'")
+            }
+        }
+        
+        saveWorkspacesMetadata()
+        objectWillChange.send()
+        print("🎉 WorkspaceManager: Metadata refresh complete")
+    }
+    
     // MARK: - Workspace Creation and Management
     
     func createNewWorkspace(
@@ -659,6 +690,43 @@ class WorkspaceManager: ObservableObject {
             let createdDate = attributes[.creationDate] as? Date ?? Date()
             let modifiedDate = attributes[.modificationDate] as? Date ?? Date()
             
+            // Count cells and determine window count
+            var windowCount = 0
+            var windowTypes: [String] = []
+            var isVisionOSNotebook = false
+            
+            if let cells = json["cells"] as? [[String: Any]] {
+                for cell in cells {
+                    if let metadata = cell["metadata"] as? [String: Any],
+                       let windowType = metadata["window_type"] as? String {
+                        // This is a visionOS notebook with window metadata
+                        windowCount += 1
+                        isVisionOSNotebook = true
+                        if !windowTypes.contains(windowType) {
+                            windowTypes.append(windowType)
+                        }
+                    } else if !isVisionOSNotebook {
+                        // For regular Jupyter notebooks, count non-empty cells as potential windows
+                        if let source = cell["source"] as? [String] {
+                            let content = source.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !content.isEmpty {
+                                windowCount += 1
+                            }
+                        } else if let source = cell["source"] as? String {
+                            let content = source.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !content.isEmpty {
+                                windowCount += 1
+                            }
+                        }
+                    }
+                }
+                
+                // If no visionOS cells were found but we have regular cells, treat as importable notebook
+                if !isVisionOSNotebook && windowCount > 0 {
+                    windowTypes = ["notebook"] // Generic type for regular notebooks
+                }
+            }
+            
             // Check for workspace metadata in the notebook
             if let notebookMetadata = json["metadata"] as? [String: Any],
                let workspaceMetadata = notebookMetadata["workspace_metadata"] as? [String: Any] {
@@ -668,7 +736,10 @@ class WorkspaceManager: ObservableObject {
                     name: workspaceMetadata["name"] as? String ?? fileName,
                     description: workspaceMetadata["description"] as? String ?? "",
                     category: WorkspaceCategory(rawValue: workspaceMetadata["category"] as? String ?? "Custom") ?? .custom,
-                    isTemplate: workspaceMetadata["is_template"] as? Bool ?? false
+                    isTemplate: workspaceMetadata["is_template"] as? Bool ?? false,
+                    totalWindows: windowCount, // Use actual count from cells
+                    windowTypes: windowTypes,
+                    tags: workspaceMetadata["tags"] as? [String] ?? []
                 )
                 
                 if let idString = workspaceMetadata["id"] as? String,
@@ -682,22 +753,36 @@ class WorkspaceManager: ObservableObject {
                 
                 return metadata
             } else {
-                // Create basic metadata from VisionOS export info
+                // Create basic metadata from notebook analysis
+                let description = isVisionOSNotebook ? 
+                    "VisionOS spatial workspace" : 
+                    "Jupyter notebook (\(windowCount) cells)"
+                
                 var metadata = WorkspaceMetadata(
                     name: fileName,
-                    description: "Imported workspace",
-                    category: .custom,
-                    isTemplate: false
+                    description: description,
+                    category: isVisionOSNotebook ? .custom : .demo,
+                    isTemplate: false,
+                    totalWindows: windowCount,
+                    windowTypes: windowTypes,
+                    tags: isVisionOSNotebook ? ["visionos"] : ["jupyter", "notebook"]
                 )
                 
                 metadata.createdDate = createdDate
                 metadata.modifiedDate = modifiedDate
                 metadata.fileURL = fileURL
                 
+                // Try to get additional info from visionOS export metadata if available
                 if let notebookMetadata = json["metadata"] as? [String: Any],
                    let visionOSMetadata = notebookMetadata["visionos_export"] as? [String: Any] {
-                    metadata.totalWindows = visionOSMetadata["total_windows"] as? Int ?? 0
-                    metadata.windowTypes = visionOSMetadata["window_types"] as? [String] ?? []
+                    // Use the count from visionOS metadata if it's higher (backup)
+                    let visionOSWindowCount = visionOSMetadata["total_windows"] as? Int ?? 0
+                    metadata.totalWindows = max(windowCount, visionOSWindowCount)
+                    
+                    // Use visionOS window types if cell parsing didn't find any
+                    if windowTypes.isEmpty {
+                        metadata.windowTypes = visionOSMetadata["window_types"] as? [String] ?? []
+                    }
                 }
                 
                 return metadata

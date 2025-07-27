@@ -37,7 +37,7 @@ struct EntryPoint: App {
     // MARK: - 2-D Scenes
     // With spatial management of location of windows for mainWindow scene:
     private var mainWindow: some SwiftUI.Scene {
-        let windowGroup = WindowGroup(id: "main") {
+        WindowGroup(id: "main") {
             ProjectAwareEnvironmentView(windowManager: windowManager)
                 .environmentObject(windowManager)
                 .environmentObject(spatialManager)
@@ -60,13 +60,6 @@ struct EntryPoint: App {
         }
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
-        
-        // Use defaultLaunchBehavior to ensure window opens on app launch
-        if #available(visionOS 26.0, *) {
-            return windowGroup.defaultLaunchBehavior(.presented)
-        } else {
-            return windowGroup
-        }
     }
 
     /*

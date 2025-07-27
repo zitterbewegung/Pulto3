@@ -446,9 +446,20 @@ struct WorkspaceTab: View {
                             .fontWeight(.semibold)
                         Spacer()
                         if !workspaceManager.getCustomWorkspaces().isEmpty {
-                            Button("View All") { showWorkspaceDialog = true }
+                            HStack(spacing: 12) {
+                                Button("Refresh") {
+                                    workspaceManager.refreshWorkspaceMetadata()
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                                
+                                Button("View All") { 
+                                    showWorkspaceDialog = true 
+                                }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.blue)
+                            }
                         }
                     }
 
@@ -476,6 +487,13 @@ struct WorkspaceTab: View {
                 }
             }
             .padding()
+        }
+        .onAppear {
+            // Refresh metadata when workspace tab appears to fix "0 views" issue
+            if workspaceManager.getCustomWorkspaces().contains(where: { $0.totalWindows == 0 }) {
+                print("🔧 Detected workspaces with 0 views, refreshing metadata...")
+                workspaceManager.refreshWorkspaceMetadata()
+            }
         }
     }
 }
