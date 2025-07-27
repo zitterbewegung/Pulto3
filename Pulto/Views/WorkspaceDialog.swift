@@ -13,58 +13,19 @@ struct WorkspaceDialog: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
     @Environment(\.openWindow) private var openWindow
     
-    @State private var selectedTab: WorkspaceTab = .create
     @State private var workspaceName = ""
-    @State private var workspaceDescription = ""
     @State private var selectedCategory: WorkspaceCategory = .custom
-    @State private var workspaceTags: [String] = []
-    @State private var newTag = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
     @State private var isCreating = false
-    @State private var searchQuery = ""
-    @State private var selectedWorkspace: WorkspaceMetadata?
-    @State private var showingDeleteConfirmation = false
-    @State private var workspaceToDelete: WorkspaceMetadata?
-    
-    enum WorkspaceTab: String, CaseIterable {
-        case create = "Create"
-        case manage = "Manage" 
-        
-        var iconName: String {
-            switch self {
-            case .create: return "plus.circle"
-            case .manage: return "folder"
-            }
-        }
-    }
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Tab picker
-                Picker("Tab", selection: $selectedTab) {
-                    ForEach(WorkspaceTab.allCases, id: \.self) { tab in
-                        Label(tab.rawValue, systemImage: tab.iconName)
-                            .tag(tab)
-                    }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-                
-                Divider()
-                
-                // Tab content
-                TabView(selection: $selectedTab) {
-                    createWorkspaceView
-                        .tag(WorkspaceTab.create)
-                    
-                    manageWorkspacesView
-                        .tag(WorkspaceTab.manage)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                // Direct to create workspace view (no tabs)
+                createWorkspaceView
             }
-            .navigationTitle("Workspace Manager")
+            .navigationTitle("New Project")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -73,32 +34,18 @@ struct WorkspaceDialog: View {
                     }
                 }
                 
-                if selectedTab == .create {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Create") {
-                            createWorkspace()
-                        }
-                        .disabled(workspaceName.isEmpty || isCreating)
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Create") {
+                        createWorkspace()
                     }
+                    .disabled(workspaceName.isEmpty || isCreating)
                 }
             }
         }
-        .alert("Workspace Manager", isPresented: $showingAlert) {
+        .alert("New Project", isPresented: $showingAlert) {
             Button("OK") { }
         } message: {
             Text(alertMessage)
-        }
-        .confirmationDialog(
-            "Delete Workspace",
-            isPresented: $showingDeleteConfirmation,
-            presenting: workspaceToDelete
-        ) { workspace in
-            Button("Delete", role: .destructive) {
-                deleteWorkspace(workspace)
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: { workspace in
-            Text("Are you sure you want to delete '\(workspace.name)'? This action cannot be undone.")
         }
     }
     
@@ -115,7 +62,7 @@ struct WorkspaceDialog: View {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.8)
-                        Text("Creating workspace...")
+                        Text("Creating project...")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -135,7 +82,7 @@ struct WorkspaceDialog: View {
                     .foregroundStyle(.blue)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Create New Workspace")
+                    Text("Create New Project")
                         .font(.title2)
                         .fontWeight(.semibold)
                     
@@ -217,7 +164,7 @@ struct WorkspaceDialog: View {
     
     private var workspaceDetailsForm: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Workspace Details", systemImage: "info.circle")
+            Label("Project Details", systemImage: "info.circle")
                 .font(.headline)
             
             VStack(alignment: .leading, spacing: 12) {
@@ -226,18 +173,8 @@ struct WorkspaceDialog: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
                     
-                    TextField("Enter workspace name", text: $workspaceName)
+                    TextField("Enter project name", text: $workspaceName)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Description")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    TextField("Optional description", text: $workspaceDescription, axis: .vertical)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .lineLimit(3)
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
@@ -253,48 +190,6 @@ struct WorkspaceDialog: View {
                     }
                     .pickerStyle(MenuPickerStyle())
                 }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Tags")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    HStack {
-                        TextField("Add tag", text: $newTag)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .onSubmit {
-                                addTag()
-                            }
-                        
-                        Button("Add") {
-                            addTag()
-                        }
-                        .disabled(newTag.isEmpty)
-                    }
-                    
-                    if !workspaceTags.isEmpty {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 6) {
-                            ForEach(workspaceTags, id: \.self) { tag in
-                                HStack(spacing: 4) {
-                                    Text(tag)
-                                        .font(.caption)
-                                    
-                                    Button {
-                                        workspaceTags.removeAll { $0 == tag }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption2)
-                                    }
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(selectedCategory.color.opacity(0.3))
-                                .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
             }
             .padding()
             .background(Color.primary.opacity(0.08))
@@ -302,78 +197,7 @@ struct WorkspaceDialog: View {
         }
     }
     
-    // MARK: - Manage Workspaces View
-    
-    private var manageWorkspacesView: some View {
-        VStack(spacing: 0) {
-            // Search bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                
-                TextField("Search workspaces", text: $searchQuery)
-                    .textFieldStyle(PlainTextFieldStyle())
-                
-                if !searchQuery.isEmpty {
-                    Button {
-                        searchQuery = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding()
-            .background(Color.primary.opacity(0.08))
-            
-            // Workspace list
-            let workspaces = searchQuery.isEmpty ? 
-                workspaceManager.getCustomWorkspaces() : 
-                workspaceManager.searchWorkspaces(query: searchQuery)
-            
-            if workspaces.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 50))
-                        .foregroundStyle(.secondary)
-                    
-                    Text(searchQuery.isEmpty ? "No Custom Workspaces" : "No Results")
-                        .font(.headline)
-                    
-                    Text(searchQuery.isEmpty ? 
-                         "Create your first workspace to get started" :
-                         "Try a different search term")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-            } else {
-                List {
-                    ForEach(workspaces) { workspace in
-                        WorkspaceRowView(
-                            workspace: workspace,
-                            onLoad: { loadWorkspace(workspace) },
-                            onDuplicate: { duplicateWorkspace(workspace) },
-                            onDelete: { confirmDelete(workspace) }
-                        )
-                    }
-                }
-                .listStyle(PlainListStyle())
-            }
-        }
-    }
-    
     // MARK: - Helper Methods
-    
-    private func addTag() {
-        let trimmedTag = newTag.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedTag.isEmpty && !workspaceTags.contains(trimmedTag) {
-            workspaceTags.append(trimmedTag)
-            newTag = ""
-        }
-    }
     
     private func createWorkspace() {
         guard !workspaceName.isEmpty else { return }
@@ -384,81 +208,28 @@ struct WorkspaceDialog: View {
             do {
                 let workspace = try await workspaceManager.createNewWorkspace(
                     name: workspaceName,
-                    description: workspaceDescription,
+                    description: "", // Empty description
                     category: selectedCategory,
-                    tags: workspaceTags,
+                    tags: [], // Empty tags
                     windowManager: windowManager
                 )
                 
                 await MainActor.run {
                     isCreating = false
-                    alertMessage = "Workspace '\(workspace.name)' created successfully!"
+                    alertMessage = "Project '\(workspace.name)' created successfully!"
                     showingAlert = true
                     
                     // Reset form
                     workspaceName = ""
-                    workspaceDescription = ""
-                    workspaceTags = []
                     selectedCategory = .custom
                 }
             } catch {
                 await MainActor.run {
                     isCreating = false
-                    alertMessage = "Failed to create workspace: \(error.localizedDescription)"
+                    alertMessage = "Failed to create project: \(error.localizedDescription)"
                     showingAlert = true
                 }
             }
-        }
-    }
-    
-    private func loadWorkspace(_ workspace: WorkspaceMetadata) {
-        Task {
-            do {
-                let result = try await workspaceManager.loadWorkspace(
-                    workspace,
-                    into: windowManager,
-                    clearExisting: true
-                ) { windowID in
-                    openWindow(value: windowID)
-                }
-                
-                await MainActor.run {
-                    isPresented = false
-                    // Could show success message or result summary
-                }
-            } catch {
-                await MainActor.run {
-                    alertMessage = "Failed to load workspace: \(error.localizedDescription)"
-                    showingAlert = true
-                }
-            }
-        }
-    }
-    
-    private func duplicateWorkspace(_ workspace: WorkspaceMetadata) {
-        do {
-            let duplicatedWorkspace = try workspaceManager.duplicateWorkspace(workspace)
-            alertMessage = "Workspace duplicated as '\(duplicatedWorkspace.name)'"
-            showingAlert = true
-        } catch {
-            alertMessage = "Failed to duplicate workspace: \(error.localizedDescription)"
-            showingAlert = true
-        }
-    }
-    
-    private func confirmDelete(_ workspace: WorkspaceMetadata) {
-        workspaceToDelete = workspace
-        showingDeleteConfirmation = true
-    }
-    
-    private func deleteWorkspace(_ workspace: WorkspaceMetadata) {
-        do {
-            try workspaceManager.deleteWorkspace(workspace)
-            alertMessage = "Workspace '\(workspace.name)' deleted"
-            showingAlert = true
-        } catch {
-            alertMessage = "Failed to delete workspace: \(error.localizedDescription)"
-            showingAlert = true
         }
     }
     

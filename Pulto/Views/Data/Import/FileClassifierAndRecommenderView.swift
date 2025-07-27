@@ -152,6 +152,34 @@ struct FileClassifierAndRecommenderView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
+            // Supported Formats Section
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Supported Formats")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible()), GridItem(.flexible())
+                ], spacing: 16) {
+                    FormatCard(
+                        title: "Data Files", formats: ["CSV", "TSV", "JSON"],
+                        icon: "tablecells", color: .green
+                    )
+                    FormatCard(
+                        title: "3D Models", formats: ["USDZ", "USD", "OBJ"],
+                        icon: "cube", color: .red
+                    )
+                    FormatCard(
+                        title: "Point Clouds", formats: ["PLY", "XYZ", "HEIC"],
+                        icon: "photo", color: .green
+                    )
+                    FormatCard(
+                        title: "Code Files", formats: ["PY", "IPYNB"],
+                        icon: "chevron.left.forwardslash.chevron.right", color: .orange
+                    )
+                }
+            }
+
             Button(action: { isImporting = true }) {
                 Label("Import File from iCloud", systemImage: "icloud.and.arrow.down")
                     .font(.headline)
@@ -694,6 +722,30 @@ struct DataSummaryItem: View {
             Text(value)
                 .font(.headline)
         }
+    }
+}
+
+// MARK: - Format Card
+struct FormatCard: View {
+    let title:    String
+    let formats:  [String]
+    let icon:     String
+    let color:    Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon).foregroundStyle(color)
+                Text(title).font(.headline)
+            }
+            Text(formats.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
     }
 }
 

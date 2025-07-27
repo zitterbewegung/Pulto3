@@ -16,16 +16,14 @@ import RealityKit
 
 // MARK: - Project Tab Enum
 enum ProjectTab: String, CaseIterable {
+    case create    = "Create & Data"
     case workspace = "Workspace"
-    case create    = "Create"
-    case data      = "Data"
     case active    = "Active"
 
     var icon: String {
         switch self {
         case .workspace: return "folder.fill"
         case .create:    return "plus.circle.fill"
-        case .data:      return "square.and.arrow.down.fill"
         case .active:    return "rectangle.stack.fill"
         }
     }
@@ -148,7 +146,7 @@ struct EnvironmentView: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
 
     // UI State
-    @State private var selectedTab: ProjectTab = .workspace
+    @State private var selectedTab: ProjectTab = .create
     @StateObject private var viewModel         = PultoHomeViewModel()
 
     // Single sheet management - no more multiple @State variables!
@@ -163,21 +161,17 @@ struct EnvironmentView: View {
                 .padding(.top)
 
             TabView(selection: $selectedTab) {
+                Tab("Create & Data", systemImage: "plus.circle.fill", value: .create) {
+                    CreateAndDataTab(
+                        sheetManager: sheetManager,
+                        createWindow: createStandardWindow
+                    )
+                }
+
                 Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
                     WorkspaceTab(
                         sheetManager: sheetManager,
                         loadWorkspace: loadWorkspace
-                    )
-                }
-
-                Tab("Create", systemImage: "plus.circle.fill", value: .create) {
-                    CreateTab(createWindow: createStandardWindow)
-                }
-
-                Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
-                    DataTab(
-                        sheetManager: sheetManager,
-                        createBlankTable: createBlankDataTable
                     )
                 }
 
@@ -458,7 +452,7 @@ struct EnvironmentView: View {
                     openWindow(value: id)
                     windowManager.markWindowAsOpened(id)
                 }
-                selectedTab = .create
+                selectedTab = .workspace
             } catch { print("Failed to load workspace:", error) }
         }
     }
@@ -467,9 +461,6 @@ struct EnvironmentView: View {
     private func clearAllWindowsWithConfirmation() {
         windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
     }
-
-    @MainActor
-    private func createBlankDataTable() { createStandardWindow(.dataFrame) }
 
     private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
@@ -496,13 +487,8 @@ struct WorkspaceTab: View {
                         .fontWeight(.semibold)
 
                     LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
+                        GridItem(.flexible()), GridItem(.flexible())
                     ], spacing: 16) {
-                        EnvironmentActionCard(
-                            title: "New Project", subtitle: "Create from scratch",
-                            icon:  "plus.square.fill", color: .blue) {
-                            sheetManager.presentSheet(.workspaceDialog)
-                        }
                         EnvironmentActionCard(
                             title: "Templates", subtitle: "Pre-built projects",
                             icon:  "doc.text.fill", color: .red) {
@@ -524,23 +510,6 @@ struct WorkspaceTab: View {
                         Text("Recent Projects")
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Spacer()
-                        if !workspaceManager.getCustomWorkspaces().isEmpty {
-                            HStack(spacing: 12) {
-                                Button("Refresh") {
-                                    workspaceManager.refreshWorkspaceMetadata()
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.orange)
-                                .font(.caption)
-                                
-                                Button("View All") { 
-                                    sheetManager.presentSheet(.workspaceDialog)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.blue)
-                            }
-                        }
                     }
 
                     if workspaceManager.getCustomWorkspaces().isEmpty {
@@ -551,7 +520,7 @@ struct WorkspaceTab: View {
                             Text("No projects yet")
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
-                            Text("Create your first project to get started")
+                            Text("Create your first project from the Create & Data tab")
                                 .font(.subheadline)
                                 .foregroundStyle(.tertiary)
                         }
@@ -577,102 +546,100 @@ struct WorkspaceTab: View {
     }
 }
 
-// MARK: - Create Tab
-struct CreateTab: View {
+// MARK: - Create and Data Tab (Unified)
+struct CreateAndDataTab: View {
+    let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
     @State private var selectedType: StandardWindowType? = nil
-    @EnvironmentObject var sheetManager: SheetManager
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Create a new Visualization")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                Text("Choose a visualization type for your data")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 32) {
+                // Project Creation Section
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Create Project")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Text("Start a new project or import existing work")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
 
-                LazyVGrid(columns: [
-                    GridItem(.flexible()), GridItem(.flexible())
-                ], spacing: 16) {
-                    // Import Jupyter Notebook Card
-                    NotebookImportCard(
-                        isSelected: false,
-                        action: { sheetManager.presentSheet(.notebookImport) }
-                    )
-                    
-                    ForEach(StandardWindowType.allCases, id: \.self) { type in
-                        WindowTypeCard(
-                            type:       type,
-                            isSelected: selectedType == type
-                        ) {
-                            selectedType = type
-                            createWindow(type)
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                selectedType = nil
-                            }
+                    // Project Actions - 3 column grid
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
+                    ], spacing: 16) {
+                        EnvironmentActionCard(
+                            title: "New Project", subtitle: "Create from scratch",
+                            icon:  "plus.square.fill", color: .blue) {
+                            sheetManager.presentSheet(.workspaceDialog)
+                        }
+                        EnvironmentActionCard(
+                            title: "Templates", subtitle: "Pre-built projects",
+                            icon:  "doc.text.fill", color: .red) {
+                            sheetManager.presentSheet(.templateGallery)
+                        }
+                        NotebookImportActionCard(
+                            action: { sheetManager.presentSheet(.notebookImport) }
+                        )
+                    }
+                }
+
+                Divider()
+
+                // Import Data Section
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Import Data")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Text("Import your data files to create visualizations")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Import Actions - single button in full width
+                    LazyVGrid(columns: [
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        EnvironmentActionCard(
+                            title: "Import File", subtitle: "CSV, JSON, Images, 3D",
+                            icon:  "doc.badge.plus", color: .blue) {
+                            sheetManager.presentSheet(.classifierSheet)
                         }
                     }
                 }
-            }
-            .padding()
-        }
-    }
-}
 
-// MARK: - Data Tab (Updated)
-struct DataTab: View {
-    let sheetManager: SheetManager
-    let createBlankTable: () -> Void
+                Divider()
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Import Data")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                // Import Actions
-                HStack(spacing: 16) {
-                    EnvironmentActionCard(
-                        title: "Import File", subtitle: "CSV, JSON, Images, 3D",
-                        icon:  "doc.badge.plus", color: .blue) {
-                        sheetManager.presentSheet(.classifierSheet)
+                // Create Visualizations Section
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Create Visualizations")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Text("Create data views and visualizations")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
                     }
-                    EnvironmentActionCard(
-                        title: "Blank Table", subtitle: "Start with sample data",
-                        icon:  "tablecells", color: .yellow) {
-                        createBlankTable()
-                    }
-                }
 
-                Divider().padding(.vertical, 8)
-
-                // Supported Formats
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Supported Formats")
-                        .font(.headline)
-
+                    // Visualization Actions - 3 column grid for data view types
                     LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible())
+                        GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
                     ], spacing: 16) {
-                        FormatCard(
-                            title: "Data Files", formats: ["CSV", "TSV", "JSON"],
-                            icon: "tablecells", color: .green
-                        )
-                        FormatCard(
-                            title: "3D Models", formats: ["USDZ", "USD", "OBJ"],
-                            icon: "cube", color: .red
-                        )
-                        FormatCard(
-                            title: "Point Clouds", formats: ["PLY", "XYZ", "HEIC"],
-                            icon: "photo", color: .green
-                        )
-                        FormatCard(
-                            title: "Code Files", formats: ["PY", "IPYNB"],
-                            icon: "chevron.left.forwardslash.chevron.right", color: .orange
-                        )
+                        ForEach(StandardWindowType.allCases, id: \.self) { type in
+                            WindowTypeCard(
+                                type:       type,
+                                isSelected: selectedType == type
+                            ) {
+                                selectedType = type
+                                createWindow(type)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    selectedType = nil
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -898,24 +865,27 @@ struct EnvironmentActionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 Image(systemName: icon)
-                    .font(.system(size: 36))
-                    .foregroundStyle(color)
+                    .font(.system(size: 32))
+                    .foregroundColor(color)
 
                 VStack(spacing: 4) {
                     Text(title)
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
 
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-            .padding(.horizontal, 16)
+            .frame(height: 140)
+            .padding()
         }
         .buttonStyle(.plain)
         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
@@ -1114,29 +1084,6 @@ struct WindowRow: View {
                     .stroke(.orange.opacity(0.3), lineWidth: 1)
             }
         }
-    }
-}
-
-// MARK: - Format Card
-struct FormatCard: View {
-    let title:    String
-    let formats:  [String]
-    let icon:     String
-    let color:    Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon).foregroundStyle(color)
-                Text(title).font(.headline)
-            }
-            Text(formats.joined(separator: ", "))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -1380,6 +1327,43 @@ struct NotebookImportCard: View {
         }
         .scaleEffect(isSelected ? 0.98 : (isHovered ? 1.02 : 1.0))
         .animation(.easeInOut(duration: 0.1),  value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Notebook Import Action Card
+struct NotebookImportActionCard: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 16) {
+                Image(systemName: "doc.badge.arrow.up")
+                    .font(.system(size: 32))
+                    .foregroundColor(.orange)
+
+                VStack(spacing: 4) {
+                    Text("Import Notebook")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Jupyter files")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .padding()
+        }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+        .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
     }

@@ -414,10 +414,7 @@ struct PultoHomeView: View {
                         } else if !viewModel.recentProjects.isEmpty {
                             RecentProjectsSection(
                                 projects: viewModel.recentProjects,
-                                onProjectTap: openRecentProject,
-                                onViewAll: {
-                                    sheetManager.presentSheet(.projectBrowser)
-                                }
+                                onProjectTap: openRecentProject
                             )
                         }
                     }
@@ -765,7 +762,6 @@ struct HomeActionCard: View {
 struct RecentProjectsSection: View {
     let projects: [Project]
     let onProjectTap: (Project) -> Void 
-    let onViewAll: () -> Void 
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -776,11 +772,6 @@ struct RecentProjectsSection: View {
                     .foregroundStyle(.primary)
 
                 Spacer()
-
-                Button("View All") {
-                    onViewAll() 
-                }
-                .buttonStyle(VisionOSButtonStyle(.secondary))
             }
 
             ScrollView(.horizontal, showsIndicators: false) {

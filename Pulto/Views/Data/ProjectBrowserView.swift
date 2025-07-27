@@ -155,11 +155,6 @@ struct ProjectBrowserView: View {
                         openWindow(id: "main")
                     }
                     .buttonStyle(CurvedButtonStyle(variant: .secondary))
-                    
-                    Button("Refresh") {
-                        loadAvailableProjects()
-                    }
-                    .buttonStyle(CurvedButtonStyle(variant: .tertiary))
                 }
             }
             .padding(40)
@@ -180,12 +175,6 @@ struct ProjectBrowserView: View {
                         Text("\(availableProjects.count) project\(availableProjects.count == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        
-                        Button("Refresh") {
-                            loadAvailableProjects()
-                        }
-                        .buttonStyle(CurvedButtonStyle(variant: .tertiary))
-                        .controlSize(.small)
                     }
                 }
                 
