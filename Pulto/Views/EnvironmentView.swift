@@ -151,29 +151,22 @@ struct EnvironmentView: View {
     @State private var selectedTab: ProjectTab = .workspace
     @StateObject private var viewModel         = PultoHomeViewModel()
 
-    @State private var showWorkspaceDialog = false
-    @State private var showTemplateGallery = false
-    @State private var showNotebookImport  = false
-    @State private var showClassifierSheet = false
-    @State private var showSettings          = false
-    @State private var showAppleSignIn      = false
-    @State private var showWelcome           = false
+    // Single sheet management - no more multiple @State variables!
+    @StateObject private var sheetManager = SheetManager()
 
     var body: some View {
         VStack(spacing: 0) {
             HeaderView(viewModel: viewModel,
-                       onLoginTap:    { closeAllSheets(); showAppleSignIn = true },
-                       onSettingsTap: { closeAllSheets(); showSettings    = true })
+                       onLoginTap:    { sheetManager.presentSheet(.appleSignIn) },
+                       onSettingsTap: { sheetManager.presentSheet(.settings) })
                 .padding(.horizontal)
                 .padding(.top)
 
             TabView(selection: $selectedTab) {
                 Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
                     WorkspaceTab(
-                        showWorkspaceDialog: $showWorkspaceDialog,
-                        showTemplateGallery: $showTemplateGallery,
-                        showNotebookImport:  $showNotebookImport,
-                        loadWorkspace:       loadWorkspace
+                        sheetManager: sheetManager,
+                        loadWorkspace: loadWorkspace
                     )
                 }
 
@@ -183,7 +176,7 @@ struct EnvironmentView: View {
 
                 Tab("Data", systemImage: "square.and.arrow.down.fill", value: .data) {
                     DataTab(
-                        showClassifierSheet: $showClassifierSheet,
+                        sheetManager: sheetManager,
                         createBlankTable: createBlankDataTable
                     )
                 }
@@ -205,142 +198,231 @@ struct EnvironmentView: View {
             await viewModel.loadInitialData()
             checkFirstLaunch()
         }
-
-        // ══════════ Sheets ══════════
-        .sheet(isPresented: $showWorkspaceDialog) {
-            WorkspaceDialog(isPresented: $showWorkspaceDialog,
-                            windowManager: windowManager)
-        }
-        .sheet(isPresented: $showTemplateGallery) {
-            TemplateView()
-                .frame(minWidth: 800, minHeight: 600)
-        }
-        .sheet(isPresented: $showNotebookImport) {
-            NotebookImportDialog(isPresented: $showNotebookImport,
-                                 windowManager: windowManager)
-        }
-        .sheet(isPresented: $showClassifierSheet) {
-            FileClassifierAndRecommenderView()
-                .environmentObject(windowManager)
-        }
-        .sheet(isPresented: $showWelcome) {
-            WelcomeSheet(isPresented: $showWelcome)
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet(isPresented: $showSettings)
-        }
-        .sheet(isPresented: $showAppleSignIn) {
-            AppleSignInView(isPresented: $showAppleSignIn)
-                .frame(width: 700, height: 800)
+        .singleSheetManager(sheetManager) { sheetType, data in
+            AnyView(sheetContent(for: sheetType, data: data))
         }
     }
 
-    // MARK: - Settings Sheet
+    // MARK: - Single Sheet Content Builder
     @ViewBuilder
-    private func SettingsSheet(isPresented: Binding<Bool>) -> some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 12) {
-                    HStack {
-                        Image(systemName: "gear")
-                            .font(.title)
-                            .foregroundStyle(.gray)
-                        Text("Pulto Settings")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Spacer()
-                    }
-
-                    Text("Configure your Pulto experience")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding()
-                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 0))
-
-                // Settings Content
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // Auto-Save
-                        SettingsSection("Workspace") {
-                            Toggle("Auto-save after every window action", isOn: .constant(true))
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-
-                            Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.leading, 4)
-                        }
-
-                        // Jupyter
-                        SettingsSection("Jupyter Server") {
-                            HStack {
-                                Text("Default Server URL")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                Spacer()
-                            }
-
-                            TextField("Enter Jupyter server URL", text: .constant("http://localhost:8888"))
-                                .textFieldStyle(.roundedBorder)
-                                .font(.system(.body, design: .monospaced))
-
-                            Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        // General
-                        SettingsSection("General") {
-                            Toggle("Enable Notifications", isOn: .constant(true))
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-
-                            HStack {
-                                Text("Maximum Recent Projects")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                Spacer()
-                                Text("10")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .padding()
-                }
-
-                Spacer()
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { isPresented.wrappedValue = false }
-                        .buttonStyle(.borderedProminent)
-                }
+    private func sheetContent(for type: SheetType, data: AnyHashable?) -> some View {
+        Group {
+            switch type {
+            case .workspaceDialog:
+                WorkspaceDialogWrapper(windowManager: windowManager)
+                
+            case .templateGallery:
+                TemplateView()
+                    .frame(minWidth: 800, minHeight: 600)
+                    
+            case .notebookImport:
+                NotebookImportDialogWrapper(windowManager: windowManager)
+                
+            case .classifierSheet:
+                FileClassifierAndRecommenderView()
+                    .environmentObject(windowManager)
+                    
+            case .welcome:
+                WelcomeSheetWrapper()
+                
+            case .settings:
+                SettingsSheetWrapper()
+                
+            case .appleSignIn:
+                AppleSignInWrapper()
+                    .frame(width: 700, height: 800)
+                    
+            default:
+                EmptyView()
             }
         }
-        .frame(width: 700, height: 600)
+        .environmentObject(sheetManager)
+    }
+
+    // MARK: - Sheet Wrapper Views (these handle their own dismissal)
+    
+    struct WorkspaceDialogWrapper: View {
+        let windowManager: WindowTypeManager
+        @EnvironmentObject var sheetManager: SheetManager
+        
+        var body: some View {
+            WorkspaceDialog(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                ),
+                windowManager: windowManager
+            )
+        }
+    }
+    
+    struct NotebookImportDialogWrapper: View {
+        let windowManager: WindowTypeManager
+        @EnvironmentObject var sheetManager: SheetManager
+        
+        var body: some View {
+            NotebookImportDialog(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                ),
+                windowManager: windowManager
+            )
+        }
+    }
+    
+    struct WelcomeSheetWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+        
+        var body: some View {
+            WelcomeSheet(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                )
+            )
+        }
+    }
+    
+    struct AppleSignInWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+        
+        var body: some View {
+            AppleSignInView(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                )
+            )
+        }
+    }
+    
+    struct SettingsSheetWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+        
+        var body: some View {
+            NavigationView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "gear")
+                                .font(.title)
+                                .foregroundStyle(.gray)
+                            Text("Pulto Settings")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Spacer()
+                        }
+
+                        Text("Configure your Pulto experience")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 0))
+
+                    // Settings Content
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            // Auto-Save
+                            SettingsSection("Workspace") {
+                                Toggle("Auto-save after every window action", isOn: .constant(true))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 4)
+                            }
+
+                            // Example of navigating to another sheet from within a sheet
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Quick Actions")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                
+                                VStack(spacing: 8) {
+                                    SheetNavHelper(
+                                        "Import Notebook",
+                                        icon: "doc.badge.arrow.up",
+                                        targetSheet: .notebookImport
+                                    )
+                                    .buttonStyle(.bordered)
+                                    
+                                    SheetNavHelper(
+                                        "Sign In",
+                                        icon: "person.circle",
+                                        targetSheet: .appleSignIn
+                                    )
+                                    .buttonStyle(.bordered)
+                                }
+                            }
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                            // Jupyter
+                            SettingsSection("Jupyter Server") {
+                                HStack {
+                                    Text("Default Server URL")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+
+                                TextField("Enter Jupyter server URL", text: .constant("http://localhost:8888"))
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.body, design: .monospaced))
+
+                                Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            // General
+                            SettingsSection("General") {
+                                Toggle("Enable Notifications", isOn: .constant(true))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                HStack {
+                                    Text("Maximum Recent Projects")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                    Text("10")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+
+                    Spacer()
+                }
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { 
+                            sheetManager.dismissSheet()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .frame(width: 700, height: 600)
+        }
     }
 
     // MARK: - Helper Methods
-    @MainActor private func closeAllSheets() {
-        showWorkspaceDialog = false
-        showTemplateGallery = false
-        showNotebookImport  = false
-        showClassifierSheet = false
-        showSettings        = false
-        showAppleSignIn     = false
-        showWelcome         = false
-    }
 
     private func checkFirstLaunch() {
         if !UserDefaults.standard.bool(forKey: "HasLaunchedBefore") {
-            showWelcome = true
+            sheetManager.presentSheet(.welcome)
             UserDefaults.standard.set(true, forKey: "HasLaunchedBefore")
         }
     }
@@ -398,12 +480,10 @@ struct EnvironmentView: View {
     }
 }
 
-// MARK: - Workspace Tab
+// MARK: - Workspace Tab (Updated)
 struct WorkspaceTab: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @Binding var showWorkspaceDialog: Bool
-    @Binding var showTemplateGallery: Bool
-    @Binding var showNotebookImport: Bool
+    let sheetManager: SheetManager
     let loadWorkspace: (WorkspaceMetadata) -> Void
 
     var body: some View {
@@ -421,17 +501,17 @@ struct WorkspaceTab: View {
                         EnvironmentActionCard(
                             title: "New Project", subtitle: "Create from scratch",
                             icon:  "plus.square.fill", color: .blue) {
-                            showWorkspaceDialog = true
+                            sheetManager.presentSheet(.workspaceDialog)
                         }
                         EnvironmentActionCard(
                             title: "Templates", subtitle: "Pre-built projects",
                             icon:  "doc.text.fill", color: .red) {
-                            showTemplateGallery = true
+                            sheetManager.presentSheet(.templateGallery)
                         }
                         EnvironmentActionCard(
                             title: "Import Notebook", subtitle: "Jupyter files",
                             icon:  "square.and.arrow.down.fill", color: .green) {
-                            showNotebookImport = true
+                            sheetManager.presentSheet(.notebookImport)
                         }
                     }
                 }
@@ -455,7 +535,7 @@ struct WorkspaceTab: View {
                                 .font(.caption)
                                 
                                 Button("View All") { 
-                                    showWorkspaceDialog = true 
+                                    sheetManager.presentSheet(.workspaceDialog)
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.blue)
@@ -489,7 +569,6 @@ struct WorkspaceTab: View {
             .padding()
         }
         .onAppear {
-            // Refresh metadata when workspace tab appears to fix "0 views" issue
             if workspaceManager.getCustomWorkspaces().contains(where: { $0.totalWindows == 0 }) {
                 print("🔧 Detected workspaces with 0 views, refreshing metadata...")
                 workspaceManager.refreshWorkspaceMetadata()
@@ -502,7 +581,7 @@ struct WorkspaceTab: View {
 struct CreateTab: View {
     let createWindow: (StandardWindowType) -> Void
     @State private var selectedType: StandardWindowType? = nil
-    @State private var showNotebookImport = false
+    @EnvironmentObject var sheetManager: SheetManager
 
     var body: some View {
         ScrollView {
@@ -520,7 +599,7 @@ struct CreateTab: View {
                     // Import Jupyter Notebook Card
                     NotebookImportCard(
                         isSelected: false,
-                        action: { showNotebookImport = true }
+                        action: { sheetManager.presentSheet(.notebookImport) }
                     )
                     
                     ForEach(StandardWindowType.allCases, id: \.self) { type in
@@ -539,16 +618,12 @@ struct CreateTab: View {
             }
             .padding()
         }
-        .sheet(isPresented: $showNotebookImport) {
-            NotebookImportDialog(isPresented: $showNotebookImport,
-                                 windowManager: WindowTypeManager.shared)
-        }
     }
 }
 
-// MARK: - Data Tab
+// MARK: - Data Tab (Updated)
 struct DataTab: View {
-    @Binding var showClassifierSheet: Bool
+    let sheetManager: SheetManager
     let createBlankTable: () -> Void
 
     var body: some View {
@@ -563,7 +638,7 @@ struct DataTab: View {
                     EnvironmentActionCard(
                         title: "Import File", subtitle: "CSV, JSON, Images, 3D",
                         icon:  "doc.badge.plus", color: .blue) {
-                        showClassifierSheet = true
+                        sheetManager.presentSheet(.classifierSheet)
                     }
                     EnvironmentActionCard(
                         title: "Blank Table", subtitle: "Start with sample data",
@@ -1309,6 +1384,7 @@ struct NotebookImportCard: View {
         .onHover { isHovered = $0 }
     }
 }
+
 
 // MARK: - Previews
 struct EnvironmentView_Previews: PreviewProvider {

@@ -37,13 +37,11 @@ struct EnvironmentRestoreDialog: View {
 
     enum RestoreTab: String, CaseIterable {
         case workspaces = "My Workspaces"
-        case templates = "Templates"
         case files = "Browse Files"
 
         var iconName: String {
             switch self {
             case .workspaces: return "folder"
-            case .templates: return "doc.on.doc"
             case .files: return "folder.badge.questionmark"
             }
         }
@@ -68,10 +66,6 @@ struct EnvironmentRestoreDialog: View {
                 TabView(selection: $selectedTab) {
                     workspacesTabView
                         .tag(RestoreTab.workspaces)
-
-
-                    templatesTabView
-                        .tag(RestoreTab.templates)
 
                     filesTabView
                         .tag(RestoreTab.files)
@@ -118,14 +112,6 @@ struct EnvironmentRestoreDialog: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isRestoring)
                 }
-            case .templates:
-                if let workspace = selectedWorkspace {
-                    Button("Load Template") {
-                        restoreWorkspace(workspace)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isRestoring)
-                }
             case .files:
                 Button("Browse Files") {
                     showingFilePicker = true
@@ -149,25 +135,8 @@ struct EnvironmentRestoreDialog: View {
                 workspacesList(workspaces)
             }
 
-            if let workspace = selectedWorkspace, !workspace.isTemplate {
+            if let workspace = selectedWorkspace {
                 workspaceDetailsView(workspace)
-            }
-        }
-        .padding()
-    }
-
-    private var templatesTabView: some View {
-        VStack(spacing: 16) {
-            let templates = workspaceManager.getTemplates()
-
-            if templates.isEmpty {
-                emptyTemplatesView
-            } else {
-                templatesList(templates)
-            }
-
-            if let template = selectedWorkspace, template.isTemplate {
-                workspaceDetailsView(template)
             }
         }
         .padding()
@@ -243,21 +212,6 @@ struct EnvironmentRestoreDialog: View {
                         workspace: workspace,
                         isSelected: selectedWorkspace?.id == workspace.id,
                         onSelect: { selectedWorkspace = workspace }
-                    )
-                }
-            }
-        }
-        .frame(maxHeight: 300)
-    }
-
-    private func templatesList(_ templates: [WorkspaceMetadata]) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                ForEach(templates) { template in
-                    WorkspaceRestoreRowView(
-                        workspace: template,
-                        isSelected: selectedWorkspace?.id == template.id,
-                        onSelect: { selectedWorkspace = template }
                     )
                 }
             }
@@ -393,26 +347,6 @@ struct EnvironmentRestoreDialog: View {
                     .font(.headline)
 
                 Text("Create and save workspaces to access them here")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
-    }
-
-    private var emptyTemplatesView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "doc.on.doc")
-                .font(.system(size: 60))
-                .foregroundStyle(.secondary)
-
-            VStack(spacing: 8) {
-                Text("No Templates Available")
-                    .font(.headline)
-
-                Text("Templates will appear here when available")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

@@ -366,13 +366,7 @@ struct VisionOSButtonStyle: ButtonStyle {
 struct PultoHomeView: View {
     @StateObject private var viewModel = PultoHomeViewModel()
     @StateObject private var windowManager = WindowTypeManager.shared
-    @State private var showCreateProject = false
-    @State private var showSettings = false
-    @State private var showLogin = false
-    @State private var showTemplates = false
-    @State private var showImportDialog = false
-    @State private var showProjectBrowser = false
-    @State private var showAppleSignIn = false
+    @StateObject private var sheetManager = SheetManager()
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openWindow) private var openWindow
 
@@ -384,22 +378,16 @@ struct PultoHomeView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         SimpleHeaderView(viewModel: viewModel, onLoginTap: {
-                            closeAllSheets()
-                            showAppleSignIn = true
+                            sheetManager.dismissAllAndPresent(.appleSignIn)
                         }, onSettingsTap: {
-                            closeAllSheets()
-                            showSettings = true
+                            sheetManager.dismissAllAndPresent(.settings)
                         })
 
                         PrimaryActionsGrid(
-                            showCreateProject: $showCreateProject,
-                            showTemplates: $showTemplates,
-                            showProjectBrowser: $showProjectBrowser,
+                            sheetManager: sheetManager,
                             onOpenProject: {
-                                closeAllSheets()
                                 openWindow(id: "main")
                             },
-                            closeAllSheets: closeAllSheets,
                             createNewProject: createNewProject
                         )
 
@@ -428,8 +416,7 @@ struct PultoHomeView: View {
                                 projects: viewModel.recentProjects,
                                 onProjectTap: openRecentProject,
                                 onViewAll: {
-                                    closeAllSheets()
-                                    showProjectBrowser = true
+                                    sheetManager.presentSheet(.projectBrowser)
                                 }
                             )
                         }
@@ -444,82 +431,72 @@ struct PultoHomeView: View {
             .task {
                 await viewModel.loadInitialData()
             }
-            .sheet(isPresented: $showCreateProject) {
-                NavigationView {
-                    NotebookChartsView()
-                        .navigationTitle("Create New Project")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") {
-                                    showCreateProject = false
-                                }
-                            }
-                        }
-                }
-                .frame(width: 1200, height: 800)
-            }
-            .sheet(isPresented: $showSettings) {
-                NavigationView {
-                    VStack {
-                        Text("Settings")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        Text("Settings panel coming soon...")
-                            .foregroundStyle(.secondary)
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .navigationTitle("Settings")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                showSettings = false
-                            }
-                        }
-                    }
-                }
-                .frame(width: 600, height: 500)
-            }
-            .sheet(isPresented: $showLogin) {
-                SimpleLoginView(
-                    isLoggedIn: $viewModel.isUserLoggedIn,
-                    userName: $viewModel.userName
-                )
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Close") {
-                                showLogin = false
-                            }
-                        }
-                    }
-            }
-            .sheet(isPresented: $showAppleSignIn) {
-                AppleSignInView(isPresented: $showAppleSignIn)
-                    .frame(width: 700, height: 800)
-            }
-            .fullScreenCover(isPresented: $showTemplates) {
-                NotebookImportDialog(
-                    isPresented: $showTemplates,
-                    windowManager: windowManager
-                )
-            }
-            .sheet(isPresented: $showProjectBrowser) {
-                ProjectBrowserView(windowManager: windowManager)
+            .singleSheetManager(sheetManager) { sheetType, data in
+                AnyView(sheetContent(for: sheetType, data: data))
             }
         }
     }
 
-    private func closeAllSheets() {
-        showCreateProject = false
-        showSettings = false
-        showLogin = false
-        showTemplates = false
-        showAppleSignIn = false
-        showProjectBrowser = false
+    // MARK: - Sheet Content Builder
+    @ViewBuilder
+    private func sheetContent(for type: SheetType, data: AnyHashable?) -> some View {
+        switch type {
+        case .createProject:
+            NavigationView {
+                NotebookChartsView()
+                    .navigationTitle("Create New Project")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                sheetManager.dismissSheet()
+                            }
+                        }
+                    }
+            }
+            .frame(width: 1200, height: 800)
+            
+        case .settings:
+            NavigationView {
+                VStack {
+                    Text("Settings")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Settings panel coming soon...")
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            sheetManager.dismissSheet()
+                        }
+                    }
+                }
+            }
+            .frame(width: 600, height: 500)
+            
+        case .appleSignIn:
+            AppleSignInView(isPresented: sheetManager.binding(for: .appleSignIn))
+                .frame(width: 700, height: 800)
+                
+        case .templateGallery:
+            NotebookImportDialog(
+                isPresented: sheetManager.binding(for: .templateGallery),
+                windowManager: windowManager
+            )
+            
+        case .projectBrowser:
+            ProjectBrowserView(windowManager: windowManager)
+            
+        default:
+            EmptyView()
+        }
     }
 
     private func openRecentProject(_ project: Project) {
@@ -530,8 +507,8 @@ struct PultoHomeView: View {
             // Store the selected project in the window manager
             windowManager.setSelectedProject(project)
             
-            // Close all sheets
-            closeAllSheets()
+            // Dismiss all sheets
+            sheetManager.dismissAllSheets()
             
             // Open the main spatial workspace with the selected project
             openWindow(id: "main")
@@ -576,9 +553,9 @@ struct PultoHomeView: View {
                     // Still continue to open the workspace even if notebook creation failed
                 }
                 
-                // Close all sheets and open the workspace
+                // Dismiss all sheets and open the workspace
                 await MainActor.run {
-                    closeAllSheets()
+                    sheetManager.dismissSheet()
                     openWindow(id: "main")
                 }
                 
@@ -586,7 +563,7 @@ struct PultoHomeView: View {
                 print("❌ Error creating new project: \(error)")
                 // Still try to open the workspace
                 await MainActor.run {
-                    closeAllSheets()
+                    sheetManager.dismissSheet()
                     openWindow(id: "main")
                 }
             }
@@ -676,11 +653,8 @@ struct SimpleHeaderView: View {
 
 // MARK: - Primary Actions Grid
 struct PrimaryActionsGrid: View {
-    @Binding var showCreateProject: Bool
-    @Binding var showTemplates: Bool
-    @Binding var showProjectBrowser: Bool
+    let sheetManager: SheetManager
     let onOpenProject: () -> Void
-    let closeAllSheets: () -> Void
     let createNewProject: () -> Void
 
     var body: some View {
@@ -705,8 +679,7 @@ struct PrimaryActionsGrid: View {
                     icon: "square.and.arrow.down.on.square",
                     color: .purple
                 ) {
-                    closeAllSheets()
-                    showProjectBrowser = true
+                    onOpenProject()
                 }
 
                 HomeActionCard(
@@ -715,8 +688,7 @@ struct PrimaryActionsGrid: View {
                     icon: "folder.badge.gearshape",
                     color: .green
                 ) {
-                    closeAllSheets()
-                    showTemplates = true
+                    sheetManager.dismissAllAndPresent(.templateGallery)
                 }
             }
         }

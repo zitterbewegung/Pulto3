@@ -30,13 +30,11 @@ struct WorkspaceDialog: View {
     enum WorkspaceTab: String, CaseIterable {
         case create = "Create"
         case manage = "Manage" 
-        case templates = "Templates"
         
         var iconName: String {
             switch self {
             case .create: return "plus.circle"
             case .manage: return "folder"
-            case .templates: return "doc.on.doc"
             }
         }
     }
@@ -63,9 +61,6 @@ struct WorkspaceDialog: View {
                     
                     manageWorkspacesView
                         .tag(WorkspaceTab.manage)
-                    
-                    templatesView
-                        .tag(WorkspaceTab.templates)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             }
@@ -370,42 +365,6 @@ struct WorkspaceDialog: View {
         }
     }
     
-    // MARK: - Templates View
-    
-    private var templatesView: some View {
-        VStack(spacing: 0) {
-            let templates = workspaceManager.getTemplates()
-            
-            if templates.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 50))
-                        .foregroundStyle(.secondary)
-                    
-                    Text("No Templates Available")
-                        .font(.headline)
-                    
-                    Text("Templates will appear here when available")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-            } else {
-                List {
-                    ForEach(templates) { template in
-                        TemplateRowView(
-                            template: template,
-                            onLoad: { loadWorkspace(template) }
-                        )
-                    }
-                }
-                .listStyle(PlainListStyle())
-            }
-        }
-    }
-    
     // MARK: - Helper Methods
     
     private func addTag() {
@@ -612,45 +571,6 @@ struct WorkspaceRowView: View {
         .padding()
         .background(Color.primary.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct TemplateRowView: View {
-    let template: WorkspaceMetadata
-    let onLoad: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(template.name)
-                    .font(.headline)
-                
-                Text(template.description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                
-                HStack(spacing: 12) {
-                    Label("\(template.totalWindows) windows", systemImage: "rectangle.3.group")
-                        .font(.caption)
-                    
-                    if !template.windowTypes.isEmpty {
-                        Text(template.windowTypes.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            Button("Load") {
-                onLoad()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-        }
-        .padding()
     }
 }
 
