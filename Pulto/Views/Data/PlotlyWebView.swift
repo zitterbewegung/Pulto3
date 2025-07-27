@@ -17,7 +17,11 @@ struct PlotlyWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         // Configure the WKWebView with JavaScript enabled
         let config = WKWebViewConfiguration()
-        config.preferences.javaScriptEnabled = true
+        
+        // Use the new API for enabling JavaScript content
+        let preferences = WKWebpagePreferences()
+        preferences.allowsContentJavaScript = true
+        config.defaultWebpagePreferences = preferences
         
         let webView = WKWebView(frame: .zero, configuration: config)
         return webView
@@ -68,4 +72,3 @@ struct PlotlyView: View {
 #Preview {
     PlotlyView()
 }
-

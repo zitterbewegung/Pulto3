@@ -675,7 +675,6 @@ struct WindowState: Codable, Hashable {
     }
 }
 
-
 struct DataFrameData: Codable, Hashable {
     var columns: [String]
     var rows: [[String]]
@@ -1586,7 +1585,7 @@ struct NewWindow: View {
                                             }
 
                                             VStack {
-                                                Text(model3D.modelType)
+                                                 Text(model3D.modelType)
                                                     .font(.title)
                                                     .fontWeight(.semibold)
                                                 Text("Type")

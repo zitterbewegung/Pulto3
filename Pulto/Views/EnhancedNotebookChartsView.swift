@@ -722,6 +722,7 @@ struct NotebookMetadata {
     let windowCount: Int
     let createdDate: Date
 }
+
 // Simple preview for empty state
 #Preview("Empty State") {
     NavigationSplitView {
@@ -760,5 +761,4 @@ struct NotebookMetadata {
         .background(.ultraThinMaterial)
         .navigationTitle("Spatial Notebook")
     }
-    .previewDisplayName("Empty State")
 }

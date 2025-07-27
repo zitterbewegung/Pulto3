@@ -56,6 +56,12 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
+        
+        // NEW: Clean up entities when window closes
+        Task { @MainActor in
+            EntityLifecycleManager.shared.cleanupWindow(id)
+        }
+        
         objectWillChange.send()
     }
 
@@ -66,6 +72,10 @@ class WindowTypeManager: ObservableObject {
     func cleanupClosedWindows() {
         let windowsToRemove = windows.keys.filter { !openWindowIDs.contains($0) }
         for windowID in windowsToRemove {
+            // Clean up entities before removing window data
+            Task { @MainActor in
+                EntityLifecycleManager.shared.cleanupWindow(windowID)
+            }
             windows.removeValue(forKey: windowID)
         }
         objectWillChange.send()
@@ -506,6 +516,11 @@ class WindowTypeManager: ObservableObject {
     }
 
     func clearAllWindows() {
+        // Clean up all entities before clearing windows
+        Task { @MainActor in
+            EntityLifecycleManager.shared.cleanupAll()
+        }
+        
         windows.removeAll()
         openWindowIDs.removeAll()
         objectWillChange.send()
@@ -900,6 +915,11 @@ class WindowTypeManager: ObservableObject {
     }
 
     func removeWindow(_ id: Int) {
+        // Clean up entities before removing window
+        Task { @MainActor in
+            EntityLifecycleManager.shared.cleanupWindow(id)
+        }
+        
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
     }

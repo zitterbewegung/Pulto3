@@ -77,7 +77,7 @@ struct VolumetricModelView: View {
         .onAppear {
             loadModel()
         }
-        .onChange(of: windowID) { newID in
+        .onChange(of: windowID) { _, newID in
             loadModel()
         }
         .task {
@@ -352,7 +352,7 @@ struct VolumetricModelView: View {
 
     // MARK: - Gesture Handlers
     private func handleModelDrag(_ value: DragGesture.Value) {
-        guard let entity = modelEntity else { return }
+        guard modelEntity != nil else { return }
 
         // Convert 2D drag to 3D rotation
         let rotationX = Float(value.translation.height) * 0.01

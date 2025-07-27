@@ -417,7 +417,7 @@ struct TemplateView: View {
         // Create sample template windows based on template.ipynb
         templateWindows = createSampleTemplateWindows()
         
-        if let firstWindow = templateWindows.first {
+        if templateWindows.first != nil {
             selectedCellIndex = 0
         }
         
@@ -634,7 +634,7 @@ struct TemplateView: View {
         }
         
         // Create the window with full configuration
-        let newWindow = windowManager.createWindow(windowType, id: window.windowId, position: window.position)
+        _ = windowManager.createWindow(windowType, id: window.windowId, position: window.position)
         
         // Update the window state after creation
         windowManager.updateWindowState(window.windowId, state: state)

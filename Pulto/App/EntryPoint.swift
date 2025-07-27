@@ -13,6 +13,8 @@ import RealityKit
 struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var spatialManager = VisionOSSpatialManager.shared
+    @StateObject private var entityManager = EntityLifecycleManager.shared
+    @Environment(\.openWindow) private var openWindow
 
     // MARK: Scene graph
     @SceneBuilder
@@ -28,10 +30,10 @@ struct EntryPoint: App {
 
     init() {
         setupProjectNotifications()
-        // Note: In visionOS versions prior to 2.0, the first WindowGroup typically opens automatically
-        // The main window should still appear on app launch due to being the first scene
+        // Ensure main window opens on app launch using a different approach
+        // We'll handle this in the main window's onAppear instead
     }
-
+    
     // MARK: - 2-D Scenes
     // With spatial management of location of windows for mainWindow scene:
     private var mainWindow: some SwiftUI.Scene {
@@ -39,20 +41,32 @@ struct EntryPoint: App {
             ProjectAwareEnvironmentView(windowManager: windowManager)
                 .environmentObject(windowManager)
                 .environmentObject(spatialManager)
+                .environmentObject(entityManager)
                 .onAppear {
                     // Ensure the window is marked as opened when it appears
                     print("✅ Main EnvironmentView window opened")
+                    // Register main window with entity manager
+                    Task { @MainActor in
+                        EntityLifecycleManager.shared.registerEntity(Entity(), for: -1) // Use -1 for main window
+                    }
+                }
+                .onDisappear {
+                    print("❌ Main EnvironmentView window disappeared")
+                    // Clean up main window entities
+                    Task { @MainActor in
+                        EntityLifecycleManager.shared.cleanupWindow(-1)
+                    }
                 }
         }
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
-
-        // Use defaultLaunchBehavior only if available (visionOS 2.0+)
-        //if #available(visionOS 2, *) {
-        //    return windowGroup.defaultLaunchBehavior(.presented)
-        //} else {
-        return windowGroup
-        //}
+        
+        // Use defaultLaunchBehavior to ensure window opens on app launch
+        if #available(visionOS 26.0, *) {
+            return windowGroup.defaultLaunchBehavior(.presented)
+        } else {
+            return windowGroup
+        }
     }
 
     /*
@@ -101,6 +115,13 @@ struct EntryPoint: App {
                     pointCloudData: pointCloudData
                 )
                 .environmentObject(windowManager)
+                .environmentObject(entityManager)
+                .onAppear {
+                    windowManager.markWindowAsOpened(id)
+                }
+                .onDisappear {
+                    windowManager.markWindowAsClosed(id)
+                }
             } else {
                 EmptyView()
             }
@@ -113,6 +134,13 @@ struct EntryPoint: App {
             if let id = id {
                 PointCloudPlotView(windowID: id)
                     .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .onAppear {
+                        windowManager.markWindowAsOpened(id)
+                    }
+                    .onDisappear {
+                        windowManager.markWindowAsClosed(id)
+                    }
             } else {
                 EmptyView()
             }
@@ -121,7 +149,6 @@ struct EntryPoint: App {
         .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
 
         // 3-D model volume
-
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
             if let id = id, let win = windowManager.getWindow(for: id) {
                 if let modelData = win.state.model3DData {
@@ -131,6 +158,13 @@ struct EntryPoint: App {
                         modelData: modelData
                     )
                     .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .onAppear {
+                        windowManager.markWindowAsOpened(id)
+                    }
+                    .onDisappear {
+                        windowManager.markWindowAsClosed(id)
+                    }
                 } else if let usdzBookmark = win.state.usdzBookmark {
                     // Case 2: We have a USDZ file bookmark - create a placeholder model and show it
                     let placeholderModel = Model3DData(
@@ -143,6 +177,13 @@ struct EntryPoint: App {
                         modelData: placeholderModel
                     )
                     .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .onAppear {
+                        windowManager.markWindowAsOpened(id)
+                    }
+                    .onDisappear {
+                        windowManager.markWindowAsClosed(id)
+                    }
                 } else {
                     // Case 3: No model data available - create a default cube
                     let defaultCube = Model3DData.generateCube(size: 2.0)
@@ -151,6 +192,13 @@ struct EntryPoint: App {
                         modelData: defaultCube
                     )
                     .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .onAppear {
+                        windowManager.markWindowAsOpened(id)
+                    }
+                    .onDisappear {
+                        windowManager.markWindowAsClosed(id)
+                    }
                 }
             } else {
                 // Error case - still show a default cube
@@ -160,6 +208,7 @@ struct EntryPoint: App {
                     modelData: errorCube
                 )
                 .environmentObject(windowManager)
+                .environmentObject(entityManager)
             }
         }
         .windowStyle(.volumetric)
@@ -177,6 +226,13 @@ struct EntryPoint: App {
                     chartData: chartData
                 )
                 .environmentObject(windowManager)
+                .environmentObject(entityManager)
+                .onAppear {
+                    windowManager.markWindowAsOpened(id)
+                }
+                .onDisappear {
+                    windowManager.markWindowAsClosed(id)
+                }
             } else {
                 EmptyView()
             }
@@ -189,6 +245,7 @@ struct EntryPoint: App {
         ImmersiveSpace(id: "immersive-workspace") {
             ImmersiveWorkspaceView()
                 .environmentObject(windowManager)
+                .environmentObject(entityManager)
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
@@ -202,11 +259,11 @@ struct EntryPoint: App {
             object: nil,
             queue: .main
         ) { notification in
-            if let project = notification.object as? Project {
+            if notification.object is Project {
                 // Create 3D content when a project is selected
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     Task { @MainActor in
-                        let windowManager = WindowTypeManager.shared
+                        _ = WindowTypeManager.shared
                         self.createDemo3DWindowForProject()
                     }
                 }
@@ -262,7 +319,7 @@ struct EntryPoint: App {
         // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
-        let chartWindow = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
+        _ = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
 
         // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
@@ -273,7 +330,7 @@ struct EntryPoint: App {
         // Create a PointCloudDemo window
         let pointCloudDemoWindowID = windowManager.getNextWindowID()
         let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
-        let pointCloudDemoWindow = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
+        _ = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
 
         // Create demo point cloud data
         let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
@@ -304,7 +361,7 @@ struct EntryPoint: App {
             return nil
         }
 
-        let fileURL = URL(fileURLWithPath: bundlePath)
+        _ = URL(fileURLWithPath: bundlePath)
 
         do {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0
@@ -371,8 +428,6 @@ struct EntryPoint: App {
         }
     }
 
-    @Environment(\.openWindow) private var openWindow
-
     // MARK: - Shared-file handler
     private func handleSharedURL(_ url: URL) {
         guard url.pathExtension.lowercased() == "csv" else { return }
@@ -432,6 +487,10 @@ struct ProjectAwareEnvironmentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .projectCleared)) { _ in
                 // Clean up project-specific windows
                 windowManager.cleanupClosedWindows()
+                // Also trigger full entity cleanup
+                Task { @MainActor in
+                    EntityLifecycleManager.shared.performEmergencyCleanup()
+                }
             }
     }
 
@@ -463,7 +522,7 @@ struct ProjectAwareEnvironmentView: View {
         // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
-        let chartWindow = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
+        _ = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
 
         // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
@@ -474,7 +533,7 @@ struct ProjectAwareEnvironmentView: View {
         // Create a PointCloudDemo window
         let pointCloudDemoWindowID = windowManager.getNextWindowID()
         let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
-        let pointCloudDemoWindow = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
+        _ = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
 
         // Create demo point cloud data
         let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
@@ -505,7 +564,7 @@ struct ProjectAwareEnvironmentView: View {
             return nil
         }
 
-        let fileURL = URL(fileURLWithPath: bundlePath)
+        _ = URL(fileURLWithPath: bundlePath)
 
         do {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0

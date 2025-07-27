@@ -200,7 +200,7 @@ class SpatialAudioManager: ObservableObject {
     // MARK: - Spatial Audio for Data Points
     
     func playDataPointSound(for entity: Entity, dataValue: Double) {
-        guard let dataComponent = entity.components[DataPointComponent.self] else { return }
+        guard entity.components[DataPointComponent.self] != nil else { return }
         
         let frequency = mapDataValueToFrequency(dataValue)
         let position = entity.position
