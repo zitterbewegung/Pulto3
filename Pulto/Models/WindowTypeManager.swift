@@ -10,6 +10,9 @@ import SwiftUI
 import Foundation
 import Charts
 
+// Type alias to resolve Project type conflicts
+typealias ProjectModel = Project
+
 // Notification names for project events
 extension Notification.Name {
     static let projectSelected = Notification.Name("projectSelected")
@@ -23,12 +26,12 @@ class WindowTypeManager: ObservableObject {
     @Published var activeWindowID: Int? = nil        // NEW
     @Published private var windows: [Int: NewWindowID] = [:]
     @Published private var openWindowIDs: Set<Int> = []
-    @Published var selectedProject: Project? = nil
+    @Published var selectedProject: ProjectModel? = nil
     var usdzBookmark: Data? = nil
 
     private init() {}
 
-    func setSelectedProject(_ project: Project) {
+    func setSelectedProject(_ project: ProjectModel) {
         selectedProject = project
         objectWillChange.send()
 
@@ -1099,23 +1102,6 @@ class WindowTypeManager: ObservableObject {
         return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
     }
 
-    private func generateNotebookCellContent(for window: NewWindowID) -> String {
-        let baseContent = """
-        # Notebook Chart Window #\(window.id)
-        # Created: \(DateFormatter.localizedString(from: window.createdAt, dateStyle: .short, timeStyle: .short))
-        # Position: (\(window.position.x), \(window.position.y), \(window.position.z))
-        
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
-        # Chart configuration from VisionOS window
-        fig, ax = plt.subplots(figsize=(\(window.position.width/50), \(window.position.height/50)))
-        
-        """
-
-        return window.state.content.isEmpty ? baseContent : baseContent + "\n" + window.state.content
-    }
-
     private func generateVolumeCellContent(for window: NewWindowID) -> String {
         if let volumeData = window.state.volumeData {
             return volumeData.toPythonCode()
@@ -1325,6 +1311,7 @@ class WindowTypeManager: ObservableObject {
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
         }
     }
+    
     // Add this method to your existing WindowTypeManager class
     func removeWindowTag(_ windowID: Int, tag: String) {
         guard var window = windows[windowID] else { return }

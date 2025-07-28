@@ -22,6 +22,7 @@ enum SheetType: String, CaseIterable {
     case chartRecommender = "chart"
     case userProfile = "profile"
     case jupyterConnection = "jupyter"
+    case activeWindows = "activeWindows"
     
     var displayName: String {
         switch self {
@@ -38,6 +39,7 @@ enum SheetType: String, CaseIterable {
         case .chartRecommender: return "Chart Recommender"
         case .userProfile: return "User Profile"
         case .jupyterConnection: return "Jupyter Connection"
+        case .activeWindows: return "Active Windows"
         }
     }
 }
