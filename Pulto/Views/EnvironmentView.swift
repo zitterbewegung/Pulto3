@@ -16,15 +16,15 @@ import RealityKit
 
 // MARK: - Project Tab Enum
 enum ProjectTab: String, CaseIterable {
-    case create    = "Create & Data"
-    case workspace = "Workspace"
-    case active    = "Active"
+    case create = "Create & Data"
+    case active = "Active"
+    case recent = "Recent"
 
     var icon: String {
         switch self {
-        case .workspace: return "folder.fill"
-        case .create:    return "plus.circle.fill"
-        case .active:    return "rectangle.stack.fill"
+        case .create: return "plus.circle.fill"
+        case .active: return "rectangle.stack.fill"
+        case .recent: return "clock.fill"
         }
     }
 }
@@ -147,7 +147,7 @@ struct EnvironmentView: View {
 
     // UI State
     @State private var selectedTab: ProjectTab = .create
-    @StateObject private var viewModel         = PultoHomeViewModel()
+    @StateObject private var viewModel         = PultooHomeViewModel()
 
     // Single sheet management - no more multiple @State variables!
     @StateObject private var sheetManager = SheetManager()
@@ -164,13 +164,7 @@ struct EnvironmentView: View {
                 Tab("Create & Data", systemImage: "plus.circle.fill", value: .create) {
                     CreateAndDataTab(
                         sheetManager: sheetManager,
-                        createWindow: createStandardWindow
-                    )
-                }
-
-                Tab("Workspace", systemImage: "folder.fill", value: .workspace) {
-                    WorkspaceTab(
-                        sheetManager: sheetManager,
+                        createWindow: createStandardWindow,
                         loadWorkspace: loadWorkspace
                     )
                 }
@@ -181,6 +175,13 @@ struct EnvironmentView: View {
                         openWindow:     { openWindow(value: $0) },
                         closeWindow:    { windowManager.removeWindow($0) },
                         closeAllWindows: clearAllWindowsWithConfirmation
+                    )
+                }
+
+                Tab("Recent", systemImage: "clock.fill", value: .recent) {
+                    RecentProjectsTab(
+                        workspaceManager: workspaceManager,
+                        loadWorkspace: loadWorkspace
                     )
                 }
             }
@@ -452,7 +453,7 @@ struct EnvironmentView: View {
                     openWindow(value: id)
                     windowManager.markWindowAsOpened(id)
                 }
-                selectedTab = .workspace
+                selectedTab = .recent
             } catch { print("Failed to load workspace:", error) }
         }
     }
@@ -471,85 +472,12 @@ struct EnvironmentView: View {
     }
 }
 
-// MARK: - Workspace Tab (Updated)
-struct WorkspaceTab: View {
-    @StateObject private var workspaceManager = WorkspaceManager.shared
-    let sheetManager: SheetManager
-    let loadWorkspace: (WorkspaceMetadata) -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Quick Actions
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Get Started")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible())
-                    ], spacing: 16) {
-                        EnvironmentActionCard(
-                            title: "Templates", subtitle: "Pre-built projects",
-                            icon:  "doc.text.fill", color: .red) {
-                            sheetManager.presentSheet(.templateGallery)
-                        }
-                        EnvironmentActionCard(
-                            title: "Import Notebook", subtitle: "Jupyter files",
-                            icon:  "square.and.arrow.down.fill", color: .green) {
-                            sheetManager.presentSheet(.notebookImport)
-                        }
-                    }
-                }
-
-                Divider().padding(.vertical, 8)
-
-                // Recent Projects
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("Recent Projects")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-
-                    if workspaceManager.getCustomWorkspaces().isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "folder.badge.plus")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            Text("No projects yet")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                            Text("Create your first project from the Create & Data tab")
-                                .font(.subheadline)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
-                    } else {
-                        LazyVStack(spacing: 8) {
-                            ForEach(workspaceManager.getCustomWorkspaces().prefix(5)) { workspace in
-                                WorkspaceRow(workspace: workspace) { loadWorkspace(workspace) }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-        .onAppear {
-            if workspaceManager.getCustomWorkspaces().contains(where: { $0.totalWindows == 0 }) {
-                print("🔧 Detected workspaces with 0 views, refreshing metadata...")
-                workspaceManager.refreshWorkspaceMetadata()
-            }
-        }
-    }
-}
-
 // MARK: - Create and Data Tab (Unified)
 struct CreateAndDataTab: View {
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
+    @StateObject private var workspaceManager = WorkspaceManager.shared
+    let loadWorkspace: (WorkspaceMetadata) -> Void
     @State private var selectedType: StandardWindowType? = nil
 
     var body: some View {
@@ -574,7 +502,7 @@ struct CreateAndDataTab: View {
                         }
                         EnvironmentActionCard(
                             title: "Templates", subtitle: "Pre-built projects",
-                            icon:  "doc.text.fill", color: .red) {
+                            icon:  "doc.text.fill", color: .green) {
                             sheetManager.presentSheet(.templateGallery)
                         }
                         EnvironmentActionCard(
@@ -609,6 +537,56 @@ struct CreateAndDataTab: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     selectedType = nil
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .onAppear {
+            if workspaceManager.getCustomWorkspaces().contains(where: { $0.totalWindows == 0 }) {
+                print("🔧 Detected workspaces with 0 views, refreshing metadata...")
+                workspaceManager.refreshWorkspaceMetadata()
+            }
+        }
+    }
+}
+
+// MARK: - Recent Projects Tab
+struct RecentProjectsTab: View {
+    @ObservedObject var workspaceManager: WorkspaceManager
+    let loadWorkspace: (WorkspaceMetadata) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Recent Projects Section
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Recent Projects")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+
+                    if workspaceManager.getCustomWorkspaces().isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+                            Text("No projects yet")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                            Text("Create your first project from the Create & Data tab")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 60)
+                    } else {
+                        LazyVStack(spacing: 8) {
+                            ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
+                                WorkspaceRow(workspace: workspace) { loadWorkspace(workspace) }
                             }
                         }
                     }
@@ -1297,11 +1275,13 @@ struct NotebookImportCard: View {
             }
         }
         .scaleEffect(isSelected ? 0.98 : (isHovered ? 1.02 : 1.0))
-        .animation(.easeInOut(duration: 0.1),  value: isSelected)
+        .animation(.easeInOut(duration: 0.1), value: isSelected)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
     }
 }
+
+// MARK: - Sheet Navigation Helper
 
 // MARK: - Previews
 struct EnvironmentView_Previews: PreviewProvider {

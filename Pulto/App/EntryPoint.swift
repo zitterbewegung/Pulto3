@@ -145,7 +145,7 @@ struct EntryPoint: App {
         WindowGroup(id: "volumetric-model3d", for: Int.self) { $id in
             if let id = id, let win = windowManager.getWindow(for: id) {
                 if let modelData = win.state.model3DData {
-                    // Case 1: We have parsed model data
+                    // Case 1: We have parsed model data - show the volumetric view
                     Model3DVolumetricView(
                         windowID: id,
                         modelData: modelData
@@ -159,7 +159,7 @@ struct EntryPoint: App {
                         windowManager.markWindowAsClosed(id)
                     }
                 } else if let usdzBookmark = win.state.usdzBookmark {
-                    // Case 2: We have a USDZ file bookmark - create a placeholder model and show it
+                    // Case 2: We have a USDZ file bookmark - create a placeholder model and show volumetric view
                     let placeholderModel = Model3DData(
                         title: "USDZ Model",
                         modelType: "usdz",
@@ -178,30 +178,22 @@ struct EntryPoint: App {
                         windowManager.markWindowAsClosed(id)
                     }
                 } else {
-                    // Case 3: No model data available - create a default cube
-                    let defaultCube = Model3DData.generateCube(size: 2.0)
-                    Model3DVolumetricView(
-                        windowID: id,
-                        modelData: defaultCube
-                    )
-                    .environmentObject(windowManager)
-                    .environmentObject(entityManager)
-                    .onAppear {
-                        windowManager.markWindowAsOpened(id)
-                    }
-                    .onDisappear {
-                        windowManager.markWindowAsClosed(id)
-                    }
+                    // Case 3: No model data available - show model import interface
+                    ModelSelectionView(windowID: id)
+                        .environmentObject(windowManager)
+                        .environmentObject(entityManager)
+                        .onAppear {
+                            windowManager.markWindowAsOpened(id)
+                        }
+                        .onDisappear {
+                            windowManager.markWindowAsClosed(id)
+                        }
                 }
             } else {
-                // Error case - still show a default cube
-                let errorCube = Model3DData.generateCube(size: 2.0)
-                Model3DVolumetricView(
-                    windowID: 999, // dummy window ID
-                    modelData: errorCube
-                )
-                .environmentObject(windowManager)
-                .environmentObject(entityManager)
+                // Error case - show model import interface  
+                ModelSelectionView(windowID: 999) // dummy window ID
+                    .environmentObject(windowManager)
+                    .environmentObject(entityManager)
             }
         }
         .windowStyle(.volumetric)
