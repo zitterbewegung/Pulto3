@@ -273,7 +273,6 @@ struct EnvironmentView: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
 
     // UI State
-    @State private var selectedTab: ProjectTab = .create
     @StateObject private var viewModel         = PultoHomeViewModel()
 
     // Single sheet management - no more multiple @State variables!
@@ -288,33 +287,24 @@ struct EnvironmentView: View {
                 createWindow: createStandardWindow
             )
             
-            // Tab content
-            TabView(selection: $selectedTab) {
-                Tab("Create & Data", systemImage: "plus.circle.fill", value: .create) {
-                    CreateAndDataTab(
-                        sheetManager: sheetManager,
-                        createWindow: createStandardWindow,
-                        loadWorkspace: loadWorkspace
-                    )
-                }
-
-                Tab("Active", systemImage: "rectangle.stack.fill", value: .active) {
-                    ActiveWindowsTab(
-                        windowManager:  windowManager,
-                        openWindow:     { openWindow(value: $0) },
-                        closeWindow:    { windowManager.removeWindow($0) },
-                        closeAllWindows: clearAllWindowsWithConfirmation
-                    )
-                }
-
-                Tab("Recent", systemImage: "clock.fill", value: .recent) {
-                    RecentProjectsTab(
-                        workspaceManager: workspaceManager,
-                        loadWorkspace: loadWorkspace
-                    )
-                }
+            // Single tab with navigation for Recent Projects and default Active Windows view
+            NavigationView {
+                // Sidebar with Recent Projects navigation
+                RecentProjectsSidebar(
+                    workspaceManager: workspaceManager,
+                    loadWorkspace: loadWorkspace
+                )
+                
+                // Default view: Active Windows
+                ActiveWindowsView(
+                    windowManager: windowManager,
+                    openWindow: { openWindow(value: $0) },
+                    closeWindow: { windowManager.removeWindow($0) },
+                    closeAllWindows: clearAllWindowsWithConfirmation,
+                    sheetManager: sheetManager,
+                    createWindow: createStandardWindow
+                )
             }
-            .tabViewStyle(.sidebarAdaptable)
         }
         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(20)
@@ -621,8 +611,10 @@ struct EnvironmentView: View {
                     openWindow(value: id)
                     windowManager.markWindowAsOpened(id)
                 }
-                selectedTab = .recent
-            } catch { print("Failed to load workspace:", error) }
+                print("✅ Loaded workspace: \(workspace.name)")
+            } catch { 
+                print("❌ Failed to load workspace:", error) 
+            }
         }
     }
 
@@ -634,31 +626,172 @@ struct EnvironmentView: View {
     private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
          .usdz]
-
-        //[.commaSeparatedText, .tabSeparatedText, .json, .plainText,
-        // .image, .usdz, .threeDContent, .data]
     }
 }
 
-// MARK: - Create and Data Tab (Unified)
-struct CreateAndDataTab: View {
+// MARK: - Recent Projects Sidebar
+struct RecentProjectsSidebar: View {
+    @ObservedObject var workspaceManager: WorkspaceManager
+    let loadWorkspace: (WorkspaceMetadata) -> Void
+
+    var body: some View {
+        List {
+            Section("Recent Projects") {
+                if workspaceManager.getCustomWorkspaces().isEmpty {
+                    HStack {
+                        Image(systemName: "folder.badge.plus")
+                            .foregroundStyle(.secondary)
+                        Text("No projects yet")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
+                        NavigationLink(destination: RecentProjectDetailView(
+                            workspace: workspace,
+                            loadWorkspace: loadWorkspace
+                        )) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(workspace.name)
+                                    .font(.headline)
+                                    .lineLimit(1)
+                                
+                                HStack {
+                                    Label("\(workspace.totalWindows)", systemImage: "rectangle.stack")
+                                    Text("•").foregroundStyle(.tertiary)
+                                    Text(workspace.formattedModifiedDate)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Pulto Workspace")
+        .listStyle(SidebarListStyle())
+    }
+}
+
+// MARK: - Recent Project Detail View
+struct RecentProjectDetailView: View {
+    let workspace: WorkspaceMetadata
+    let loadWorkspace: (WorkspaceMetadata) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Project Header
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(workspace.name)
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                            
+                            if !workspace.description.isEmpty {
+                                Text(workspace.description)
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button("Load Project") {
+                            loadWorkspace(workspace)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                    
+                    // Project Stats
+                    HStack(spacing: 20) {
+                        Label("\(workspace.totalWindows) windows", systemImage: "rectangle.stack")
+                        Label(workspace.displaySize, systemImage: "doc")
+                        Label(workspace.formattedModifiedDate, systemImage: "clock")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                
+                // Project Tags
+                if !workspace.tags.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Tags")
+                            .font(.headline)
+                        
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(workspace.tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.caption)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.2))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                }
+                
+                // Category Info
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Category")
+                        .font(.headline)
+                    
+                    HStack {
+                        Image(systemName: workspace.category.iconName)
+                            .foregroundStyle(workspace.category.color)
+                        Text(workspace.category.displayName)
+                            .font(.subheadline)
+                        Spacer()
+                    }
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+            }
+            .padding()
+        }
+        .navigationTitle("Project Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Enhanced Active Windows View (with creation tools)
+struct ActiveWindowsView: View {
+    let windowManager: WindowTypeManager
+    let openWindow: (Int) -> Void
+    let closeWindow: (Int) -> Void
+    let closeAllWindows: () -> Void
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
-    @StateObject private var workspaceManager = WorkspaceManager.shared
-    let loadWorkspace: (WorkspaceMetadata) -> Void
     @State private var selectedType: StandardWindowType? = nil
 
     var body: some View {
         ScrollView {
+
             VStack(alignment: .leading, spacing: 32) {
-                // Create Visualizations Section
+                /*
+                // Quick Create Section
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Create Visualizations")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+                        HStack {
+                            Text("Quick Create")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            Spacer()
+                            
+                            CreateVisualizationsButton(createWindow: createWindow)
+                        }
                         
-                        Text("Build interactive data visualizations from your files")
+                        Text("Build interactive data visualizations")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -669,7 +802,7 @@ struct CreateAndDataTab: View {
                     ], spacing: 16) {
                         ForEach(StandardWindowType.allCases, id: \.self) { type in
                             WindowTypeCard(
-                                type:       type,
+                                type: type,
                                 isSelected: selectedType == type
                             ) {
                                 selectedType = type
@@ -683,101 +816,15 @@ struct CreateAndDataTab: View {
                 }
                 
                 Divider()
-                
-                // Recent Activity Preview
-                if !workspaceManager.getCustomWorkspaces().isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Recent Projects")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        LazyVStack(spacing: 8) {
-                            ForEach(workspaceManager.getCustomWorkspaces().prefix(3)) { workspace in
-                                WorkspaceRow(workspace: workspace) { loadWorkspace(workspace) }
-                            }
-                        }
-                        
-                        if workspaceManager.getCustomWorkspaces().count > 3 {
-                            Text("View all in Recent tab →")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                                .padding(.top, 4)
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-        .onAppear {
-            if workspaceManager.getCustomWorkspaces().contains(where: { $0.totalWindows == 0 }) {
-                print("🔧 Detected workspaces with 0 views, refreshing metadata...")
-                workspaceManager.refreshWorkspaceMetadata()
-            }
-        }
-    }
-}
-
-// MARK: - Recent Projects Tab
-struct RecentProjectsTab: View {
-    @ObservedObject var workspaceManager: WorkspaceManager
-    let loadWorkspace: (WorkspaceMetadata) -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Recent Projects Section
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("Recent Projects")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-
-                    if workspaceManager.getCustomWorkspaces().isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "folder.badge.plus")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            Text("No projects yet")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                            Text("Create your first project from the Create & Data tab")
-                                .font(.subheadline)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 60)
-                    } else {
-                        LazyVStack(spacing: 8) {
-                            ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
-                                WorkspaceRow(workspace: workspace) { loadWorkspace(workspace) }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-}
-
-// MARK: - Active Windows Tab
-struct ActiveWindowsTab: View {
-    let windowManager: WindowTypeManager
-    let openWindow:      (Int) -> Void
-    let closeWindow:     (Int) -> Void
-    let closeAllWindows: () -> Void
-
-    var body: some View {
-        Group {
-            if windowManager.getAllWindows().isEmpty {
-                ContentUnavailableView(
-                    "No Active Views",
-                    systemImage: "rectangle.dashed",
-                    description: Text("Create a new view to get started")
-                )
-            } else {
-                ScrollView {
+                */
+                // Active Windows Management
+                if windowManager.getAllWindows().isEmpty {
+                    ContentUnavailableView(
+                        "No Active Views",
+                        systemImage: "rectangle.dashed",
+                        description: Text("Create a new view using the options above")
+                    )
+                } else {
                     VStack(alignment: .leading, spacing: 20) {
                         // Cleanup Section
                         VStack(alignment: .leading, spacing: 16) {
@@ -794,6 +841,13 @@ struct ActiveWindowsTab: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                                 .tint(.blue)
+                                
+                                Button(action: closeAllWindows) {
+                                    Label("Close All", systemImage: "xmark.circle")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.red)
                             }
 
                             HStack {
@@ -817,19 +871,19 @@ struct ActiveWindowsTab: View {
                                 StatCard(
                                     title: "Total Windows",
                                     value: "\(windowManager.getAllWindows().count)",
-                                    icon:  "rectangle.stack"
+                                    icon: "rectangle.stack"
                                 )
 
                                 StatCard(
                                     title: "Actually Open",
                                     value: "\(windowManager.getAllWindows(onlyOpen: true).count)",
-                                    icon:  "checkmark.circle"
+                                    icon: "checkmark.circle"
                                 )
 
                                 StatCard(
                                     title: "Window Types",
                                     value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
-                                    icon:  "square.grid.2x2"
+                                    icon: "square.grid.2x2"
                                 )
                             }
                         }
@@ -860,7 +914,7 @@ struct ActiveWindowsTab: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical,   8)
+                                        .padding(.vertical, 8)
                                         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
@@ -869,28 +923,17 @@ struct ActiveWindowsTab: View {
 
                         // Active Windows List
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Active Views")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-
-                                Spacer()
-
-                                Button(action: closeAllWindows) {
-                                    Label("Close All", systemImage: "xmark.circle")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .tint(.red)
-                            }
+                            Text("Active Views")
+                                .font(.title2)
+                                .fontWeight(.semibold)
 
                             LazyVStack(spacing: 8) {
                                 ForEach(windowManager.getAllWindows(), id: \.id) { window in
                                     WindowRow(
-                                        window:         window,
+                                        window: window,
                                         isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
-                                        onOpen:         { openWindow(window.id) },
-                                        onClose:        { closeWindow(window.id) }
+                                        onOpen: { openWindow(window.id) },
+                                        onClose: { closeWindow(window.id) }
                                     )
                                 }
                             }
@@ -937,17 +980,19 @@ struct ActiveWindowsTab: View {
                                                 .foregroundStyle(.tertiary)
                                         }
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical,   8)
+                                        .padding(.vertical, 8)
                                         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
                             }
                         }
                     }
-                    .padding()
                 }
             }
+            .padding()
         }
+        .navigationTitle("Active Windows")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 

@@ -9,6 +9,11 @@
 import SwiftUI
 import RealityKit
 
+// MARK: - Notification Extensions
+extension Notification.Name {
+    static let reopenMainWindow = Notification.Name("reopenMainWindow")
+}
+
 @main
 struct EntryPoint: App {
     @StateObject private var windowManager = WindowTypeManager.shared
@@ -30,36 +35,18 @@ struct EntryPoint: App {
 
     init() {
         setupProjectNotifications()
-        // Ensure main window opens on app launch using a different approach
-        // We'll handle this in the main window's onAppear instead
+        setupMainWindowProtection()
     }
     
     // MARK: - 2-D Scenes
     // With spatial management of location of windows for mainWindow scene:
     private var mainWindow: some SwiftUI.Scene {
         WindowGroup(id: "main") {
-            ProjectAwareEnvironmentView(windowManager: windowManager)
-                .environmentObject(windowManager)
-                .environmentObject(spatialManager)
-                .environmentObject(entityManager)
-                .onAppear {
-                    // Ensure the window is marked as opened when it appears
-                    print("✅ Main EnvironmentView window opened")
-                    // Register main window with entity manager
-                    Task { @MainActor in
-                        EntityLifecycleManager.shared.registerEntity(Entity(), for: -1) // Use -1 for main window
-                    }
-                }
-                .onDisappear {
-                    print("❌ Main EnvironmentView window disappeared")
-                    // Clean up main window entities
-                    Task { @MainActor in
-                        EntityLifecycleManager.shared.cleanupWindow(-1)
-                    }
-                }
+            MainWindowProtector(windowManager: windowManager)
         }
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
+        .windowResizability(.contentSize)
     }
 
     /*
@@ -71,8 +58,6 @@ struct EntryPoint: App {
         .defaultSize(width: 800, height: 600)
     }
     */
-
-
 
     @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
@@ -90,7 +75,6 @@ struct EntryPoint: App {
         .windowStyle(.plain)
         .defaultSize(width: 1_000, height: 700)
     }
-
 
     // MARK: - visionOS-only Scenes
     #if os(visionOS)
@@ -264,6 +248,22 @@ struct EntryPoint: App {
             // Optionally clean up project-specific windows
             Task { @MainActor in
                 WindowTypeManager.shared.cleanupClosedWindows()
+            }
+        }
+    }
+    
+    // MARK: - Main Window Protection
+    private func setupMainWindowProtection() {
+        // Listen for main window reopen requests
+        NotificationCenter.default.addObserver(
+            forName: .reopenMainWindow,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                // Reopen the main window
+                self.openWindow(id: "main")
+                print("🔄 Automatically reopened main window")
             }
         }
     }
@@ -449,6 +449,49 @@ struct EntryPoint: App {
                 print("Error importing shared CSV: \(error)")
             }
         }
+    }
+}
+
+// MARK: - Main Window Protector
+struct MainWindowProtector: View {
+    @ObservedObject var windowManager: WindowTypeManager
+    @StateObject private var spatialManager = VisionOSSpatialManager.shared
+    @StateObject private var entityManager = EntityLifecycleManager.shared
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var shouldPreventClose = true
+    
+    var body: some View {
+        ProjectAwareEnvironmentView(windowManager: windowManager)
+            .environmentObject(windowManager)
+            .environmentObject(spatialManager)
+            .environmentObject(entityManager)
+            .onAppear {
+                print("✅ Main EnvironmentView window opened")
+                shouldPreventClose = true
+                Task { @MainActor in
+                    EntityLifecycleManager.shared.registerEntity(Entity(), for: -1)
+                }
+            }
+            .onDisappear {
+                if shouldPreventClose && scenePhase == .active {
+                    print("🚫 Preventing main window closure - reopening")
+                    // Reopen immediately
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        openWindow(id: "main")
+                    }
+                } else {
+                    print("✅ Allowing main window closure")
+                }
+                Task { @MainActor in
+                    EntityLifecycleManager.shared.cleanupWindow(-1)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                // Allow closure when app is backgrounding or becoming inactive
+                shouldPreventClose = (newPhase == .active)
+            }
     }
 }
 

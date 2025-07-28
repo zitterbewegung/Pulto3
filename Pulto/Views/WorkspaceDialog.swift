@@ -241,7 +241,7 @@ struct WorkspaceDialog: View {
         case .volume: return "sensor.tag.radiowaves.forward"  // Updated for IoT dashboard
         case .pointcloud: return "dot.scope"
         case .model3d: return "cube.transparent"
-        }Comm
+        }
     }
 }
 
