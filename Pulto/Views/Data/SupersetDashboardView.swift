@@ -91,8 +91,8 @@ struct NativeChart: View {
 struct SupersetDashboardView: View {
     let username: String
     let password: String
-    let supersetURL: String = "https://your-superset-instance.com"
     let sliceID: Int = 123
+    @AppStorage("defaultSupersetURL") private var supersetURL: String = "https://your-superset-instance.com"
 
     var body: some View {
         NativeChart(

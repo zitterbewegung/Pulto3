@@ -294,6 +294,7 @@ struct EnvironmentView: View {
     
     struct SettingsSheetWrapper: View {
         @EnvironmentObject var sheetManager: SheetManager
+        @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
         
         var body: some View {
             NavigationView {
@@ -374,6 +375,44 @@ struct EnvironmentView: View {
                                 Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                            }
+
+                            // Superset
+                            SettingsSection("Superset Server") {
+                                HStack {
+                                    Text("Default Server URL")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+
+                                TextField("Enter Superset server URL", text: $defaultSupersetURL)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.body, design: .monospaced))
+
+                                Text("Default Apache Superset server to connect to for dashboard visualizations")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                
+                                // Quick preset buttons
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Quick Options:")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                        ForEach(["http://localhost:8088", "https://your-superset-instance.com"], id: \.self) { url in
+                                            Button(url) {
+                                                defaultSupersetURL = url
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .font(.caption)
+                                            .fontDesign(.monospaced)
+                                        }
+                                    }
+                                }
                             }
 
                             // General
