@@ -241,6 +241,7 @@ struct WorkspaceDialog: View {
         case .volume: return "gauge"
         case .pointcloud: return "dot.scope"
         case .model3d: return "cube.transparent"
+        case .iotDashboard: return "sensor.tag.radiowaves.forward"
         }
     }
 }

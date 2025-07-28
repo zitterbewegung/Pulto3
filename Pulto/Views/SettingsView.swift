@@ -325,27 +325,6 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                
-                SettingsSection("Common Server URLs") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Quick Options:")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(commonJupyterURLs, id: \.self) { url in
-                                Button(url) {
-                                    defaultJupyterServerURL = url
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .font(.caption)
-                                .fontDesign(.monospaced)
-                            }
-                        }
-                    }
-                }
             }
             .padding()
         }
@@ -385,27 +364,6 @@ struct SettingsView: View {
                         Text("Test the connection to your Superset server")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
-                }
-                
-                SettingsSection("Common Server URLs") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Quick Options:")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(commonSupersetURLs, id: \.self) { url in
-                                Button(url) {
-                                    defaultSupersetURL = url
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .font(.caption)
-                                .fontDesign(.monospaced)
-                            }
-                        }
                     }
                 }
                 
@@ -489,25 +447,6 @@ struct SettingsView: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-    }
-    
-    // MARK: - Helper Properties
-    private var commonJupyterURLs: [String] {
-        [
-            "http://localhost:8888",
-            "http://localhost:8889",
-            "http://127.0.0.1:8888",
-            "http://127.0.0.1:8889"
-        ]
-    }
-    
-    private var commonSupersetURLs: [String] {
-        [
-            "http://localhost:8088",
-            "https://superset.example.com",
-            "https://your-superset-instance.com",
-            "http://127.0.0.1:8088"
-        ]
     }
     
     // MARK: - Helper Methods
