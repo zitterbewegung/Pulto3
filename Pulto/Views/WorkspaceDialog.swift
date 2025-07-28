@@ -238,11 +238,10 @@ struct WorkspaceDialog: View {
         case .charts: return "chart.line.uptrend.xyaxis"
         case .spatial: return "cube"
         case .column: return "tablecells"
-        case .volume: return "gauge"
+        case .volume: return "sensor.tag.radiowaves.forward"  // Updated for IoT dashboard
         case .pointcloud: return "dot.scope"
         case .model3d: return "cube.transparent"
-        case .iotDashboard: return "sensor.tag.radiowaves.forward"
-        }
+        }Comm
     }
 }
 

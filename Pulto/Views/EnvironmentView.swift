@@ -29,95 +29,222 @@ enum ProjectTab: String, CaseIterable {
     }
 }
 
-// MARK: - Header View
-struct HeaderView: View {
-    @ObservedObject var viewModel: PultoHomeViewModel
-    let onLoginTap:    () -> Void
-    let onSettingsTap: () -> Void
+// MARK: - Toolbar Components
 
+struct PultoTitleView: View {
     var body: some View {
-        HStack(spacing: 24) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Pulto")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.blue, .purple],
-                                       startPoint: .leading,
-                                       endPoint:   .trailing)
-                    )
-            }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 16) {
-                SettingsButton(onTap: onSettingsTap)
-
-                UserProfileButton(userName:   viewModel.userName,
-                                  isLoggedIn: viewModel.isUserLoggedIn,
-                                  onTap:      onLoginTap)
-            }
-        }
-        .padding(20)
+        Text("Pulto")
+            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .foregroundStyle(
+                LinearGradient(colors: [.blue, .purple],
+                               startPoint: .leading,
+                               endPoint:   .trailing)
+            )
     }
 }
 
-// MARK: - User Profile Button
-struct UserProfileButton: View {
-    let userName:   String
-    let isLoggedIn: Bool
-    let onTap:      () -> Void
-    @State private var isHovered = false
-
+struct ProjectActionButtons: View {
+    let sheetManager: SheetManager
+    
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
-                    .font(.title2)
+        HStack(spacing: 8) {
+            GlassButton(
+                icon: "plus.square.fill",
+                text: "New Project"
+            ) {
+                sheetManager.presentSheet(.workspaceDialog)
+            }
+            
+            GlassButton(
+                icon: "doc.text.fill",
+                text: "Templates"
+            ) {
+                sheetManager.presentSheet(.templateGallery)
+            }
+            
+            GlassButton(
+                icon: "doc.badge.plus",
+                text: "Import File"
+            ) {
+                sheetManager.presentSheet(.classifierSheet)
+            }
+        }
+    }
+}
+
+struct CreateVisualizationsButton: View {
+    let createWindow: (StandardWindowType) -> Void
+    @State private var showingCreationMenu = false
+    @State private var selectedType: StandardWindowType? = nil
+    
+    var body: some View {
+        Menu {
+            ForEach(StandardWindowType.allCases, id: \.self) { type in
+                Button {
+                    selectedType = type
+                    createWindow(type)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        selectedType = nil
+                    }
+                } label: {
+                    Label(type.displayName, systemImage: type.icon)
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.bar.fill")
+                    .font(.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.gray)
+                
+                Text("Create Visualizations")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                
+                Image(systemName: "chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .menuStyle(.borderlessButton)
+    }
+}
 
+struct GlassButton: View {
+    let icon: String
+    let text: String?
+    let action: () -> Void
+    @State private var isHovered = false
+    
+    init(icon: String, text: String? = nil, action: @escaping () -> Void) {
+        self.icon = icon
+        self.text = text
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.gray)
+                
+                if let text = text {
+                    Text(text)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { isHovered = $0 }
+    }
+}
+
+struct UserProfileToolbarButton: View {
+    let userName: String
+    let isLoggedIn: Bool
+    let onTap: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 8) {
+                Image(systemName: isLoggedIn ? "person.circle.fill" : "person.circle")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.gray)
+                
                 VStack(alignment: .leading, spacing: 2) {
                     Text(isLoggedIn ? userName : "Sign In")
-                        .font(.subheadline)
+                        .font(.caption)
                         .fontWeight(.medium)
-
+                    
                     if isLoggedIn {
-                        Text("View Profile")
-                            .font(.caption)
+                        Text("Profile")
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical,   12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         }
         .buttonStyle(.plain)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
     }
 }
 
-// MARK: - Settings Button
-struct SettingsButton: View {
+struct SettingsToolbarButton: View {
     let onTap: () -> Void
     @State private var isHovered = false
-
+    
     var body: some View {
         Button(action: onTap) {
             Image(systemName: "gearshape")
-                .font(.title2)
+                .font(.title3)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.gray)
-                .padding(.horizontal, 16)
-                .padding(.vertical,   12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
         }
         .buttonStyle(.plain)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .scaleEffect(isHovered ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
+    }
+}
+
+struct MainToolbar: View {
+    let viewModel: PultoHomeViewModel
+    let sheetManager: SheetManager
+    let createWindow: (StandardWindowType) -> Void
+    
+    var body: some View {
+        HStack {
+            // Left side - Pulto title and project actions
+            HStack(spacing: 16) {
+                PultoTitleView()
+                ProjectActionButtons(sheetManager: sheetManager)
+            }
+            
+            Spacer()
+            
+            // Center - Create Visualizations
+            CreateVisualizationsButton(createWindow: createWindow)
+            
+            Spacer()
+            
+            // Right side - Settings and profile
+            HStack(spacing: 12) {
+                SettingsToolbarButton { 
+                    sheetManager.presentSheet(.settings) 
+                }
+                
+                UserProfileToolbarButton(
+                    userName: viewModel.userName,
+                    isLoggedIn: viewModel.isUserLoggedIn
+                ) {
+                    sheetManager.presentSheet(.appleSignIn)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }
 
@@ -154,12 +281,14 @@ struct EnvironmentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HeaderView(viewModel: viewModel,
-                       onLoginTap:    { sheetManager.presentSheet(.appleSignIn) },
-                       onSettingsTap: { sheetManager.presentSheet(.settings) })
-                .padding(.horizontal)
-                .padding(.top)
-
+            // Main toolbar at the top
+            MainToolbar(
+                viewModel: viewModel,
+                sheetManager: sheetManager,
+                createWindow: createStandardWindow
+            )
+            
+            // Tab content
             TabView(selection: $selectedTab) {
                 Tab("Create & Data", systemImage: "plus.circle.fill", value: .create) {
                     CreateAndDataTab(
@@ -522,49 +651,21 @@ struct CreateAndDataTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
-                // Project Creation Section
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Import or Create New Project")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-
-                    // Project Actions - 3 column grid
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
-                    ], spacing: 16) {
-                        EnvironmentActionCard(
-                            title: "New Project", subtitle: "Create from scratch",
-                            icon:  "plus.square.fill", color: .blue) {
-                            sheetManager.presentSheet(.workspaceDialog)
-                        }
-                        EnvironmentActionCard(
-                            title: "Templates", subtitle: "Pre-built projects",
-                            icon:  "doc.text.fill", color: .green) {
-                            sheetManager.presentSheet(.templateGallery)
-                        }
-                        EnvironmentActionCard(
-                            title: "Import File", subtitle: "CSV, JSON, Images, 3D",
-                            icon:  "doc.badge.plus", color: .blue) {
-                            sheetManager.presentSheet(.classifierSheet)
-                        }
-                    }
-                }
-
-                Divider()
-
                 // Create Visualizations Section
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Create Visualizations from existing files.")
+                        Text("Create Visualizations")
                             .font(.title2)
                             .fontWeight(.semibold)
+                        
+                        Text("Build interactive data visualizations from your files")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
 
-                    // Visualization Actions - 3 column grid for data view types
+                    // Visualization Actions - 2x2 grid for the 4 window types
                     LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
+                        GridItem(.flexible()), GridItem(.flexible())
                     ], spacing: 16) {
                         ForEach(StandardWindowType.allCases, id: \.self) { type in
                             WindowTypeCard(
@@ -577,6 +678,30 @@ struct CreateAndDataTab: View {
                                     selectedType = nil
                                 }
                             }
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                // Recent Activity Preview
+                if !workspaceManager.getCustomWorkspaces().isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Recent Projects")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        LazyVStack(spacing: 8) {
+                            ForEach(workspaceManager.getCustomWorkspaces().prefix(3)) { workspace in
+                                WorkspaceRow(workspace: workspace) { loadWorkspace(workspace) }
+                            }
+                        }
+                        
+                        if workspaceManager.getCustomWorkspaces().count > 3 {
+                            Text("View all in Recent tab →")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                                .padding(.top, 4)
                         }
                     }
                 }
@@ -888,6 +1013,7 @@ enum StandardWindowType: String, CaseIterable {
     case dataFrame  = "Data Table"
     case pointCloud = "Point Cloud"
     case model3d    = "3D Model"
+    case iotDashboard = "IoT Dashboard"
 
     var displayName: String { rawValue }
 
@@ -896,6 +1022,7 @@ enum StandardWindowType: String, CaseIterable {
         case .dataFrame:  return "tablecells"
         case .pointCloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
+        case .iotDashboard: return "sensor.tag.radiowaves.forward"
         }
     }
 
@@ -904,6 +1031,7 @@ enum StandardWindowType: String, CaseIterable {
         case .dataFrame:  return .green
         case .pointCloud: return .cyan
         case .model3d:    return .red
+        case .iotDashboard: return .orange
         }
     }
 
@@ -912,6 +1040,7 @@ enum StandardWindowType: String, CaseIterable {
         case .dataFrame:  return "Tabular data viewer"
         case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
+        case .iotDashboard: return "Real-time IoT dashboard"
         }
     }
 
@@ -920,6 +1049,7 @@ enum StandardWindowType: String, CaseIterable {
         case .dataFrame:  return .column
         case .pointCloud: return .pointcloud
         case .model3d:    return .model3d
+        case .iotDashboard: return .volume  // Maps to volume type for IoT metrics
         }
     }
 }
@@ -1145,29 +1275,35 @@ struct WelcomeSheet: View {
 
                     Divider()
 
-                    // Getting Started Steps
+                    // Quick Start Guide
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("Getting Started")
+                        Text("Quick Start Guide")
                             .font(.title2)
                             .fontWeight(.semibold)
 
                         VStack(alignment: .leading, spacing: 16) {
-                            WelcomeStep(
-                                icon: "1.circle.fill",
-                                title: "Create Your First Project",
-                                description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                            QuickStartStep(
+                                number: "1",
+                                title: "Create or Import Projects",
+                                description: "Use the toolbar buttons (New Project, Templates, Import File) to get your data into Pulto"
                             )
 
-                            WelcomeStep(
-                                icon: "2.circle.fill",
-                                title: "Import Your Data",
-                                description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
-                            )
-
-                            WelcomeStep(
-                                icon: "3.circle.fill",
+                            QuickStartStep(
+                                number: "2", 
                                 title: "Build Visualizations",
-                                description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                                description: "Use 'Create Visualizations' in the toolbar or Create & Data tab to build charts, 3D models, point clouds, or IoT dashboards"
+                            )
+
+                            QuickStartStep(
+                                number: "3",
+                                title: "Manage Your Workspace", 
+                                description: "Switch to 'Active' to manage open windows or 'Recent' to reload saved projects"
+                            )
+                            
+                            QuickStartStep(
+                                number: "4",
+                                title: "Explore in 3D",
+                                description: "Open volumetric views to interact with your data in spatial computing environment"
                             )
                         }
                     }
@@ -1189,21 +1325,28 @@ struct WelcomeSheet: View {
                                 icon: "person.circle.fill",
                                 color: .green,
                                 title: "Sign in to sync your projects",
-                                description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
+                                description: "Use the profile button in the toolbar to sign in with Apple ID and keep your work synced across devices"
                             )
 
                             ProTip(
                                 icon: "gearshape.fill",
                                 color: .orange,
-                                title: "Configure your workspace",
-                                description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
+                                title: "Customize your workspace",
+                                description: "Access settings from the toolbar to configure Jupyter servers, auto-save, and other preferences"
                             )
 
                             ProTip(
                                 icon: "cube.fill",
                                 color: .purple,
-                                title: "Explore spatial views",
-                                description: "Use the 3D spatial editor and point cloud viewer to visualize your data in three dimensions"
+                                title: "Work with spatial data",
+                                description: "Import 3D models, point clouds, and IoT sensor data to create immersive visualizations"
+                            )
+                            
+                            ProTip(
+                                icon: "chart.bar.fill",
+                                color: .blue,
+                                title: "Export to Jupyter",
+                                description: "All your work can be exported as Jupyter notebooks for further analysis and sharing"
                             )
                         }
                     }
@@ -1219,7 +1362,7 @@ struct WelcomeSheet: View {
                 }
             }
         }
-        .frame(width: 600, height: 700)
+        .frame(width: 700, height: 800)
         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
     }
 }
@@ -1253,29 +1396,32 @@ struct ProTip: View {
     }
 }
 
-// MARK: - Welcome Step
-struct WelcomeStep: View {
-    let icon: String
+struct QuickStartStep: View {
+    let number: String
     let title: String
     let description: String
-
+    
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.blue)
-                .frame(width: 24)
-
+            Text(number)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(.blue))
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.subheadline)
-                    .fontWeight(.medium)
-
+                    .fontWeight(.semibold)
+                
                 Text(description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
+        .padding()
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -1319,8 +1465,6 @@ struct NotebookImportCard: View {
         .onHover { isHovered = $0 }
     }
 }
-
-// MARK: - Sheet Navigation Helper
 
 // MARK: - Previews
 struct EnvironmentView_Previews: PreviewProvider {
