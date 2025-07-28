@@ -147,7 +147,7 @@ struct EnvironmentView: View {
 
     // UI State
     @State private var selectedTab: ProjectTab = .create
-    @StateObject private var viewModel         = PultooHomeViewModel()
+    @StateObject private var viewModel         = PultoHomeViewModel()
 
     // Single sheet management - no more multiple @State variables!
     @StateObject private var sheetManager = SheetManager()

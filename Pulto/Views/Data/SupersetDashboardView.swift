@@ -20,8 +20,8 @@ struct LoginResponse: Decodable {
     // let refresh_token: String // If needed
 }
 
-func loginToSuperset(username: String, password: String) async throws -> String {
-    let url = URL(string: "https://superset.example.com/api/v1/security/login")!
+func loginToSuperset(username: String, password: String, supersetURL: String) async throws -> String {
+    let url = URL(string: "\(supersetURL)/api/v1/security/login")!
     var req = URLRequest(url: url)
     req.httpMethod = "POST"
     req.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -29,7 +29,7 @@ func loginToSuperset(username: String, password: String) async throws -> String 
     let body: [String: Any] = [
         "username": username,
         "password": password,
-        "provider": "db", // Change to "ldap" or other if using different auth
+        "provider": "db",
         "refresh": true
     ]
     req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -48,6 +48,8 @@ func loginToSuperset(username: String, password: String) async throws -> String 
 struct NativeChart: View {
     let username: String
     let password: String
+    let supersetURL: String
+    let sliceID: Int
     @State private var points: [ChartPoint] = []
     @State private var error: Error? = nil
     @State private var jwt: String = ""
@@ -70,9 +72,13 @@ struct NativeChart: View {
                 Task {
                     do {
                         if jwt.isEmpty {
-                            jwt = try await loginToSuperset(username: username, password: password)
+                            jwt = try await loginToSuperset(
+                                username: username, 
+                                password: password,
+                                supersetURL: supersetURL
+                            )
                         }
-                        points = try await fetchSeries(sliceID: 123, jwt: jwt)
+                        points = try await fetchSeries(sliceID: sliceID, jwt: jwt, supersetURL: supersetURL)
                     } catch {
                         self.error = error
                     }
@@ -85,10 +91,15 @@ struct NativeChart: View {
 struct SupersetDashboardView: View {
     let username: String
     let password: String
+    let supersetURL: String = "https://your-superset-instance.com"
+    let sliceID: Int = 123
 
     var body: some View {
-        NativeChart(username: username, password: password)
-            // To expand to full dashboard: Fetch dashboard metadata via API (/api/v1/dashboard/{id}),
-            // parse json_metadata for chart IDs and types, then render multiple NativeChart-like views in a layout.
+        NativeChart(
+            username: username, 
+            password: password,
+            supersetURL: supersetURL,
+            sliceID: sliceID
+        )
     }
 }

@@ -19,8 +19,8 @@ struct SupersetResult: Decodable {
     let result: [Data]
 }
 
-func fetchSeries(sliceID: Int, jwt: String) async throws -> [ChartPoint] {
-    let url = URL(string: "https://superset.example.com/api/v1/chart/data?form_data=%7B%22slice_id%22:\(sliceID)%7D")!
+func fetchSeries(sliceID: Int, jwt: String, supersetURL: String) async throws -> [ChartPoint] {
+    let url = URL(string: "\(supersetURL)/api/v1/chart/data?form_data=%7B%22slice_id%22:\(sliceID)%7D")!
     var req = URLRequest(url: url)
     req.addValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
 
