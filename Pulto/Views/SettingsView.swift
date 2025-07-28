@@ -13,6 +13,7 @@ struct SettingsView: View {
     // Settings stored persistently
     @AppStorage("autoSaveEnabled") private var autoSaveEnabled: Bool = true
     @AppStorage("defaultJupyterServerURL") private var defaultJupyterServerURL: String = "http://localhost:8888"
+    @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
     @AppStorage("autoSaveInterval") private var autoSaveInterval: Double = 30.0
     @AppStorage("maxRecentProjects") private var maxRecentProjects: Int = 10
     @AppStorage("enableAdvancedFeatures") private var enableAdvancedFeatures: Bool = false
@@ -26,6 +27,7 @@ struct SettingsView: View {
         case general = "General"
         case workspace = "Workspace"
         case jupyter = "Jupyter"
+        case superset = "Superset"
         case advanced = "Advanced"
         
         var icon: String {
@@ -33,6 +35,7 @@ struct SettingsView: View {
             case .general: return "gear"
             case .workspace: return "folder"
             case .jupyter: return "doc.text"
+            case .superset: return "chart.bar.doc.horizontal"
             case .advanced: return "wrench.and.screwdriver"
             }
         }
@@ -59,6 +62,9 @@ struct SettingsView: View {
                     
                     jupyterSettingsView
                         .tag(SettingsTab.jupyter)
+                    
+                    supersetSettingsView
+                        .tag(SettingsTab.superset)
                     
                     advancedSettingsView
                         .tag(SettingsTab.advanced)
@@ -345,6 +351,81 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Superset Settings
+    private var supersetSettingsView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                SettingsSection("Server Configuration") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Default Server URL")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Spacer()
+                        }
+                        
+                        TextField("Enter Superset server URL", text: $defaultSupersetURL)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(.body, design: .monospaced))
+                        
+                        Text("Default Apache Superset server to connect to for dashboard visualizations")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                SettingsSection("Connection") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Button("Test Connection") {
+                            testSupersetConnection()
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Text("Test the connection to your Superset server")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                SettingsSection("Common Server URLs") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Quick Options:")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                        
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            ForEach(commonSupersetURLs, id: \.self) { url in
+                                Button(url) {
+                                    defaultSupersetURL = url
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .font(.caption)
+                                .fontDesign(.monospaced)
+                            }
+                        }
+                    }
+                }
+                
+                SettingsSection("Authentication") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Superset Authentication")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Text("Credentials are entered when creating dashboard views. For security, they are not stored in settings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .italic()
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+    
     // MARK: - Advanced Settings
     private var advancedSettingsView: some View {
         ScrollView {
@@ -420,15 +501,30 @@ struct SettingsView: View {
         ]
     }
     
+    private var commonSupersetURLs: [String] {
+        [
+            "http://localhost:8088",
+            "https://superset.example.com",
+            "https://your-superset-instance.com",
+            "http://127.0.0.1:8088"
+        ]
+    }
+    
     // MARK: - Helper Methods
     private func testJupyterConnection() {
         // Implementation for testing Jupyter connection
         print("Testing connection to: \(defaultJupyterServerURL)")
     }
     
+    private func testSupersetConnection() {
+        // Implementation for testing Superset connection
+        print("Testing connection to: \(defaultSupersetURL)")
+    }
+    
     private func resetAllSettings() {
         autoSaveEnabled = true
         defaultJupyterServerURL = "http://localhost:8888"
+        defaultSupersetURL = "https://your-superset-instance.com"
         autoSaveInterval = 30.0
         maxRecentProjects = 10
         enableAdvancedFeatures = false
