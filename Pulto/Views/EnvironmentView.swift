@@ -1,12 +1,3 @@
-//
-//  EnvironmentView.swift
-//  Pulto
-//
-//  Created by Joshua Herman on 6/24/25.
-//  Updated 07/08/25 – replace all .regularMaterial / .thinMaterial / .thickMaterial backgrounds
-//  with visionOS-native glassBackgroundEffect(in:) for full translucency.
-//
-
 import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
@@ -2038,11 +2029,6 @@ struct ActiveWindowsSheetWrapper: View {
         }
         .frame(width: 1000, height: 700)
     }
-}
-
-// MARK: - Previews
-struct EnvironmentView_Previews: PreviewProvider {
-    static var previews: some View { EnvironmentView() }
 }
 
 // MARK: - Previews
