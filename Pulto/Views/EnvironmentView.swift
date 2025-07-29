@@ -287,8 +287,12 @@ struct WelcomeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Get Started") { isPresented = false }
-                        .buttonStyle(.borderedProminent)
+                    Button("Close") { 
+                        // Mark welcome as dismissed when closed
+                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                        isPresented = false 
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
         }
@@ -470,6 +474,7 @@ struct EnvironmentView: View {
     // Window management
     @State private var nextWindowID = 1
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
     @StateObject private var windowManager    = WindowTypeManager.shared
     @StateObject private var workspaceManager = WorkspaceManager.shared
 
@@ -661,7 +666,11 @@ struct EnvironmentView: View {
             WelcomeSheet(
                 isPresented: Binding(
                     get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
+                    set: { _ in 
+                        // Mark welcome as dismissed when the sheet is closed
+                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                        sheetManager.dismissSheet() 
+                    }
                 )
             )
         }
@@ -830,8 +839,16 @@ struct EnvironmentView: View {
     // MARK: - Helper Methods
 
     private func checkFirstLaunch() {
-        if !UserDefaults.standard.bool(forKey: "HasLaunchedBefore") {
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "HasLaunchedBefore")
+        let welcomeSheetDismissed = UserDefaults.standard.bool(forKey: "WelcomeSheetDismissed")
+        
+        // Only show welcome sheet if app has never launched AND welcome has never been dismissed
+        if !hasLaunchedBefore && !welcomeSheetDismissed {
             sheetManager.presentSheet(.welcome)
+        }
+        
+        // Mark that the app has launched
+        if !hasLaunchedBefore {
             UserDefaults.standard.set(true, forKey: "HasLaunchedBefore")
         }
     }
@@ -1117,15 +1134,11 @@ struct ProjectSummaryCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workspace.name)
                         .font(.headline)
-                        .fontWeight(.semibold)
-                        .lineLimit(2)
                     
                     if !workspace.description.isEmpty {
                         Text(workspace.description)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 
@@ -1368,6 +1381,130 @@ struct ProjectDetailView: View {
 }
 
 // MARK: - Enhanced Active Windows View (with creation tools)
+struct WelcomeContentView: View {
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            // Header with dismiss button
+            HStack {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .font(.largeTitle)
+                            .foregroundStyle(.blue)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome to Pulto")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            Text("Your spatial data visualization workspace")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Text("Get started with spatial computing and data visualization in visionOS")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Getting Started Steps
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Getting Started")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    WelcomeStep(
+                        icon: "1.circle.fill",
+                        title: "Create Your First Project",
+                        description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                    )
+
+                    WelcomeStep(
+                        icon: "2.circle.fill",
+                        title: "Import Your Data",
+                        description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
+                    )
+
+                    WelcomeStep(
+                        icon: "3.circle.fill",
+                        title: "Build Visualizations",
+                        description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                    )
+                }
+            }
+
+            Divider()
+
+            // Pro Tips
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(.yellow)
+                    Text("Pro Tips")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    ProTip(
+                        icon: "person.circle.fill",
+                        color: .green,
+                        title: "Sign in to sync your projects",
+                        description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
+                    )
+
+                    ProTip(
+                        icon: "gearshape.fill",
+                        color: .orange,
+                        title: "Configure your workspace",
+                        description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
+                    )
+
+                    ProTip(
+                        icon: "cube.fill",
+                        color: .purple,
+                        title: "Explore volumetric 3D models",
+                        description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
+                    )
+                }
+            }
+            
+            // Action buttons
+            HStack {
+                Spacer()
+                
+                Button("Get Started") {
+                    // Mark welcome as dismissed when user clicks Get Started
+                    UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                    onDismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            .padding(.top)
+        }
+        .padding(24)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
+    }
+}
+
+// MARK: - Enhanced Active Windows View (with creation tools)
 struct ActiveWindowsView: View {
     let windowManager: WindowTypeManager
     let openWindow: (Int) -> Void
@@ -1376,13 +1513,20 @@ struct ActiveWindowsView: View {
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
     @State private var selectedType: StandardWindowType? = nil
+    @State private var showWelcomeContent = true
 
     var body: some View {
         ScrollView {
-
             VStack(alignment: .leading, spacing: 32) {
-                // Active Windows Management
-                if windowManager.getAllWindows().isEmpty {
+                // Show welcome content if no windows and user hasn't dismissed it
+                if windowManager.getAllWindows().isEmpty && showWelcomeContent {
+                    WelcomeContentView(onDismiss: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showWelcomeContent = false
+                        }
+                    })
+                } else if windowManager.getAllWindows().isEmpty {
+                    // Show simple empty state after welcome is dismissed
                     ContentUnavailableView(
                         "No Active Views",
                         systemImage: "rectangle.dashed",
@@ -1554,6 +1698,12 @@ struct ActiveWindowsView: View {
                 }
             }
             .padding()
+        }
+        .onChange(of: windowManager.getAllWindows().count) { count in
+            // Reset welcome content when all windows are cleared
+            if count == 0 {
+                showWelcomeContent = true
+            }
         }
     }
 }
@@ -1846,6 +1996,7 @@ extension WindowType {
         }
     }
 }
+
 
 // MARK: - Active Windows Sheet Wrapper
 struct ActiveWindowsSheetWrapper: View {
