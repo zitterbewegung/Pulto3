@@ -719,26 +719,6 @@ struct EnvironmentView: View {
         var body: some View {
             NavigationStack {
                 VStack(spacing: 20) {
-                    // Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            Image(systemName: "gear")
-                                .font(.title)
-                                .foregroundStyle(.gray)
-                            Text("Pulto Settings")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            Spacer()
-                        }
-
-                        Text("Configure your Pulto experience")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding()
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 0))
-
                     // Settings Content
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
@@ -753,31 +733,6 @@ struct EnvironmentView: View {
                                     .foregroundStyle(.secondary)
                                     .padding(.leading, 4)
                             }
-
-                            // Example of navigating to another sheet from within a sheet
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Quick Actions")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-
-                                VStack(spacing: 8) {
-                                    SheetNavHelper(
-                                        "Import Notebook",
-                                        icon: "doc.badge.arrow.up",
-                                        targetSheet: .notebookImport
-                                    )
-                                    .buttonStyle(.bordered)
-
-                                    SheetNavHelper(
-                                        "Sign In",
-                                        icon: "person.circle",
-                                        targetSheet: .appleSignIn
-                                    )
-                                    .buttonStyle(.bordered)
-                                }
-                            }
-                            .padding()
-                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
 
                             // Jupyter
                             SettingsSection("Jupyter Server") {
@@ -904,6 +859,7 @@ struct EnvironmentView: View {
     private func loadWorkspace(_ workspace: WorkspaceMetadata) {
         Task {
             do {
+                // Load the workspace into the window manager
                 try await workspaceManager.loadWorkspace(
                     workspace,
                     into: windowManager,
@@ -1076,61 +1032,274 @@ struct PultoHomeContentView: View {
 struct RecentProjectsSidebar: View {
     @ObservedObject var workspaceManager: WorkspaceManager
     let loadWorkspace: (WorkspaceMetadata) -> Void
+    @State private var selectedWorkspace: WorkspaceMetadata?
+    @State private var showingProjectDetail = false
 
     var body: some View {
-        List {
-            Section("Recent Projects") {
-                if workspaceManager.getCustomWorkspaces().isEmpty {
+        VStack(spacing: 0) {
+            if showingProjectDetail, let selectedWorkspace = selectedWorkspace {
+                // Show project detail view
+                ProjectDetailView(
+                    workspace: selectedWorkspace,
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showingProjectDetail = false
+                            self.selectedWorkspace = nil
+                        }
+                    },
+                    onLoad: { loadWorkspace(selectedWorkspace) }
+                )
+            } else {
+                // Show main projects list
+                VStack(spacing: 0) {
+                    // Header
                     HStack {
-                        Image(systemName: "folder.badge.plus")
-                            .foregroundStyle(.secondary)
-                        Text("No projects yet")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        Text("Recent Projects")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Spacer()
                     }
-                    .padding(.vertical, 8)
-                } else {
-                    ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
-                        NavigationLink(value: workspace) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(workspace.name)
-                                    .font(.headline)
-                                    .lineLimit(1)
-                                
-                                HStack {
-                                    Label("\(workspace.totalWindows)", systemImage: "rectangle.stack")
-                                    Text("•").foregroundStyle(.tertiary)
-                                    Text(workspace.formattedModifiedDate)
-                                }
-                                .font(.caption)
+                    .padding()
+                    
+                    if workspaceManager.getCustomWorkspaces().isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 48))
                                 .foregroundStyle(.secondary)
+                            
+                            Text("No projects yet")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                            
+                            Text("Create a new project to get started")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding()
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
+                                    ProjectSummaryCard(
+                                        workspace: workspace,
+                                        onSelect: {
+                                            selectedWorkspace = workspace
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showingProjectDetail = true
+                                            }
+                                        },
+                                        onLoad: { loadWorkspace(workspace) }
+                                    )
+                                }
                             }
+                            .padding()
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Recent Projects")
-        .navigationDestination(for: WorkspaceMetadata.self) { workspace in
-            RecentProjectDetailView(
-                workspace: workspace,
-                loadWorkspace: loadWorkspace
-            )
+    }
+}
+
+// MARK: - Project Summary Card (for main list)
+struct ProjectSummaryCard: View {
+    let workspace: WorkspaceMetadata
+    let onSelect: () -> Void
+    let onLoad: () -> Void
+    @State private var isHovered = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Project Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workspace.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .lineLimit(2)
+                    
+                    if !workspace.description.isEmpty {
+                        Text(workspace.description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 8) {
+                    Button("Load") {
+                        onLoad()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    
+                    Button("Details") {
+                        onSelect()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            
+            // Detailed Project Stats
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 20) {
+                    Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                    
+                    Label(workspace.displaySize, systemImage: "doc.text")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                    
+                    Label(workspace.formattedModifiedDate, systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                HStack(spacing: 20) {
+                    Label(workspace.category.displayName, systemImage: workspace.category.iconName)
+                        .font(.caption)
+                        .foregroundStyle(workspace.category.color)
+                    
+                    if !workspace.tags.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "tag")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("\(workspace.tags.count) tags")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            
+            // Tags Preview (show first 3 tags)
+            if !workspace.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(workspace.tags.prefix(4), id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+                        
+                        if workspace.tags.count > 4 {
+                            Text("+\(workspace.tags.count - 4)")
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.gray.opacity(0.15))
+                                .foregroundStyle(.secondary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+            
+            // Progress indicator or status
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Created")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Spacer()
+                        Text(workspace.createdDate, style: .date)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    
+                    // Progress bar based on how many windows vs expected
+                    //let progress = min(Double(workspace.totalWindows) / 5.0, 1.0) // Assume 5 windows is "complete"
+
+                    /*HStack(spacing: 8) {
+                        ProgressView(value: progress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(height: 4)
+                            .scaleEffect(y: 0.5)
+                        
+                        Text(progressText(for: workspace.totalWindows))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }*/
+                }
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isHovered ? .blue.opacity(0.05) : .clear)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(isHovered ? .blue.opacity(0.3) : .gray.opacity(0.1), lineWidth: 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { isHovered = $0 }
+        .onTapGesture {
+            onSelect()
+        }
+    }
+    
+    private func progressText(for windowCount: Int) -> String {
+        switch windowCount {
+        case 0: return "Empty"
+        case 1...2: return "Getting started"
+        case 3...4: return "In progress"
+        case 5...8: return "Well developed"
+        default: return "Comprehensive"
         }
     }
 }
 
-// MARK: - Recent Project Detail View
-struct RecentProjectDetailView: View {
+// MARK: - Project Detail View (replaces ProjectDetailCard)
+struct ProjectDetailView: View {
     let workspace: WorkspaceMetadata
-    let loadWorkspace: (WorkspaceMetadata) -> Void
-
+    let onBack: () -> Void
+    let onLoad: () -> Void
+    
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Project Header
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
+        VStack(spacing: 0) {
+            // Header with back button
+            HStack {
+                Button(action: onBack) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.left")
+                            .font(.headline)
+                        Text("Back")
+                            .font(.headline)
+                    }
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Button("Load Project") {
+                    onLoad()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+            }
+            .padding()
+            
+            // Project content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Project Header
+                    VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(workspace.name)
                                 .font(.largeTitle)
@@ -1143,68 +1312,58 @@ struct RecentProjectDetailView: View {
                             }
                         }
                         
-                        Spacer()
-                        
-                        Button("Load Project") {
-                            loadWorkspace(workspace)
+                        // Project Stats
+                        HStack(spacing: 20) {
+                            Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
+                            Label(workspace.displaySize, systemImage: "doc")
+                            Label(workspace.formattedModifiedDate, systemImage: "clock")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                    
+                    // Project Tags
+                    if !workspace.tags.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Tags")
+                                .font(.headline)
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                                ForEach(workspace.tags, id: \.self) { tag in
+                                    Text(tag)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.2))
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     }
                     
-                    // Project Stats
-                    HStack(spacing: 20) {
-                        Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
-                        Label(workspace.displaySize, systemImage: "doc")
-                        Label(workspace.formattedModifiedDate, systemImage: "clock")
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding()
-                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
-                
-                // Project Tags
-                if !workspace.tags.isEmpty {
+                    // Category Info
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Tags")
+                        Text("Category")
                             .font(.headline)
                         
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-                            ForEach(workspace.tags, id: \.self) { tag in
-                                Text(tag)
-                                    .font(.caption)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.2))
-                                    .clipShape(Capsule())
-                            }
+                        HStack {
+                            Image(systemName: workspace.category.iconName)
+                                .foregroundStyle(workspace.category.color)
+                            Text(workspace.category.displayName)
+                                .font(.subheadline)
+                            Spacer()
                         }
                     }
                     .padding()
                     .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                 }
-                
-                // Category Info
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Category")
-                        .font(.headline)
-                    
-                    HStack {
-                        Image(systemName: workspace.category.iconName)
-                            .foregroundStyle(workspace.category.color)
-                        Text(workspace.category.displayName)
-                            .font(.subheadline)
-                        Spacer()
-                    }
-                }
                 .padding()
-                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
             }
-            .padding()
         }
-        .navigationTitle("Project Details")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
