@@ -1,4 +1,3 @@
-//
 //  EntryPoint.swift
 //  Pulto3
 //
@@ -12,6 +11,8 @@ import RealityKit
 // MARK: - Notification Extensions
 extension Notification.Name {
     static let reopenMainWindow = Notification.Name("reopenMainWindow")
+    static let appWillEnterBackground = Notification.Name("appWillEnterBackground")
+    static let appDidBecomeActive = Notification.Name("appDidBecomeActive")
 }
 
 @main
@@ -20,6 +21,12 @@ struct EntryPoint: App {
     @StateObject private var spatialManager = VisionOSSpatialManager.shared
     @StateObject private var entityManager = EntityLifecycleManager.shared
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.scenePhase) private var scenePhase
+
+    // State to track if we need to restore windows
+    @State private var shouldRestoreOnActive = false
+    @State private var wasInBackground = false
 
     // MARK: Scene graph
     @SceneBuilder
@@ -36,6 +43,7 @@ struct EntryPoint: App {
     init() {
         setupProjectNotifications()
         setupMainWindowProtection()
+        setupAppLifecycleNotifications()
     }
     
     // MARK: - 2-D Scenes
@@ -47,6 +55,9 @@ struct EntryPoint: App {
         .windowStyle(.plain)
         .defaultSize(width: 1_400, height: 900)
         .windowResizability(.contentSize)
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            handleScenePhaseChange(from: oldPhase, to: newPhase)
+        }
     }
 
     /*
@@ -220,6 +231,99 @@ struct EntryPoint: App {
     }
     #endif
 
+    // MARK: - App Lifecycle Management
+    private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
+        print("🔄 Scene phase changed from \(oldPhase) to \(newPhase)")
+        
+        switch newPhase {
+        case .background:
+            handleAppEnteringBackground()
+        case .active:
+            if wasInBackground {
+                handleAppBecomingActive()
+            }
+        case .inactive:
+            // App is becoming inactive but not necessarily backgrounded yet
+            break
+        @unknown default:
+            break
+        }
+    }
+    
+    private func handleAppEnteringBackground() {
+        print("📱 App entering background - closing all windows")
+        wasInBackground = true
+        shouldRestoreOnActive = true
+        
+        // Close all volumetric and secondary windows
+        Task { @MainActor in
+            closeAllNonMainWindows()
+            
+            // Clean up entities
+            EntityLifecycleManager.shared.performEmergencyCleanup()
+            
+            // Post notification for other components
+            NotificationCenter.default.post(name: .appWillEnterBackground, object: nil)
+        }
+    }
+    
+    private func handleAppBecomingActive() {
+        print("🚀 App becoming active - restoring main window")
+        wasInBackground = false
+        
+        Task { @MainActor in
+            // Ensure main window is visible
+            openWindow(id: "main")
+            
+            // If there was a selected project, recreate demo windows after a delay
+            if shouldRestoreOnActive && windowManager.selectedProject != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.createDemo3DWindowForProject()
+                }
+            }
+            
+            shouldRestoreOnActive = false
+            
+            // Post notification for other components
+            NotificationCenter.default.post(name: .appDidBecomeActive, object: nil)
+        }
+    }
+    
+    @MainActor
+    private func closeAllNonMainWindows() {
+        // Get all open windows except main
+        let openWindows = windowManager.getAllWindows(onlyOpen: true)
+        
+        for window in openWindows {
+            windowManager.markWindowAsClosed(window.id)
+        }
+        
+        // Clean up the window manager
+        windowManager.cleanupClosedWindows()
+        
+        print("🗑️ Closed \(openWindows.count) non-main windows")
+    }
+
+    // MARK: - App Lifecycle Notification Setup
+    private func setupAppLifecycleNotifications() {
+        // Listen for manual app lifecycle events if needed
+        NotificationCenter.default.addObserver(
+            forName: .appWillEnterBackground,
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("📱 Received manual background notification")
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: .appDidBecomeActive,
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("🚀 Received manual active notification")
+        }
+    }
+
     // MARK: - Project Notification Setup
     private func setupProjectNotifications() {
         // Listen for project selection notifications
@@ -228,7 +332,8 @@ struct EntryPoint: App {
             object: nil,
             queue: .main
         ) { notification in
-            if notification.object is Project {
+            // Use explicit type to resolve ambiguity
+            if let project = notification.object as? Project {
                 // Create 3D content when a project is selected
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     Task { @MainActor in
@@ -475,6 +580,7 @@ struct MainWindowProtector: View {
                 }
             }
             .onDisappear {
+                // Only prevent closure if the app is active and we're not intentionally backgrounding
                 if shouldPreventClose && scenePhase == .active {
                     print("🚫 Preventing main window closure - reopening")
                     // Reopen immediately
@@ -482,7 +588,7 @@ struct MainWindowProtector: View {
                         openWindow(id: "main")
                     }
                 } else {
-                    print("✅ Allowing main window closure")
+                    print("✅ Allowing main window closure (app backgrounding or inactive)")
                 }
                 Task { @MainActor in
                     EntityLifecycleManager.shared.cleanupWindow(-1)
@@ -519,6 +625,10 @@ struct ProjectAwareEnvironmentView: View {
                 Task { @MainActor in
                     EntityLifecycleManager.shared.performEmergencyCleanup()
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .appDidBecomeActive)) { _ in
+                // Handle app becoming active - ensure main window is visible
+                print("🚀 EnvironmentView received app active notification")
             }
     }
 
