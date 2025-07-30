@@ -321,6 +321,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .help("Toggle sidebar")
                     
+                    // Jupyter Server Status Indicator
                     Button(action: {
                         checkJupyterServerStatus()
                     }) {
@@ -353,6 +354,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
                     
+                    // Project action buttons
                     Button(action: {
                         sheetManager.presentSheet(.workspaceDialog)
                     }) {
@@ -2234,7 +2236,7 @@ struct ProTip: View {
             }
         }
         .padding()
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        .glassBackgroundEffect(in: RoundedRectangleBorder(cornerRadius: 12))
     }
 }
 
