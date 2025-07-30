@@ -607,6 +607,7 @@ struct ProjectAwareEnvironmentView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        // Use the updated EnvironmentView we've been working on
         EnvironmentView()
             .environmentObject(windowManager)
             .onOpenURL(perform: handleSharedURL(_:))
