@@ -3,7 +3,7 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/19/25.
-//  Copyright 2025 Apple. All rights reserved.
+//  Copyright Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -18,77 +18,67 @@ struct NotebookCellViewer: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationSplitView {
-            // Sidebar with cell list
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: "doc.text")
-                                .font(.title2)
-                                .foregroundStyle(.blue)
-                            
-                            Text("Cells")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
+        HStack(spacing: 0) {
+            // Left sidebar with cell list
+            VStack(spacing: 0) {
+                // Sidebar header
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("Cells", systemImage: "list.bullet.rectangle")
+                            .font(.headline)
+                            .fontWeight(.semibold)
                         
-                        Text(notebook.name)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Spacer()
+                        
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                                .font(.title3)
+                        }
+                        .buttonStyle(.plain)
                     }
                     
-                    Spacer()
-                    
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+                    Text(notebook.name)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
                 
                 Divider()
                 
-                // Controls
+                // Controls section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Display Options")
-                        .font(.headline)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
                         .foregroundStyle(.secondary)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Toggle("Spatial Data", isOn: $showingSpatialData)
-                            Spacer()
-                        }
+                        Toggle("Show Spatial Data", isOn: $showingSpatialData)
+                            .font(.subheadline)
                         
-                        HStack {
-                            Toggle("Metadata", isOn: $showingMetadata)
-                            Spacer()
-                        }
+                        Toggle("Show Metadata", isOn: $showingMetadata)
+                            .font(.subheadline)
                         
-                        HStack {
-                            Toggle("Inspector", isOn: $showingInspector)
-                            Spacer()
-                        }
+                        Toggle("Show Inspector", isOn: $showingInspector)
+                            .font(.subheadline)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
                 
                 Divider()
-                    .padding(.top, 16)
                 
                 // Cell list
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: 4) {
                         if let cells = notebook.content?.cells {
                             ForEach(Array(cells.enumerated()), id: \.offset) { index, cell in
-                                CellListItem(
+                                CellListRow(
                                     cell: cell,
                                     index: index,
                                     isSelected: selectedCellIndex == index,
@@ -100,82 +90,115 @@ struct NotebookCellViewer: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 8)
                 }
-                
-                Spacer()
             }
-            .frame(minWidth: 280, maxWidth: 320)
+            .frame(minWidth: 280, idealWidth: 320, maxWidth: 350)
             .background(.regularMaterial)
-        } detail: {
-            // Main content area with inspector
-            HStack(spacing: 0) {
-                // Main content
-                Group {
-                    if let cells = notebook.content?.cells, 
-                       let selectedIndex = selectedCellIndex,
+            
+            Divider()
+            
+            // Main content area
+            VStack(spacing: 0) {
+                // Content header with toolbar
+                HStack {
+                    if let selectedIndex = selectedCellIndex,
+                       let cells = notebook.content?.cells,
                        selectedIndex < cells.count {
-                        CellDetailView(
-                            cell: cells[selectedIndex],
-                            index: selectedIndex,
-                            showingSpatialData: showingSpatialData,
-                            showingMetadata: showingMetadata
-                        )
+                        let cell = cells[selectedIndex]
+                        Label("Cell \(selectedIndex + 1)", systemImage: cellTypeIcon(for: cell.cellType))
+                            .font(.headline)
+                            .foregroundStyle(cellTypeColor(for: cell.cellType))
                     } else {
-                        // Empty state
-                        VStack(spacing: 24) {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 64))
-                                .foregroundStyle(.tertiary)
-                            
-                            VStack(spacing: 8) {
-                                Text("Select a Cell")
-                                    .font(.title)
-                                    .fontWeight(.semibold)
-                                
-                                Text("Choose a cell from the sidebar to view its content and spatial metadata.")
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .padding(.horizontal, 40)
+                        Label("No Selection", systemImage: "doc.text.magnifyingglass")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Button("Export Cell") {
+                            // Export functionality
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.ultraThinMaterial)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(selectedCellIndex == nil)
+                        
+                        Button("Copy Source") {
+                            copyCellSource()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(selectedCellIndex == nil)
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
                 
-                // Inspector panel
-                if showingInspector {
-                    InspectorView(
-                        notebook: notebook,
-                        selectedCellIndex: selectedCellIndex
+                Divider()
+                
+                // Main content view
+                if let cells = notebook.content?.cells, 
+                   let selectedIndex = selectedCellIndex,
+                   selectedIndex < cells.count {
+                    CellDetailView(
+                        cell: cells[selectedIndex],
+                        index: selectedIndex,
+                        showingSpatialData: showingSpatialData,
+                        showingMetadata: showingMetadata
                     )
-                    .frame(width: 320)
-                    .transition(.move(edge: .trailing))
+                } else {
+                    VStack(spacing: 24) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 64))
+                            .foregroundStyle(.tertiary)
+                        
+                        VStack(spacing: 8) {
+                            Text("No Cell Selected")
+                                .font(.title)
+                                .fontWeight(.semibold)
+                            
+                            Text("Select a cell from the sidebar to view its content and metadata.")
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+            
+            // Inspector panel (conditional)
+            if showingInspector {
+                Divider()
+                
+                InspectorPanel(
+                    notebook: notebook,
+                    selectedCellIndex: selectedCellIndex
+                )
+                .frame(minWidth: 300, idealWidth: 350, maxWidth: 400)
             }
         }
         .navigationTitle("Notebook Viewer")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { 
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                Button("Inspector") {
+                    withAnimation(.easeInOut(duration: 0.25)) {
                         showingInspector.toggle()
                     }
-                }) {
-                    Image(systemName: showingInspector ? "sidebar.right" : "sidebar.left")
-                        .font(.title3)
                 }
+                .buttonStyle(.bordered)
             }
         }
         .onAppear {
             // Auto-select first cell if available
-            if selectedCellIndex == nil, let cells = notebook.content?.cells, !cells.isEmpty {
+            if selectedCellIndex == nil, 
+               let cells = notebook.content?.cells, 
+               !cells.isEmpty {
                 selectedCellIndex = 0
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: showingInspector)
     }
     
     private func hasSpatialData(cell: JupyterCell) -> Bool {
@@ -184,11 +207,43 @@ struct NotebookCellViewer: View {
             key.lowercased().contains("spatial") || key == "spatialData"
         }
     }
+    
+    private func cellTypeIcon(for cellType: String) -> String {
+        switch cellType {
+        case "code": return "curlybraces"
+        case "markdown": return "doc.richtext"
+        case "raw": return "doc.plaintext"
+        default: return "doc"
+        }
+    }
+    
+    private func cellTypeColor(for cellType: String) -> Color {
+        switch cellType {
+        case "code": return .blue
+        case "markdown": return .green
+        case "raw": return .orange
+        default: return .secondary
+        }
+    }
+    
+    private func copyCellSource() {
+        guard let selectedIndex = selectedCellIndex,
+              let cells = notebook.content?.cells,
+              selectedIndex < cells.count else { return }
+        
+        let cell = cells[selectedIndex]
+        let source = cell.source.joined(separator: "\n")
+        
+        #if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(source, forType: .string)
+        #endif
+    }
 }
 
-// MARK: - Cell List Item
+// MARK: - Cell List Row
 
-struct CellListItem: View {
+struct CellListRow: View {
     let cell: JupyterCell
     let index: Int
     let isSelected: Bool
@@ -197,79 +252,71 @@ struct CellListItem: View {
     
     private var cellTypeIcon: String {
         switch cell.cellType {
-        case "code":
-            return "curlybraces"
-        case "markdown":
-            return "doc.text"
-        case "raw":
-            return "doc.plaintext"
-        default:
-            return "doc"
+        case "code": return "curlybraces"
+        case "markdown": return "doc.richtext"
+        case "raw": return "doc.plaintext"
+        default: return "doc"
         }
     }
     
     private var cellTypeColor: Color {
         switch cell.cellType {
-        case "code":
-            return .blue
-        case "markdown":
-            return .green
-        case "raw":
-            return .orange
-        default:
-            return .secondary
+        case "code": return .blue
+        case "markdown": return .green
+        case "raw": return .orange
+        default: return .secondary
         }
     }
     
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                // Cell type icon
-                VStack {
+                // Cell type indicator
+                VStack(spacing: 4) {
                     Image(systemName: cellTypeIcon)
-                        .font(.title3)
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(cellTypeColor)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 20, height: 20)
                     
                     if hasSpatialData {
-                        Image(systemName: "cube")
-                            .font(.caption2)
+                        Image(systemName: "cube.fill")
+                            .font(.system(size: 8))
                             .foregroundStyle(.purple)
                     }
                 }
-                .frame(width: 32)
+                .frame(width: 24)
                 
-                // Cell info
+                // Cell content
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Cell \(index + 1)")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
                         
                         Spacer()
                         
                         Text(cell.cellType.capitalized)
                             .font(.caption)
+                            .fontWeight(.medium)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(cellTypeColor.opacity(0.2))
+                            .background(cellTypeColor.opacity(0.15))
                             .foregroundStyle(cellTypeColor)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .cornerRadius(4)
                     }
                     
-                    // Preview of cell content
                     if !cell.source.isEmpty {
                         let preview = cell.source.joined(separator: " ")
-                            .prefix(50)
                             .trimmingCharacters(in: .whitespacesAndNewlines)
+                            .prefix(60)
                         
-                        Text(preview + (preview.count >= 50 ? "..." : ""))
+                        Text(preview + (preview.count >= 60 ? "…" : ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
                     
-                    // Execution count for code cells
                     if cell.cellType == "code", let executionCount = cell.executionCount {
                         Text("Execution: \(executionCount)")
                             .font(.caption2)
@@ -281,11 +328,11 @@ struct CellListItem: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(isSelected ? .blue.opacity(0.1) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(isSelected ? .blue.opacity(0.15) : .clear)
+            .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? .blue : .clear, lineWidth: 1)
+                    .stroke(isSelected ? .blue : .clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
@@ -302,140 +349,118 @@ struct CellDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: cellTypeIcon)
-                            .font(.title2)
-                            .foregroundStyle(cellTypeColor)
-                        
-                        Text("Cell \(index + 1) - \(cell.cellType.capitalized)")
-                            .font(.title)
-                            .fontWeight(.semibold)
-                        
-                        Spacer()
-                        
-                        if cell.cellType == "code", let executionCount = cell.executionCount {
-                            Text("[\(executionCount)]")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                        }
-                    }
-                    
-                    Divider()
-                }
-                
-                // Cell source content
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Source")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
-                    if !cell.source.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(cell.source.enumerated()), id: \.offset) { lineIndex, line in
-                                HStack(alignment: .top, spacing: 12) {
-                                    // Line number
-                                    Text("\(lineIndex + 1)")
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundStyle(.tertiary)
-                                        .frame(minWidth: 20, alignment: .trailing)
-                                    
-                                    // Source line
-                                    Text(line.isEmpty ? " " : line)
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, 2)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    } else {
-                        Text("(Empty cell)")
-                            .font(.body)
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(.regularMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                }
+            LazyVStack(alignment: .leading, spacing: 24) {
+                // Cell source
+                CellSourceSection(cell: cell, index: index)
                 
                 // Cell outputs
                 if let outputs = cell.outputs, !outputs.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Outputs")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        
-                        ForEach(Array(outputs.enumerated()), id: \.offset) { outputIndex, output in
-                            CellOutputView(output: output, index: outputIndex)
-                        }
-                    }
+                    CellOutputsSection(outputs: outputs)
                 }
                 
-                // Spatial data
+                // Spatial data section
                 if showingSpatialData {
-                    SpatialDataView(cell: cell)
+                    SpatialDataSection(cell: cell)
                 }
                 
-                // Metadata
+                // Metadata section
                 if showingMetadata, let metadata = cell.metadata, !metadata.isEmpty {
-                    MetadataView(metadata: metadata)
+                    MetadataSection(metadata: metadata)
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 24)
+            .padding(20)
         }
-        .background(.ultraThinMaterial)
+        .background(.background)
     }
+}
+
+// MARK: - Cell Source Section
+
+struct CellSourceSection: View {
+    let cell: JupyterCell
+    let index: Int
     
-    private var cellTypeIcon: String {
-        switch cell.cellType {
-        case "code":
-            return "curlybraces"
-        case "markdown":
-            return "doc.text"
-        case "raw":
-            return "doc.plaintext"
-        default:
-            return "doc"
-        }
-    }
-    
-    private var cellTypeColor: Color {
-        switch cell.cellType {
-        case "code":
-            return .blue
-        case "markdown":
-            return .green
-        case "raw":
-            return .orange
-        default:
-            return .secondary
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Source Code", systemImage: "doc.text")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                if cell.cellType == "code", let executionCount = cell.executionCount {
+                    Text("[\(executionCount)]")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.quaternary, in: Capsule())
+                }
+            }
+            
+            if !cell.source.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(cell.source.enumerated()), id: \.offset) { lineIndex, line in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text("\(lineIndex + 1)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.quaternary)
+                                .frame(minWidth: 24, alignment: .trailing)
+                            
+                            Text(line.isEmpty ? " " : line)
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding(16)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(.separator, lineWidth: 0.5)
+                )
+            } else {
+                Text("Empty cell")
+                    .font(.body)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(16)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
         }
     }
 }
 
-// MARK: - Cell Output View
+// MARK: - Cell Outputs Section
 
-struct CellOutputView: View {
+struct CellOutputsSection: View {
+    let outputs: [JupyterCellOutput]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Outputs", systemImage: "terminal")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            ForEach(Array(outputs.enumerated()), id: \.offset) { outputIndex, output in
+                CellOutputCard(output: output, index: outputIndex)
+            }
+        }
+    }
+}
+
+// MARK: - Cell Output Card
+
+struct CellOutputCard: View {
     let output: JupyterCellOutput
     let index: Int
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Output \(index + 1)")
                     .font(.subheadline)
@@ -445,100 +470,100 @@ struct CellOutputView: View {
                 
                 Text(output.outputType)
                     .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.blue.opacity(0.2))
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.blue.opacity(0.15))
                     .foregroundStyle(.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .cornerRadius(6)
             }
             
-            // Text output
             if let text = output.text {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(Array(text.enumerated()), id: \.offset) { _, line in
                         Text(line)
                             .font(.system(.body, design: .monospaced))
                             .textSelection(.enabled)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
             }
             
-            // Data output
             if let data = output.data {
-                DataOutputView(data: data)
+                DataOutputCard(data: data)
             }
             
-            // Execution count
             if let executionCount = output.executionCount {
                 Text("Execution count: \(executionCount)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.quaternary.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.separator, lineWidth: 0.5)
+        )
     }
 }
 
-// MARK: - Data Output View
+// MARK: - Data Output Card
 
-struct DataOutputView: View {
+struct DataOutputCard: View {
     let data: [String: AnyCodable]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Data Output")
+            Text("Data")
                 .font(.caption)
+                .fontWeight(.medium)
                 .foregroundStyle(.secondary)
             
             ForEach(Array(data.keys.sorted()), id: \.self) { key in
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(key)
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
                     
-                    if key.contains("text/plain") {
-                        if let textArray = data[key]?.value as? [String] {
-                            ForEach(Array(textArray.enumerated()), id: \.offset) { _, text in
+                    Group {
+                        if key.contains("text/plain") {
+                            if let textArray = data[key]?.value as? [String] {
+                                ForEach(textArray, id: \.self) { text in
+                                    Text(text)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .textSelection(.enabled)
+                                }
+                            } else if let text = data[key]?.value as? String {
                                 Text(text)
                                     .font(.system(.caption, design: .monospaced))
                                     .textSelection(.enabled)
                             }
-                        } else if let text = data[key]?.value as? String {
-                            Text(text)
+                        } else if key.contains("image/") {
+                            Label("Image data (\(key.components(separatedBy: "/").last ?? "unknown"))", 
+                                  systemImage: "photo")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        } else {
+                            Text(String(describing: data[key]?.value))
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
+                                .lineLimit(5)
                         }
-                    } else if key.contains("image/") {
-                        Text("Image data (\(key.components(separatedBy: "/").last ?? "unknown"))")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-                    } else {
-                        Text(String(describing: data[key]?.value))
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
-                            .lineLimit(3)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(8)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
             }
         }
     }
 }
 
-// MARK: - Spatial Data View
+// MARK: - Spatial Data Section
 
-struct SpatialDataView: View {
+struct SpatialDataSection: View {
     let cell: JupyterCell
     
     private var spatialMetadata: [String: Any] {
@@ -557,69 +582,70 @@ struct SpatialDataView: View {
     var body: some View {
         if !spatialMetadata.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "cube")
-                        .foregroundStyle(.purple)
-                    Text("Spatial Data")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                }
+                Label("Spatial Data", systemImage: "cube")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.purple)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(spatialMetadata.keys.sorted()), id: \.self) { key in
-                        SpatialDataItem(key: key, value: spatialMetadata[key])
+                        SpatialDataCard(key: key, value: spatialMetadata[key])
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.purple.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(.purple.opacity(0.3), lineWidth: 1)
-                )
             }
         }
     }
 }
 
-// MARK: - Spatial Data Item
+// MARK: - Spatial Data Card
 
-struct SpatialDataItem: View {
+struct SpatialDataCard: View {
     let key: String
     let value: Any?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(key)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.purple)
             
             if let dict = value as? [String: Any] {
-                VStack(alignment: .leading, spacing: 2) {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), alignment: .leading),
+                    GridItem(.flexible(), alignment: .leading)
+                ], spacing: 8) {
                     ForEach(Array(dict.keys.sorted()), id: \.self) { subKey in
-                        HStack {
-                            Text("\(subKey):")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(subKey)
                                 .font(.caption)
+                                .fontWeight(.medium)
                                 .foregroundStyle(.secondary)
                             
                             Text(formatValue(dict[subKey]))
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundStyle(.primary)
-                            
-                            Spacer()
                         }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
                     }
                 }
-                .padding(.leading, 12)
             } else {
                 Text(formatValue(value))
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.primary)
-                    .padding(.leading, 12)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
             }
         }
+        .padding(16)
+        .background(.purple.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.purple.opacity(0.3), lineWidth: 0.5)
+        )
     }
     
     private func formatValue(_ value: Any?) -> String {
@@ -637,9 +663,9 @@ struct SpatialDataItem: View {
     }
 }
 
-// MARK: - Metadata View
+// MARK: - Metadata Section
 
-struct MetadataView: View {
+struct MetadataSection: View {
     let metadata: [String: AnyCodable]
     
     private var nonSpatialMetadata: [String: AnyCodable] {
@@ -651,52 +677,47 @@ struct MetadataView: View {
     var body: some View {
         if !nonSpatialMetadata.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "info.circle")
-                        .foregroundStyle(.blue)
-                    Text("Metadata")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                }
+                Label("Metadata", systemImage: "info.circle")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.blue)
                 
-                VStack(alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible())], spacing: 8) {
                     ForEach(Array(nonSpatialMetadata.keys.sorted()), id: \.self) { key in
-                        MetadataItem(key: key, value: nonSpatialMetadata[key]?.value)
+                        NotebookMetadataCard(key: key, value: nonSpatialMetadata[key]?.value)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.blue.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(.blue.opacity(0.3), lineWidth: 1)
-                )
             }
         }
     }
 }
 
-// MARK: - Metadata Item
+// MARK: - Notebook Metadata Card
 
-struct MetadataItem: View {
+struct NotebookMetadataCard: View {
     let key: String
     let value: Any?
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text("\(key):")
-                .font(.caption)
+            Text(key)
+                .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.blue)
-                .frame(minWidth: 80, alignment: .leading)
+                .frame(minWidth: 100, alignment: .leading)
             
             Text(formatValue(value))
-                .font(.system(.caption, design: .monospaced))
+                .font(.system(.body, design: .monospaced))
                 .foregroundStyle(.primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(12)
+        .background(.blue.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.blue.opacity(0.2), lineWidth: 0.5)
+        )
     }
     
     private func formatValue(_ value: Any?) -> String {
@@ -720,13 +741,13 @@ struct MetadataItem: View {
     }
 }
 
-// MARK: - Inspector View
+// MARK: - Inspector Panel
 
-struct InspectorView: View {
+struct InspectorPanel: View {
     let notebook: JupyterNotebook
     let selectedCellIndex: Int?
     
-    private var selectedCell: JupyterCell? {
+    var selectedCell: JupyterCell? {
         guard let index = selectedCellIndex,
               let cells = notebook.content?.cells,
               index < cells.count else { return nil }
@@ -734,1064 +755,202 @@ struct InspectorView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(spacing: 0) {
             // Inspector header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .font(.title2)
-                            .foregroundStyle(.orange)
-                        
-                        Text("Inspector")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                    
-                    if let cell = selectedCell, let index = selectedCellIndex {
-                        Text("Cell \(index + 1) - \(cell.cellType.capitalized)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("No cell selected")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Label("Inspector", systemImage: "info.circle")
+                    .font(.headline)
+                    .fontWeight(.semibold)
                 
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
             
             Divider()
             
-            // Inspector content
-            ScrollView {
-                if let cell = selectedCell {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Cell overview
-                        CellOverviewSection(cell: cell, index: selectedCellIndex ?? 0)
+            if let cell = selectedCell, let index = selectedCellIndex {
+                InspectorContent(cell: cell, index: index, notebook: notebook)
+            } else {
+                VStack(spacing: 24) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tertiary)
+                    
+                    VStack(spacing: 8) {
+                        Text("No Selection")
+                            .font(.headline)
+                            .fontWeight(.semibold)
                         
-                        // Spatial positioning
-                        SpatialPositioningSection(cell: cell)
-                        
-                        // Execution details
-                        ExecutionDetailsSection(cell: cell)
-                        
-                        // Output summary
-                        OutputSummarySection(cell: cell)
-                        
-                        // Metadata summary
-                        MetadataSummarySection(cell: cell)
+                        Text("Select a cell to view details")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                } else {
-                    // Empty state
-                    VStack(spacing: 16) {
-                        Image(systemName: "doc.text.viewfinder")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.tertiary)
-                        
-                        VStack(spacing: 8) {
-                            Text("No Cell Selected")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                            
-                            Text("Select a cell to view its details in the inspector.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 20)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            
-            Spacer()
         }
         .background(.regularMaterial)
     }
 }
 
-// MARK: - Inspector Sections
+// MARK: - Inspector Content
 
-struct CellOverviewSection: View {
+struct InspectorContent: View {
     let cell: JupyterCell
     let index: Int
-    
-    private var cellTypeIcon: String {
-        switch cell.cellType {
-        case "code": return "curlybraces"
-        case "markdown": return "doc.text"
-        case "raw": return "doc.plaintext"
-        default: return "doc"
-        }
-    }
-    
-    private var cellTypeColor: Color {
-        switch cell.cellType {
-        case "code": return .blue
-        case "markdown": return .green
-        case "raw": return .orange
-        default: return .secondary
-        }
-    }
+    let notebook: JupyterNotebook
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Overview")
-                .font(.headline)
-                .foregroundStyle(.primary)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: cellTypeIcon)
-                        .foregroundStyle(cellTypeColor)
-                        .frame(width: 20)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Type")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(cell.cellType.capitalized)
-                            .font(.body)
-                            .fontWeight(.medium)
-                    }
-                    
-                    Spacer()
-                }
-                
-                HStack {
-                    Image(systemName: "number")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Index")
-                            .font(.caption)
-                            .ForegroundStyle(.secondary)
-                        Text("\(index + 1)")
-                            .font(.body)
-                            .fontWeight(.medium)
-                    }
-                    
-                    Spacer()
-                }
-                
-                HStack {
-                    Image(systemName: "text.alignleft")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Lines")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("\(cell.source.count)")
-                            .font(.body)
-                            .fontWeight(.medium)
-                    }
-                    
-                    Spacer()
-                }
-                
-                if !cell.source.isEmpty {
-                    let totalChars = cell.source.joined().count
-                    HStack {
-                        Image(systemName: "textformat.size")
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                // Cell overview
+                InspectorSection("Overview") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        InfoRow(label: "Type", value: cell.cellType.capitalized)
+                        InfoRow(label: "Index", value: "\(index + 1)")
+                        InfoRow(label: "Lines", value: "\(cell.source.count)")
                         
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Characters")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("\(totalChars)")
-                                .font(.body)
-                                .fontWeight(.medium)
+                        if let executionCount = cell.executionCount {
+                            InfoRow(label: "Execution", value: "\(executionCount)")
                         }
                         
-                        Spacer()
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(.quaternary.opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-    }
-}
-
-struct SpatialPositioningSection: View {
-    let cell: JupyterCell
-    
-    private var spatialData: [String: Any]? {
-        guard let metadata = cell.metadata else { return nil }
-        for (key, value) in metadata {
-            if key.lowercased().contains("spatial") {
-                return value.value as? [String: Any]
-            }
-        }
-        return nil
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "cube")
-                    .foregroundStyle(.purple)
-                Text("Spatial Positioning")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-            }
-            
-            if let spatial = spatialData {
-                VStack(alignment: .leading, spacing: 8) {
-                    // Position coordinates
-                    if let position = spatial["position"] as? [String: Any] {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Position")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.purple)
-                            
-                            HStack(spacing: 16) {
-                                AxisValue(label: "X", value: position["x"])
-                                AxisValue(label: "Y", value: position["y"])
-                                AxisValue(label: "Z", value: position["z"])
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Rotation")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.purple)
-                            
-                            HStack(spacing: 16) {
-                                AxisValue(label: "X", value: position["rotationX"])
-                                AxisValue(label: "Y", value: position["rotationY"])
-                                AxisValue(label: "Z", value: position["rotationZ"])
-                            }
+                        if let outputs = cell.outputs {
+                            InfoRow(label: "Outputs", value: "\(outputs.count)")
                         }
                     }
-                    
-                    // Visualization type
-                    if let vizType = spatial["visualizationType"] as? String {
-                        HStack {
-                            Image(systemName: "eye")
-                                .foregroundStyle(.purple)
-                                .frame(width: 16)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Visualization")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(vizType)
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            
-                            Spacer()
-                        }
-                    }
-                    
-                    // Volumetric data
-                    if let volumetric = spatial["volumetricData"] as? [String: Any] {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Volumetric Data")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.purple)
-                            
-                            HStack(spacing: 16) {
-                                AxisValue(label: "W", value: volumetric["width"])
-                                AxisValue(label: "H", value: volumetric["height"])
-                                AxisValue(label: "D", value: volumetric["depth"])
-                            }
-                            
-                            if let modelURL = volumetric["modelURL"] as? String, !modelURL.isEmpty {
-                                HStack {
-                                    Image(systemName: "link")
-                                        .foregroundStyle(.purple)
-                                        .frame(width: 16)
-                                    
-                                    Text("Model URL")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.purple.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                HStack {
-                    Image(systemName: "cube.transparent")
-                        .foregroundStyle(.tertiary)
-                    Text("No spatial data")
-                        .font(.body)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.quaternary.opacity(0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
-    }
-}
-
-struct AxisValue: View {
-    let label: String
-    let value: Any?
-    
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            
-            Text(formatValue(value))
-                .font(.system(.caption, design: .monospaced))
-                .fontWeight(.medium)
-                .foregroundStyle(.primary)
-        }
-        .frame(minWidth: 40)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-    }
-    
-    private func formatValue(_ value: Any?) -> String {
-        if let number = value as? NSNumber {
-            return String(format: "%.1f", number.doubleValue)
-        } else if let double = value as? Double {
-            return String(format: "%.1f", double)
-        } else if let float = value as? Float {
-            return String(format: "%.1f", float)
-        }
-        return "0.0"
-    }
-}
-
-struct ExecutionDetailsSection: View {
-    let cell: JupyterCell
-    
-    var body: some View {
-        if cell.cellType == "code" {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "play.circle")
-                        .foregroundStyle(.green)
-                    Text("Execution")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
                 }
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "number.circle")
-                            .foregroundStyle(.green)
-                            .frame(width: 20)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Execution Count")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(cell.executionCount.map(String.init) ?? "Not executed")
-                                .font(.body)
-                                .fontWeight(.medium)
-                        }
-                        
-                        Spacer()
+                // Spatial information
+                if hasSpatialData {
+                    InspectorSection("Spatial") {
+                        Text("This cell contains spatial positioning data")
+                            .font(.subheadline)
+                            .foregroundStyle(.purple)
                     }
-                    
-                    if let outputs = cell.outputs {
-                        HStack {
-                            Image(systemName: "terminal")
-                                .foregroundStyle(.green)
-                                .frame(width: 20)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Outputs")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text("\(outputs.count)")
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                            }
-                            
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.green.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
-    }
-}
-
-struct OutputSummarySection: View {
-    let cell: JupyterCell
-    
-    var body: some View {
-        if let outputs = cell.outputs, !outputs.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "doc.text.below.ecg")
-                        .foregroundStyle(.blue)
-                    Text("Outputs")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
                 }
                 
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(outputs.enumerated()), id: \.offset) { index, output in
-                        HStack {
-                            Text("\(index + 1).")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(minWidth: 20, alignment: .leading)
-                            
-                            Text(output.outputType)
-                                .font(.caption)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(.blue.opacity(0.2))
-                                .foregroundStyle(.blue)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                            
-                            Spacer()
-                            
-                            if let text = output.text {
-                                Text("\(text.joined().count) chars")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
+                // Statistics
+                InspectorSection("Statistics") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        let totalChars = cell.source.joined().count
+                        InfoRow(label: "Characters", value: "\(totalChars)")
+                        
+                        let nonEmptyLines = cell.source.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+                        InfoRow(label: "Code Lines", value: "\(nonEmptyLines)")
+                        
+                        if let metadata = cell.metadata {
+                            InfoRow(label: "Metadata Fields", value: "\(metadata.count)")
                         }
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.blue.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
+            .padding(16)
         }
     }
-}
-
-struct MetadataSummarySection: View {
-    let cell: JupyterCell
     
-    private var metadataCount: Int {
-        cell.metadata?.count ?? 0
-    }
-    
-    private var hasImportantMetadata: Bool {
+    private var hasSpatialData: Bool {
         guard let metadata = cell.metadata else { return false }
         return metadata.keys.contains { key in
-            !key.lowercased().contains("spatial") && key != "collapsed" && key != "scrolled"
+            key.lowercased().contains("spatial")
         }
+    }
+}
+
+// MARK: - Inspector Section
+
+struct InspectorSection<Content: View>: View {
+    let title: String
+    let content: Content
+    
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "tag")
-                    .foregroundStyle(.orange)
-                Text("Metadata")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
             
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: "number.circle")
-                        .foregroundStyle(.orange)
-                        .frame(width: 20)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Total Fields")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("\(metadataCount)")
-                            .font(.body)
-                            .fontWeight(.medium)
-                    }
-                    
-                    Spacer()
-                }
-                
-                if hasImportantMetadata {
-                    HStack {
-                        Image(systemName: "checkmark.circle")
-                            .foregroundStyle(.orange)
-                            .frame(width: 20)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Has Custom Data")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("Yes")
-                                .font(.body)
-                                .fontWeight(.medium)
-                        }
-                        
-                        Spacer()
-                    }
-                } else {
-                    HStack {
-                        Image(systemName: "minus.circle")
-                            .foregroundStyle(.tertiary)
-                            .frame(width: 20)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Has Custom Data")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("No")
-                                .font(.body)
-                                .foregroundStyle(.tertiary)
-                        }
-                        
-                        Spacer()
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(.orange.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            content
+                .padding(12)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+}
+
+// MARK: - Info Row
+
+struct InfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
         }
     }
 }
 
 #Preview {
+    // Simplified preview for better performance
     let sampleCells = [
-        // Markdown cell with basic content
         JupyterCell(
             cellType: "markdown",
-            source: [
-                "# Data Analysis Notebook",
-                "",
-                "This notebook demonstrates spatial data visualization capabilities.",
-                "",
-                "## Overview",
-                "- Import and process CSV data",
-                "- Create interactive visualizations", 
-                "- Position charts in 3D space"
-            ],
-            metadata: [
-                "tags": AnyCodable(["intro", "overview"]),
-                "collapsed": AnyCodable(false)
-            ],
+            source: ["# Sample Notebook", "This is a demo notebook with spatial data."],
+            metadata: ["tags": AnyCodable(["demo"])],
             outputs: nil,
             executionCount: nil
         ),
-        
-        // Code cell with spatial positioning data
         JupyterCell(
             cellType: "code",
-            source: [
-                "import pandas as pd",
-                "import matplotlib.pyplot as plt",
-                "import numpy as np",
-                "",
-                "# Load the dataset",
-                "df = pd.read_csv('sales_data.csv')",
-                "print(f\"Dataset shape: {df.shape}\")",
-                "print(f\"Columns: {list(df.columns)}\")",
-                "",
-                "# Display first few rows",
-                "df.head()"
-            ],
+            source: ["import pandas as pd", "df = pd.read_csv('data.csv')", "df.head()"],
             metadata: [
-                "collapsed": AnyCodable(false),
-                "scrolled": AnyCodable(false),
-                "tags": AnyCodable(["data-loading", "pandas"]),
                 "spatialData": AnyCodable([
-                    "position": [
-                        "x": 1.5,
-                        "y": 2.0,
-                        "z": 0.5,
-                        "rotationX": 0.0,
-                        "rotationY": 15.0,
-                        "rotationZ": 0.0
-                    ],
-                    "visualizationType": "dataTable",
-                    "volumetricData": [
-                        "width": 1.2,
-                        "height": 0.8,
-                        "depth": 0.3
-                    ]
+                    "position": ["x": 1.0, "y": 2.0, "z": 0.0],
+                    "visualizationType": "dataTable"
                 ])
             ],
             outputs: [
                 JupyterCellOutput(
                     outputType: "stream",
-                    text: [
-                        "Dataset shape: (1000, 5)",
-                        "Columns: ['date', 'product', 'sales', 'region', 'category']"
-                    ],
+                    text: ["Sample output"],
                     data: nil,
-                    executionCount: 1
-                ),
-                JupyterCellOutput(
-                    outputType: "execute_result",
-                    text: nil,
-                    data: [
-                        "text/plain": AnyCodable([
-                            "         date    product  sales region   category",
-                            "0  2024-01-01  Widget A    150   North  Electronics",
-                            "1  2024-01-02  Widget B    200   South      Tools",
-                            "2  2024-01-03  Widget C    175    East  Electronics",
-                            "3  2024-01-04  Widget D    300    West      Tools",
-                            "4  2024-01-05  Widget E    125   North  Electronics"
-                        ]),
-                        "text/html": AnyCodable("<div><table>...</table></div>")
-                    ],
                     executionCount: 1
                 )
             ],
             executionCount: 1
-        ),
-        
-        // Code cell with chart creation and 3D positioning
-        JupyterCell(
-            cellType: "code",
-            source: [
-                "# Create sales trend visualization",
-                "plt.figure(figsize=(12, 8))",
-                "plt.subplot(2, 2, 1)",
-                "",
-                "# Sales by region",
-                "region_sales = df.groupby('region')['sales'].sum()",
-                "plt.bar(region_sales.index, region_sales.values)",
-                "plt.title('Sales by Region')",
-                "plt.xlabel('Region')",
-                "plt.ylabel('Total Sales')",
-                "",
-                "# Sales trend over time",
-                "plt.subplot(2, 2, 2)",
-                "daily_sales = df.groupby('date')['sales'].sum()",
-                "plt.plot(daily_sales.index, daily_sales.values, marker='o')",
-                "plt.title('Daily Sales Trend')",
-                "plt.xticks(rotation=45)",
-                "",
-                "plt.tight_layout()",
-                "plt.show()"
-            ],
-            metadata: [
-                "tags": AnyCodable(["visualization", "matplotlib"]),
-                "spatialData": AnyCodable([
-                    "position": [
-                        "x": -1.0,
-                        "y": 1.5,
-                        "z": 1.2,
-                        "rotationX": 10.0,
-                        "rotationY": -20.0,
-                        "rotationZ": 5.0
-                    ],
-                    "visualizationType": "chart2D",
-                    "volumetricData": [
-                        "width": 1.8,
-                        "height": 1.2,
-                        "depth": 0.1
-                    ]
-                ])
-            ],
-            outputs: [
-                JupyterCellOutput(
-                    outputType: "display_data",
-                    text: nil,
-                    data: [
-                        "image/png": AnyCodable("iVBORw0KGgoAAAANSUhEUgAAA..."), // Base64 image data
-                        "text/plain": AnyCodable(["<Figure size 1200x800 with 2 Axes>"])
-                    ],
-                    executionCount: 2
-                )
-            ],
-            executionCount: 2
-        ),
-        
-        // Code cell with 3D point cloud visualization
-        JupyterCell(
-            cellType: "code",
-            source: [
-                "# Create 3D point cloud visualization",
-                "import plotly.graph_objects as go",
-                "from sklearn.decomposition import PCA",
-                "",
-                "# Prepare data for 3D visualization",
-                "# Encode categorical variables",
-                "from sklearn.preprocessing import LabelEncoder",
-                "",
-                "le_product = LabelEncoder()",
-                "le_region = LabelEncoder()",
-                "le_category = LabelEncoder()",
-                "",
-                "df_encoded = df.copy()",
-                "df_encoded['product_encoded'] = le_product.fit_transform(df['product'])",
-                "df_encoded['region_encoded'] = le_region.fit_transform(df['region'])",
-                "df_encoded['category_encoded'] = le_category.fit_transform(df['category'])",
-                "",
-                "# Create 3D scatter plot",
-                "fig = go.Figure(data=go.Scatter3d(",
-                "    x=df_encoded['product_encoded'],",
-                "    y=df_encoded['region_encoded'],", 
-                "    z=df_encoded['sales'],",
-                "    mode='markers',",
-                "    marker=dict(",
-                "        size=8,",
-                "        color=df_encoded['category_encoded'],",
-                "        colorscale='Viridis',",
-                "        showscale=True,",
-                "        opacity=0.8",
-                "    ),",
-                "    text=df['product'],",
-                "    hovertemplate='<b>%{text}</b><br>' +",
-                "                  'Sales: %{z}<br>' +",
-                "                  '<extra></extra>'",
-                "))",
-                "",
-                "fig.update_layout(",
-                "    title='3D Sales Data Visualization',",
-                "    scene=dict(",
-                "        xaxis_title='Product',",
-                "        yaxis_title='Region',",
-                "        zaxis_title='Sales'",
-                "    ),",
-                "    width=900,",
-                "    height=700",
-                ")",
-                "",
-                "fig.show()",
-                "print(f'Generated 3D visualization with {len(df)} data points')"
-            ],
-            metadata: [
-                "tags": AnyCodable(["3d-viz", "plotly", "point-cloud"]),
-                "spatialData": AnyCodable([
-                    "position": [
-                        "x": 2.5,
-                        "y": 0.0,
-                        "z": 2.0,
-                        "rotationX": 0.0,
-                        "rotationY": 45.0,
-                        "rotationZ": 0.0
-                    ],
-                    "visualizationType": "pointCloud3D",
-                    "volumetricData": [
-                        "width": 2.0,
-                        "height": 1.5,
-                        "depth": 1.5,
-                        "modelURL": nil,
-                        "pointCloudData": "eyJ0eXBlIjoicG9pbnRDbG91ZCIsImRhdGEiOiJiYXNlNjRfZW5jb2RlZF9kYXRhIn0=" // Sample base64
-                    ]
-                ])
-            ],
-            outputs: [
-                JupyterCellOutput(
-                    outputType: "display_data",
-                    text: nil,
-                    data: [
-                        "application/vnd.plotly.v1+json": AnyCodable([
-                            "data": [
-                                [
-                                    "type": "scatter3d",
-                                    "mode": "markers"
-                                ]
-                            ],
-                            "layout": [
-                                "title": "3D Sales Data Visualization"
-                            ]
-                        ])
-                    ],
-                    executionCount: 3
-                ),
-                JupyterCellOutput(
-                    outputType: "stream",
-                    text: ["Generated 3D visualization with 1000 data points"],
-                    data: nil,
-                    executionCount: 3
-                )
-            ],
-            executionCount: 3
-        ),
-        
-        // Raw cell without spatial data
-        JupyterCell(
-            cellType: "raw",
-            source: [
-                "Raw data export for external processing:",
-                "",
-                "Total records: 1000",
-                "Date range: 2024-01-01 to 2024-12-31",
-                "Regions: North, South, East, West",
-                "Categories: Electronics, Tools",
-                "",
-                "Export format: CSV",
-                "Encoding: UTF-8",
-                "Delimiter: comma"
-            ],
-            metadata: [
-                "format": AnyCodable("text/plain"),
-                "tags": AnyCodable(["raw-data", "export"])
-            ],
-            outputs: nil,
-            executionCount: nil
-        ),
-        
-        // Code cell with volumetric 3D model
-        JupyterCell(
-            cellType: "code",
-            source: [
-                "# Load and display 3D model for spatial visualization",
-                "import trimesh",
-                "import base64",
-                "",
-                "# Load 3D model (example: sales performance visualization as 3D bars)",
-                "model_path = 'sales_3d_model.obj'",
-                "",
-                "try:",
-                "    mesh = trimesh.load(model_path)",
-                "    print(f'Loaded 3D model: {mesh.vertices.shape[0]} vertices, {mesh.faces.shape[0]} faces')",
-                "    print(f'Bounding box: {mesh.bounds}')",
-                "    ",
-                "    # Export for spatial rendering",
-                "    model_data = {",
-                "        'vertices': mesh.vertices.tolist(),",
-                "        'faces': mesh.faces.tolist(),",
-                "        'bounds': mesh.bounds.tolist(),",
-                "        'volume': float(mesh.volume)",
-                "    }",
-                "    ",
-                "    print('Model ready for volumetric display')",
-                "    ",
-                "except FileNotFoundError:",
-                "    print('3D model file not found - using procedural geometry')",
-                "    # Create simple procedural 3D bars for demo",
-                "    print('Generated procedural 3D visualization')"
-            ],
-            metadata: [
-                "tags": AnyCodable(["3d-model", "volumetric", "trimesh"]),
-                "spatialData": AnyCodable([
-                    "position": [
-                        "x": 0.0,
-                        "y": -1.5,
-                        "z": 1.8,
-                        "rotationX": 15.0,
-                        "rotationY": 0.0,
-                        "rotationZ": -10.0
-                    ],
-                    "visualizationType": "volumetric3D",
-                    "volumetricData": [
-                        "width": 1.5,
-                        "height": 2.0,
-                        "depth": 1.0,
-                        "modelURL": "file:///path/to/sales_3d_model.obj",
-                        "pointCloudData": nil
-                    ]
-                ])
-            ],
-            outputs: [
-                JupyterCellOutput(
-                    outputType: "stream",
-                    text: [
-                        "3D model file not found - using procedural geometry",
-                        "Generated procedural 3D visualization"
-                    ],
-                    data: nil,
-                    executionCount: 4
-                ),
-                JupyterCellOutput(
-                    outputType: "display_data",
-                    text: nil,
-                    data: [
-                        "application/vnd.pulto.spatial+json": AnyCodable([
-                            "type": "model3d",
-                            "data": "eyJ2ZXJ0aWNlcyI6W10sImZhY2VzIjpbXX0=", // Base64 encoded model
-                            "metadata": [
-                                "format": "obj",
-                                "volumetric": true
-                            ]
-                        ])
-                    ],
-                    executionCount: 4
-                )
-            ],
-            executionCount: 4
-        ),
-        
-        // Final markdown summary cell
-        JupyterCell(
-            cellType: "markdown",
-            source: [
-                "## Summary",
-                "",
-                "This notebook demonstrated spatial data visualization with the following views:",
-                "",
-                "1. **Data Table** - Located at position (1.5, 2.0, 0.5) with 15° Y rotation",
-                "2. **2D Charts** - Multiple charts at (-1.0, 1.5, 1.2) with custom orientation", 
-                "3. **3D Point Cloud** - Interactive 3D scatter at (2.5, 0.0, 2.0) with 45° Y rotation",
-                "4. **Volumetric Model** - 3D model visualization at (0.0, -1.5, 1.8)",
-                "",
-                "### Spatial Layout",
-                "All visualizations are positioned in 3D space for immersive exploration in visionOS.",
-                "",
-                "### Next Steps",
-                "- Adjust spatial positions for optimal viewing",
-                "- Add more interactive elements",
-                "- Export to spatial workspace"
-            ],
-            metadata: [
-                "tags": AnyCodable(["summary", "conclusion"]),
-                "collapsed": AnyCodable(false)
-            ],
-            outputs: nil,
-            executionCount: nil
         )
     ]
     
-    // Create notebook content with comprehensive metadata
     let sampleContent = JupyterNotebookContent(
         cells: sampleCells,
-        metadata: [
-            "kernelspec": AnyCodable([
-                "display_name": "Python 3 (Spatial)",
-                "language": "python", 
-                "name": "python3-spatial"
-            ]),
-            "language_info": AnyCodable([
-                "name": "python",
-                "version": "3.11.0",
-                "codemirror_mode": [
-                    "name": "ipython",
-                    "version": 3
-                ]
-            ]),
-            "pulto_spatial": AnyCodable([
-                "version": "1.0",
-                "spatial_cells": 4,
-                "export_date": "2024-01-15T10:30:00Z",
-                "workspace_bounds": [
-                    "min_x": -2.0,
-                    "max_x": 3.0,
-                    "min_y": -2.0, 
-                    "max_y": 3.0,
-                    "min_z": 0.0,
-                    "max_z": 2.5
-                ]
-            ]),
-            "authors": AnyCodable(["Data Science Team"]),
-            "title": AnyCodable("Spatial Data Analysis Demo"),
-            "description": AnyCodable("Comprehensive demonstration of spatial data visualization capabilities")
-        ],
-        nbformat: 4,
-        nbformatMinor: 5
-    )
-    
-    // Create the complete notebook
-    let sampleNotebook = JupyterNotebook(
-        name: "spatial_analysis_demo.ipynb",
-        path: "notebooks/spatial_analysis_demo.ipynb",
-        type: "notebook",
-        size: 45678, // ~45KB
-        lastModified: Calendar.current.date(byAdding: .hour, value: -2, to: Date()), // 2 hours ago
-        content: sampleContent
-    )
-    
-    return NotebookCellViewer(notebook: sampleNotebook)
-        .frame(width: 1400, height: 900)
-        .previewDisplayName("Notebook Cell Viewer - Full Demo")
-}
-
-#Preview("Minimal Notebook") {
-    // Simpler preview with just a few cells
-    let minimalCells = [
-        JupyterCell(
-            cellType: "markdown", 
-            source: ["# Quick Demo", "Simple notebook example"],
-            metadata: nil,
-            outputs: nil,
-            executionCount: nil
-        ),
-        JupyterCell(
-            cellType: "code",
-            source: ["print('Hello, spatial world!')", "x = 42"],
-            metadata: [
-                "spatialData": AnyCodable([
-                    "position": ["x": 0.0, "y": 0.0, "z": 0.0, "rotationX": 0.0, "rotationY": 0.0, "rotationZ": 0.0],
-                    "visualizationType": "simple"
-                ])
-            ],
-            outputs: [
-                JupyterCellOutput(
-                    outputType: "stream",
-                    text: ["Hello, spatial world!"],
-                    data: nil,
-                    executionCount: 1
-                )
-            ],
-            executionCount: 1
-        )
-    ]
-    
-    let minimalContent = JupyterNotebookContent(
-        cells: minimalCells,
         metadata: ["kernelspec": AnyCodable(["name": "python3"])],
         nbformat: 4,
         nbformatMinor: 2
     )
     
-    let minimalNotebook = JupyterNotebook(
-        name: "quick_demo.ipynb",
-        path: "quick_demo.ipynb", 
+    let sampleNotebook = JupyterNotebook(
+        name: "sample_notebook.ipynb",
+        path: "sample_notebook.ipynb",
         type: "notebook",
-        size: 1234,
+        size: 2048,
         lastModified: Date(),
-        content: minimalContent
+        content: sampleContent
     )
     
-    return NotebookCellViewer(notebook: minimalNotebook)
-        .frame(width: 1200, height: 700)
-        .previewDisplayName("Minimal Demo")
-}
-
-#Preview("Empty Notebook") {
-    // Preview with empty notebook to test empty states
-    let emptyContent = JupyterNotebookContent(
-        cells: [],
-        metadata: [:],
-        nbformat: 4,
-        nbformatMinor: 2
-    )
-    
-    let emptyNotebook = JupyterNotebook(
-        name: "empty.ipynb",
-        path: "empty.ipynb",
-        type: "notebook", 
-        size: 100,
-        lastModified: Date(),
-        content: emptyContent
-    )
-    
-    return NotebookCellViewer(notebook: emptyNotebook)
-        .frame(width: 1000, height: 600)
-        .previewDisplayName("Empty Notebook")
+    return NotebookCellViewer(notebook: sampleNotebook)
+        .frame(width: 1400, height: 900)
 }

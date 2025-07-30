@@ -26,6 +26,7 @@
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
 		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
 		DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */; };
+		DC9BB5BF2E39D7E10043F42B /* NotebookCellViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
 		DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */; };
 		DCDD6FB72E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */; };
@@ -78,6 +79,7 @@
 		DC7630212E17017200BE77CD /* DEV.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEV.md; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
+		DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookCellViewer.swift; sourceTree = "<group>"; };
 		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
@@ -280,6 +282,7 @@
 				DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */,
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
+				DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */,
 				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
 				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
 				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
@@ -428,6 +431,7 @@
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
 				DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */,
 				DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */,
+				DC9BB5BF2E39D7E10043F42B /* NotebookCellViewer.swift in Sources */,
 				DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */,
 				DCDD6FBD2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift in Sources */,
 				DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */,
