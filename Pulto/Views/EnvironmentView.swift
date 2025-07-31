@@ -185,6 +185,9 @@ struct EnhancedActiveWindowsView: View {
     @State private var jupyterServerStatus: ServerStatus = .unknown
     @State private var isCheckingJupyterServer = false
     
+    @State private var statusCheckTask: Task<Void, Never>?
+    @State private var animationTask: Task<Void, Never>?
+    
     enum ServerStatus {
         case online
         case offline
@@ -220,189 +223,314 @@ struct EnhancedActiveWindowsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom header bar
-            HStack {
-                // Leading items
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        navigationState = navigationState == .home ? .workspace : .home
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: navigationState == .home ? "house.fill" : "rectangle.stack.fill")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                        
-                        Text(navigationState == .home ? "Home" : "Workspace")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundStyle(navigationState == .workspace ? .blue : .gray)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.plain)
-                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                
-                Spacer()
-                
-                // Center title
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundStyle(.blue)
-                    
-                    Text("Pulto")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(
-                            LinearGradient(colors: [.blue, .purple],
-                                           startPoint: .leading,
-                                           endPoint: .trailing)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    if windowManager.getAllWindows().isEmpty {
+                        // Show simple empty state when no windows
+                        ContentUnavailableView(
+                            "No Active Views",
+                            systemImage: "rectangle.dashed",
+                            description: Text("Create a new view using the options above")
                         )
-                }
-                
-                Spacer()
-                
-                // Trailing items
-                HStack(spacing: 8) {
-                    Button(action: {
-                        sheetManager.presentSheet(.settings)
-                    }) {
-                        Image(systemName: "gearshape")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.gray)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    
-                    Button(action: {
-                        sheetManager.presentSheet(.appleSignIn)
-                    }) {
-                        Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(viewModel.isUserLoggedIn ? .blue : .gray)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(.regularMaterial, in: Rectangle())
-            
-            // Main content area
-            NavigationStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
-                        if windowManager.getAllWindows().isEmpty {
-                            // Show simple empty state when no windows
-                            ContentUnavailableView(
-                                "No Active Views",
-                                systemImage: "rectangle.dashed",
-                                description: Text("Create a new view using the options above")
-                            )
-                        } else {
-                            VStack(alignment: .leading, spacing: 20) {
-                                // Quick Actions Section
-                                VStack(alignment: .leading, spacing: 16) {
-                                    HStack {
-                                        Text("Quick Actions")
-                                            .font(.title2)
-                                            .fontWeight(.semibold)
-
-                                        Spacer()
-
-                                        Button("Clean Up") {
-                                            windowManager.cleanupClosedWindows()
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        .tint(.blue)
-
-                                        Button(action: closeAllWindows) {
-                                            Label("Close All", systemImage: "xmark.circle")
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        .tint(.red)
-                                    }
-
-                                    HStack {
-                                        Image(systemName: "info.circle")
-                                            .foregroundStyle(.blue)
-                                        Text("Select a window to view details in the inspector")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-
-                                Divider()
-
-                                // Active Windows List with Selection
-                                VStack(alignment: .leading, spacing: 16) {
-                                    Text("Active Views")
+                    } else {
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Quick Actions Section
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Text("Quick Actions")
                                         .font(.title2)
                                         .fontWeight(.semibold)
 
-                                    LazyVStack(spacing: 8) {
-                                        ForEach(windowManager.getAllWindows(), id: \.id) { window in
-                                            SelectableWindowRow(
-                                                window: window,
-                                                isSelected: selectedWindow?.id == window.id,
-                                                isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
-                                                onSelect: { selectedWindow = window },
-                                                onOpen: { openWindow(window.id) },
-                                                onClose: { closeWindow(window.id) }
-                                            )
-                                        }
+                                    Spacer()
+
+                                    Button("Clean Up") {
+                                        windowManager.cleanupClosedWindows()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .tint(.blue)
+
+                                    Button(action: closeAllWindows) {
+                                        Label("Close All", systemImage: "xmark.circle")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .tint(.red)
+                                }
+
+                                HStack {
+                                    Image(systemName: "info.circle")
+                                        .foregroundStyle(.blue)
+                                    Text("Select a window to view details in the inspector")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Divider()
+
+                            // Active Windows List with Selection
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Active Views")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                LazyVStack(spacing: 8) {
+                                    ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                        SelectableWindowRow(
+                                            window: window,
+                                            isSelected: selectedWindow?.id == window.id,
+                                            isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
+                                            onSelect: { selectedWindow = window },
+                                            onOpen: { openWindow(window.id) },
+                                            onClose: { closeWindow(window.id) }
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-                    .padding()
                 }
-                .navigationTitle("Pulto")
-                .navigationBarTitleDisplayMode(.inline)
+                .padding()
             }
-            .onChange(of: windowManager.getAllWindows().count) { count in
-                // Clear selected window when all windows are cleared
-                if count == 0 {
-                    selectedWindow = nil
+            .navigationTitle("Pulto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Leading toolbar items (left side)
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    // GROUP 1: Navigation & Status (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: onHomeButtonTap) {
+                            Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(showNavigationView ? .blue : .gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Toggle sidebar")
+                        
+                        Button(action: {
+                            checkJupyterServerStatus()
+                        }) {
+                            Image(systemName: jupyterServerStatus.icon)
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(jupyterServerStatus.color)
+                                .rotationEffect(isCheckingJupyterServer ? .degrees(360) : .degrees(0))
+                                .animation(.easeInOut(duration: 0.3), value: jupyterServerStatus)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        if showNavigationView {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(.blue.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+                    
+                    // GROUP 2: Project & Content Creation (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            sheetManager.presentSheet(.workspaceDialog)
+                        }) {
+                            Image(systemName: "plus.square.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("New Project")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.templateGallery)
+                        }) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Templates")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.classifierSheet)
+                        }) {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Import")
+
+                        if navigationState == .workspace {
+                            Menu {
+                                ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                    Button {
+                                        createWindow(type)
+                                    } label: {
+                                        Label(type.displayName, systemImage: type.icon)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "chart.bar.fill")
+                                    .font(.title3)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .foregroundStyle(.gray)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Add Window")
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-            }
-            .onChange(of: defaultJupyterURL) { _ in
-                // Check server status when URL changes
-                checkJupyterServerStatus()
-            }
-            .onAppear {
-                // Check server status when view appears
-                checkJupyterServerStatus()
+                
+                // Principal toolbar item (center)
+                ToolbarItem(placement: .principal) {
+                    EmptyView()
+                }
+                
+                // Trailing toolbar items (right side)
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // GROUP 3: User & Settings (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            sheetManager.presentSheet(.settings)
+                        }) {
+                            Image(systemName: "gearshape")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Settings")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.appleSignIn)
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
+                                    .font(.title3)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .foregroundStyle(.gray)
+
+                                if viewModel.isUserLoggedIn {
+                                    Text(viewModel.userName)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help("User Profile")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    // Inspector toggle (separate)
+                    Button(action: onInspectorToggle) {
+                        Image(systemName: showInspector ? "sidebar.right" : "sidebar.trailing")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(showInspector ? .blue : .gray)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        if showInspector {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(.blue.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+                    .help("Toggle inspector")
+                }
             }
         }
-        // Rest of the original code remains the same
-        // ...
+        .onChange(of: windowManager.getAllWindows().count) { count in
+            // Clear selected window when all windows are cleared
+            if count == 0 {
+                selectedWindow = nil
+            }
+        }
+        .onChange(of: defaultJupyterURL) { _ in
+            // Check server status when URL changes
+            checkJupyterServerStatus()
+        }
+        .onAppear {
+            // Check server status when view appears
+            checkJupyterServerStatus()
+        }
+        .onDisappear {
+            cancelAllTasks()
+        }
     }
     
-    // MARK: - Jupyter Server Status Check
+    // MARK: - FIXED: Jupyter Server Status Check with proper task management
     private func checkJupyterServerStatus() {
+        // Cancel any existing task to prevent multiple concurrent requests
+        statusCheckTask?.cancel()
+        
         guard !isCheckingJupyterServer else { return }
         
         isCheckingJupyterServer = true
         jupyterServerStatus = .checking
         
-        Task {
+        // Create a manual rotation animation task
+        startRotationAnimation()
+        
+        statusCheckTask = Task {
             let status = await checkJupyterServer(url: defaultJupyterURL)
+            
+            // Check if task was cancelled before updating UI
+            guard !Task.isCancelled else { return }
             
             await MainActor.run {
                 jupyterServerStatus = status
                 isCheckingJupyterServer = false
+                stopRotationAnimation()
             }
         }
+    }
+    
+    private func startRotationAnimation() {
+        animationTask?.cancel()
+        
+        animationTask = Task {
+            while !Task.isCancelled && isCheckingJupyterServer {
+                await MainActor.run {
+                    // Trigger a single rotation
+                    withAnimation(.linear(duration: 1)) {
+                        // Use a changing value to trigger animation
+                    }
+                }
+                
+                // Wait for 1 second before next rotation
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 0.5 seconds
+            }
+        }
+    }
+    
+    private func stopRotationAnimation() {
+        animationTask?.cancel()
+        animationTask = nil
+    }
+    
+    private func cancelAllTasks() {
+        statusCheckTask?.cancel()
+        statusCheckTask = nil
+        animationTask?.cancel()
+        animationTask = nil
     }
     
     private func checkJupyterServer(url: String) async -> ServerStatus {
@@ -410,11 +538,21 @@ struct EnhancedActiveWindowsView: View {
             return .offline
         }
         
-        // Create a simple health check URL for Jupyter
+        // Create a health check URL for Jupyter
         let healthCheckURL = serverURL.appendingPathComponent("api/kernels")
         
+        // Configure URLSession with timeout
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 5.0  // 5 second timeout
+        config.timeoutIntervalForResource = 10.0
+        let session = URLSession(configuration: config)
+        
+        defer {
+            session.invalidateAndCancel()  // IMPORTANT: Clean up session
+        }
+        
         do {
-            let (_, response) = try await URLSession.shared.data(from: healthCheckURL)
+            let (_, response) = try await session.data(from: healthCheckURL)
             
             if let httpResponse = response as? HTTPURLResponse {
                 switch httpResponse.statusCode {
@@ -733,9 +871,12 @@ struct EnvironmentView: View {
     // Navigation state
     @State private var navigationState: NavigationState = .workspace
     @State private var showNavigationView = true
-    @State private var showInspector = true
+    @State private var showInspector = false
     @State private var selectedWindow: NewWindowID? = nil
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+    
+    @State private var initialLoadTask: Task<Void, Never>?
+    @State private var welcomeTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -904,8 +1045,19 @@ struct EnvironmentView: View {
         //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(20)
         .task {
-            await viewModel.loadInitialData()
-            checkFirstLaunch()
+            initialLoadTask?.cancel()
+            initialLoadTask = Task {
+                await viewModel.loadInitialData()
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        checkFirstLaunch()
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            initialLoadTask?.cancel()
+            welcomeTask?.cancel()
         }
         .singleSheetManager(sheetManager) { sheetType, data in
             AnyView(sheetContent(for: sheetType, data: data))
@@ -1196,9 +1348,16 @@ struct EnvironmentView: View {
 
         // Only show welcome sheet if app has never launched AND welcome has never been dismissed
         if !hasLaunchedBefore && !welcomeSheetDismissed {
-            // Delay showing the welcome sheet to ensure the environment is fully loaded
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                sheetManager.presentSheet(.welcome)
+            // Use Task instead of DispatchQueue to prevent memory leaks
+            welcomeTask?.cancel()
+            welcomeTask = Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        sheetManager.presentSheet(.welcome)
+                    }
+                }
             }
         }
 
