@@ -414,9 +414,9 @@ struct EnhancedActiveWindowsView: View {
                                     .symbolRenderingMode(.hierarchical)
                                     .foregroundStyle(.gray)
 
-                                Text("Create View")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
+                                //Text("Create View")
+                                //    .font(.subheadline)
+                                //    .fontWeight(.medium)
 
                                 Image(systemName: "chevron.down")
                                     .font(.caption2)
@@ -1021,7 +1021,7 @@ struct EnvironmentView: View {
                 }
             }
         }
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(20)
         .task {
             await viewModel.loadInitialData()
@@ -1424,7 +1424,7 @@ struct PultoHomeContentView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(24)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 } else if !viewModel.recentProjects.isEmpty {
                     RecentProjectsSection(
                         projects: viewModel.recentProjects,
@@ -2236,7 +2236,7 @@ struct ProTip: View {
             }
         }
         .padding()
-        .glassBackgroundEffect(in: RoundedRectangleBorder(cornerRadius: 12))
+        //.glassBackgroundEffect(in: RoundedRectangleBorder(cornerRadius: 12))
     }
 }
 
