@@ -171,7 +171,6 @@ struct EnhancedActiveWindowsView: View {
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
     @Binding var selectedWindow: NewWindowID?
-    @State private var showWelcomeContent = true
     
     // Add parameters for toolbar
     let viewModel: PultoHomeViewModel
@@ -221,238 +220,53 @@ struct EnhancedActiveWindowsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
-                    // Show welcome content if no windows and user hasn't dismissed it
-                    if windowManager.getAllWindows().isEmpty && showWelcomeContent {
-                        WelcomeContentView(onDismiss: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                showWelcomeContent = false
-                            }
-                        })
-                    } else if windowManager.getAllWindows().isEmpty {
-                        // Show simple empty state after welcome is dismissed
-                        ContentUnavailableView(
-                            "No Active Views",
-                            systemImage: "rectangle.dashed",
-                            description: Text("Create a new view using the options above")
+        VStack(spacing: 0) {
+            // Custom header bar
+            HStack {
+                // Leading items
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        navigationState = navigationState == .home ? .workspace : .home
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: navigationState == .home ? "house.fill" : "rectangle.stack.fill")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                        
+                        Text(navigationState == .home ? "Home" : "Workspace")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(navigationState == .workspace ? .blue : .gray)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                
+                Spacer()
+                
+                // Center title
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                    
+                    Text("Pulto")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            LinearGradient(colors: [.blue, .purple],
+                                           startPoint: .leading,
+                                           endPoint: .trailing)
                         )
-                    } else {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Quick Actions Section
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    Text("Quick Actions")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Spacer()
-
-                                    Button("Clean Up") {
-                                        windowManager.cleanupClosedWindows()
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .tint(.blue)
-
-                                    Button(action: closeAllWindows) {
-                                        Label("Close All", systemImage: "xmark.circle")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .tint(.red)
-                                }
-
-                                HStack {
-                                    Image(systemName: "info.circle")
-                                        .foregroundStyle(.blue)
-                                    Text("Select a window to view details in the inspector")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-
-                            Divider()
-
-                            // Active Windows List with Selection
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("Active Views")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-
-                                LazyVStack(spacing: 8) {
-                                    ForEach(windowManager.getAllWindows(), id: \.id) { window in
-                                        SelectableWindowRow(
-                                            window: window,
-                                            isSelected: selectedWindow?.id == window.id,
-                                            isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
-                                            onSelect: { selectedWindow = window },
-                                            onOpen: { openWindow(window.id) },
-                                            onClose: { closeWindow(window.id) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("Pulto")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Leading toolbar items (left side)
-                ToolbarItemGroup(placement: .topBarLeading) {
-                    // Sidebar toggle button (left panel only)
-                    Button(action: onHomeButtonTap) {
-                        Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(showNavigationView ? .blue : .gray)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        if showNavigationView {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(.blue.opacity(0.7), lineWidth: 2)
-                        }
-                    }
-                    .help("Toggle sidebar")
-                    
-                    // Jupyter Server Status Indicator
-                    Button(action: {
-                        checkJupyterServerStatus()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: jupyterServerStatus.icon)
-                                .font(.caption)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(jupyterServerStatus.color)
-                                .rotationEffect(isCheckingJupyterServer ? .degrees(360) : .degrees(0))
-                                .animation(isCheckingJupyterServer ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isCheckingJupyterServer)
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("Jupyter")
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                                
-                                Text(jupyterServerStatus.description)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(jupyterServerStatus.color.opacity(0.3), lineWidth: 1)
-                    }
-                    .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
-                    
-                    // Project action buttons
-                    Button(action: {
-                        sheetManager.presentSheet(.workspaceDialog)
-                    }) {
-                        Image(systemName: "plus.square.fill")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.gray)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .help("New Project")
-
-                    Button(action: {
-                        sheetManager.presentSheet(.templateGallery)
-                    }) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.gray)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .help("Templates")
-
-                    Button(action: {
-                        sheetManager.presentSheet(.classifierSheet)
-                    }) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.gray)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
                 }
                 
-                // Principal toolbar item (center)
-                ToolbarItem(placement: .principal) {
-                    if navigationState == .workspace {
-                        Menu {
-                            ForEach(StandardWindowType.allCases, id: \.self) { type in
-                                Button {
-                                    createWindow(type)
-                                } label: {
-                                    Label(type.displayName, systemImage: type.icon)
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.title3)
-                                    .symbolRenderingMode(.hierarchical)
-                                    .foregroundStyle(.gray)
-
-                                Text("Create View")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                Image(systemName: "chevron.down")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                        }
-                        .buttonStyle(.plain)
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .menuStyle(.borderlessButton)
-                    } else {
-                        EmptyView()
-                    }
-                }
+                Spacer()
                 
-                // Trailing toolbar items (right side)
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    // Inspector toggle button (right panel only)
-                    Button(action: onInspectorToggle) {
-                        Image(systemName: showInspector ? "sidebar.right" : "sidebar.trailing")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(showInspector ? .blue : .gray)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        if showInspector {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(.blue.opacity(0.7), lineWidth: 2)
-                        }
-                    }
-                    .help("Toggle inspector")
-                    
-                    // Settings button
+                // Trailing items
+                HStack(spacing: 8) {
                     Button(action: {
                         sheetManager.presentSheet(.settings)
                     }) {
@@ -460,52 +274,118 @@ struct EnhancedActiveWindowsView: View {
                             .font(.title3)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(.gray)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
                     }
                     .buttonStyle(.plain)
                     .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    // User profile button
+                    
                     Button(action: {
                         sheetManager.presentSheet(.appleSignIn)
                     }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.gray)
-
-                            if viewModel.isUserLoggedIn {
-                                Text(viewModel.userName)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(viewModel.isUserLoggedIn ? .blue : .gray)
                     }
                     .buttonStyle(.plain)
                     .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
-        }
-        .onChange(of: windowManager.getAllWindows().count) { count in
-            // Reset welcome content when all windows are cleared
-            if count == 0 {
-                showWelcomeContent = true
-                selectedWindow = nil
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.regularMaterial, in: Rectangle())
+            
+            // Main content area
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 32) {
+                        if windowManager.getAllWindows().isEmpty {
+                            // Show simple empty state when no windows
+                            ContentUnavailableView(
+                                "No Active Views",
+                                systemImage: "rectangle.dashed",
+                                description: Text("Create a new view using the options above")
+                            )
+                        } else {
+                            VStack(alignment: .leading, spacing: 20) {
+                                // Quick Actions Section
+                                VStack(alignment: .leading, spacing: 16) {
+                                    HStack {
+                                        Text("Quick Actions")
+                                            .font(.title2)
+                                            .fontWeight(.semibold)
+
+                                        Spacer()
+
+                                        Button("Clean Up") {
+                                            windowManager.cleanupClosedWindows()
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .tint(.blue)
+
+                                        Button(action: closeAllWindows) {
+                                            Label("Close All", systemImage: "xmark.circle")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .tint(.red)
+                                    }
+
+                                    HStack {
+                                        Image(systemName: "info.circle")
+                                            .foregroundStyle(.blue)
+                                        Text("Select a window to view details in the inspector")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                Divider()
+
+                                // Active Windows List with Selection
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text("Active Views")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    LazyVStack(spacing: 8) {
+                                        ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                            SelectableWindowRow(
+                                                window: window,
+                                                isSelected: selectedWindow?.id == window.id,
+                                                isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
+                                                onSelect: { selectedWindow = window },
+                                                onOpen: { openWindow(window.id) },
+                                                onClose: { closeWindow(window.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                }
+                .navigationTitle("Pulto")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .onChange(of: windowManager.getAllWindows().count) { count in
+                // Clear selected window when all windows are cleared
+                if count == 0 {
+                    selectedWindow = nil
+                }
+            }
+            .onChange(of: defaultJupyterURL) { _ in
+                // Check server status when URL changes
+                checkJupyterServerStatus()
+            }
+            .onAppear {
+                // Check server status when view appears
+                checkJupyterServerStatus()
             }
         }
-        .onChange(of: defaultJupyterURL) { _ in
-            // Check server status when URL changes
-            checkJupyterServerStatus()
-        }
-        .onAppear {
-            // Check server status when view appears
-            checkJupyterServerStatus()
-        }
+        // Rest of the original code remains the same
+        // ...
     }
     
     // MARK: - Jupyter Server Status Check
@@ -1021,7 +901,7 @@ struct EnvironmentView: View {
                 }
             }
         }
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(20)
         .task {
             await viewModel.loadInitialData()
@@ -1316,7 +1196,10 @@ struct EnvironmentView: View {
 
         // Only show welcome sheet if app has never launched AND welcome has never been dismissed
         if !hasLaunchedBefore && !welcomeSheetDismissed {
-            sheetManager.presentSheet(.welcome)
+            // Delay showing the welcome sheet to ensure the environment is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                sheetManager.presentSheet(.welcome)
+            }
         }
 
         // Mark that the app has launched
@@ -1424,7 +1307,7 @@ struct PultoHomeContentView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(24)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 } else if !viewModel.recentProjects.isEmpty {
                     RecentProjectsSection(
                         projects: viewModel.recentProjects,
@@ -1499,6 +1382,218 @@ struct PultoHomeContentView: View {
                 await MainActor.run {
                     onOpenWorkspace()
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Original ActiveWindowsView (maintained for compatibility)
+struct ActiveWindowsView: View {
+    let windowManager: WindowTypeManager
+    let openWindow: (Int) -> Void
+    let closeWindow: (Int) -> Void
+    let closeAllWindows: () -> Void
+    let sheetManager: SheetManager
+    let createWindow: (StandardWindowType) -> Void
+    @State private var selectedType: StandardWindowType? = nil
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                if windowManager.getAllWindows().isEmpty {
+                    // Show simple empty state when no windows
+                    ContentUnavailableView(
+                        "No Active Views",
+                        systemImage: "rectangle.dashed",
+                        description: Text("Create a new view using the options above")
+                    )
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Cleanup Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Window Management")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Button("Clean Up") {
+                                    windowManager.cleanupClosedWindows()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.blue)
+
+                                Button(action: closeAllWindows) {
+                                    Label("Close All", systemImage: "xmark.circle")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.red)
+                            }
+
+                            HStack {
+                                Image(systemName: "info.circle")
+                                    .foregroundStyle(.blue)
+                                Text("Clean up removes windows that were created but never opened or were closed externally")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
+                        // Statistics Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Overview")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            HStack(spacing: 16) {
+                                StatCard(
+                                    title: "Total Windows",
+                                    value: "\(windowManager.getAllWindows().count)",
+                                    icon: "rectangle.stack"
+                                )
+
+                                StatCard(
+                                    title: "Actually Open",
+                                    value: "\(windowManager.getAllWindows(onlyOpen: true).count)",
+                                    icon: "checkmark.circle"
+                                )
+
+                                StatCard(
+                                    title: "Window Types",
+                                    value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
+                                    icon: "square.grid.2x2"
+                                )
+                            }
+                        }
+
+                        // Window Distribution
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Distribution")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()), GridItem(.flexible())
+                            ], spacing: 8) {
+                                ForEach(WindowType.allCases, id: \.self) { type in
+                                    let count = windowManager.getAllWindows()
+                                        .filter { $0.windowType == type }.count
+                                    let openCount = windowManager.getAllWindows(onlyOpen: true)
+                                        .filter { $0.windowType == type }.count
+                                    if count > 0 {
+                                        HStack {
+                                            Image(systemName: type.icon)
+                                                .foregroundStyle(.blue)
+                                            Text(type.displayName)
+                                                .font(.subheadline)
+                                            Spacer()
+                                            Text("\(openCount)/\(count)")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            }
+                        }
+
+                        // Quick Actions
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Quick Actions")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Menu("Create Window") {
+                                    ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                        Button {
+                                            createWindow(type)
+                                        } label: {
+                                            Label(type.displayName, systemImage: type.icon)
+                                        }
+                                    }
+                                } primaryAction: {
+                                    // Default action when button is tapped directly
+                                    createWindow(.dataFrame)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()), GridItem(.flexible())
+                            ], spacing: 12) {
+                                ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                    Button {
+                                        createWindow(type)
+                                    } label: {
+                                        VStack(spacing: 8) {
+                                            Image(systemName: type.icon)
+                                                .font(.title2)
+                                                .foregroundStyle(type.iconColor)
+
+                                            Text(type.displayName)
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+
+                                            Text(type.description)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .padding()
+                                        .frame(maxWidth: .infinity, minHeight: 100)
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(selectedType == type ? type.iconColor : .clear, lineWidth: 2)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .onHover { isHovered in
+                                        selectedType = isHovered ? type : nil
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        // Active Windows List
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Active Windows")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            LazyVStack(spacing: 8) {
+                                ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                    WindowRow(
+                                        window: window,
+                                        isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
+                                        onOpen: { openWindow(window.id) },
+                                        onClose: { closeWindow(window.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .onChange(of: windowManager.getAllWindows().count) { count in
+            // Clear selected type when all windows are cleared
+            if count == 0 {
+                selectedType = nil
             }
         }
     }
@@ -1803,210 +1898,6 @@ struct StatCard: View {
     }
 }
 
-// MARK: - Original ActiveWindowsView (maintained for compatibility)
-struct ActiveWindowsView: View {
-    let windowManager: WindowTypeManager
-    let openWindow: (Int) -> Void
-    let closeWindow: (Int) -> Void
-    let closeAllWindows: () -> Void
-    let sheetManager: SheetManager
-    let createWindow: (StandardWindowType) -> Void
-    @State private var selectedType: StandardWindowType? = nil
-    @State private var showWelcomeContent = true
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                // Show welcome content if no windows and user hasn't dismissed it
-                if windowManager.getAllWindows().isEmpty && showWelcomeContent {
-                    WelcomeContentView(onDismiss: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            showWelcomeContent = false
-                        }
-                    })
-                } else if windowManager.getAllWindows().isEmpty {
-                    // Show simple empty state after welcome is dismissed
-                    ContentUnavailableView(
-                        "No Active Views",
-                        systemImage: "rectangle.dashed",
-                        description: Text("Create a new view using the options above")
-                    )
-                } else {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Cleanup Section
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Window Management")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-
-                                Spacer()
-
-                                Button("Clean Up") {
-                                    windowManager.cleanupClosedWindows()
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .tint(.blue)
-
-                                Button(action: closeAllWindows) {
-                                    Label("Close All", systemImage: "xmark.circle")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .tint(.red)
-                            }
-
-                            HStack {
-                                Image(systemName: "info.circle")
-                                    .foregroundStyle(.blue)
-                                Text("Clean up removes windows that were created but never opened or were closed externally")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        Divider()
-
-                        // Statistics Section
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Window Overview")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-
-                            HStack(spacing: 16) {
-                                StatCard(
-                                    title: "Total Windows",
-                                    value: "\(windowManager.getAllWindows().count)",
-                                    icon: "rectangle.stack"
-                                )
-
-                                StatCard(
-                                    title: "Actually Open",
-                                    value: "\(windowManager.getAllWindows(onlyOpen: true).count)",
-                                    icon: "checkmark.circle"
-                                )
-
-                                StatCard(
-                                    title: "Window Types",
-                                    value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
-                                    icon: "square.grid.2x2"
-                                )
-                            }
-                        }
-
-                        // Window Distribution
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Window Distribution")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()), GridItem(.flexible())
-                            ], spacing: 8) {
-                                ForEach(WindowType.allCases, id: \.self) { type in
-                                    let count = windowManager.getAllWindows()
-                                        .filter { $0.windowType == type }.count
-                                    let openCount = windowManager.getAllWindows(onlyOpen: true)
-                                        .filter { $0.windowType == type }.count
-                                    if count > 0 {
-                                        HStack {
-                                            Image(systemName: type.icon)
-                                                .foregroundStyle(.blue)
-                                            Text(type.displayName)
-                                                .font(.subheadline)
-                                            Spacer()
-                                            Text("\(openCount)/\(count)")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
-                                    }
-                                }
-                            }
-                        }
-
-                        // Active Windows List
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Active Views")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-
-                            LazyVStack(spacing: 8) {
-                                ForEach(windowManager.getAllWindows(), id: \.id) { window in
-                                    WindowRow(
-                                        window: window,
-                                        isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
-                                        onOpen: { openWindow(window.id) },
-                                        onClose: { closeWindow(window.id) }
-                                    )
-                                }
-                            }
-                        }
-
-                        // Recent Activity
-                        if windowManager.getAllWindows().count > 1 {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("Recent Activity")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-
-                                LazyVStack(spacing: 8) {
-                                    ForEach(windowManager.getAllWindows().prefix(5), id: \.id) { window in
-                                        HStack {
-                                            Image(systemName: window.windowType.icon)
-                                                .foregroundStyle(.blue)
-                                                .frame(width: 24)
-
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text("Window #\(window.id)")
-                                                    .font(.subheadline)
-                                                    .fontWeight(.medium)
-
-                                                Text(window.windowType.displayName)
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            Spacer()
-
-                                            if windowManager.isWindowActuallyOpen(window.id) {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundStyle(.green)
-                                                    .font(.caption)
-                                            } else {
-                                                Image(systemName: "questionmark.circle")
-                                                    .foregroundStyle(.orange)
-                                                    .font(.caption)
-                                            }
-
-                                            Text(window.createdAt, style: .relative)
-                                                .font(.caption)
-                                                .foregroundStyle(.tertiary)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-        .onChange(of: windowManager.getAllWindows().count) { count in
-            // Reset welcome content when all windows are cleared
-            if count == 0 {
-                showWelcomeContent = true
-            }
-        }
-    }
-}
-
 // MARK: - Helper Views for Settings
 private func SettingsSection<Content: View>(
     _ title: String,
@@ -2236,7 +2127,7 @@ struct ProTip: View {
             }
         }
         .padding()
-        .glassBackgroundEffect(in: RoundedRectangleBorder(cornerRadius: 12))
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
