@@ -38,6 +38,7 @@ enum StandardWindowType: String, CaseIterable {
     case pointCloud = "Point Cloud"
     case model3d    = "3D Model"
     case iotDashboard = "IoT Dashboard"
+    case chartGenerator = "Chart Generator"
 
     var displayName: String { rawValue }
 
@@ -47,6 +48,7 @@ enum StandardWindowType: String, CaseIterable {
         case .pointCloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
         case .iotDashboard: return "sensor.tag.radiowaves.forward"
+        case .chartGenerator: return "chart.bar.fill"
         }
     }
 
@@ -56,6 +58,7 @@ enum StandardWindowType: String, CaseIterable {
         case .pointCloud: return .cyan
         case .model3d:    return .red
         case .iotDashboard: return .orange
+        case .chartGenerator: return .blue
         }
     }
 
@@ -65,6 +68,7 @@ enum StandardWindowType: String, CaseIterable {
         case .pointCloud: return "3D point clouds"
         case .model3d:    return "3D model viewer"
         case .iotDashboard: return "Real-time IoT dashboard"
+        case .chartGenerator: return "Interactive chart builder"
         }
     }
 
@@ -74,6 +78,7 @@ enum StandardWindowType: String, CaseIterable {
         case .pointCloud: return .pointcloud
         case .model3d:    return .model3d
         case .iotDashboard: return .volume  // Maps to volume type for IoT metrics
+        case .chartGenerator: return .charts
         }
     }
 }

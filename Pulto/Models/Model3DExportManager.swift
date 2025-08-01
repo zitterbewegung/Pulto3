@@ -192,7 +192,7 @@ struct USDZDocument: FileDocument {
         self.data = data
     }
 
-    init(configuration: ReadConfiguration) throws {
+    init(configuration: FileDocumentReadConfiguration) throws {
         if let d = configuration.file.regularFileContents {
             data = d
         } else {
@@ -200,7 +200,7 @@ struct USDZDocument: FileDocument {
         }
     }
 
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    func fileWrapper(configuration: FileDocumentWriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
 }
@@ -214,7 +214,7 @@ struct PNGDocument: FileDocument {
         self.data = data
     }
 
-    init(configuration: ReadConfiguration) throws {
+    init(configuration: FileDocumentReadConfiguration) throws {
         if let d = configuration.file.regularFileContents {
             data = d
         } else {
@@ -222,7 +222,7 @@ struct PNGDocument: FileDocument {
         }
     }
 
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    func fileWrapper(configuration: FileDocumentWriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
 }

@@ -135,6 +135,7 @@ struct FileClassifierAndRecommenderView: View {
     @State private var errorMessage: String?
     @State private var nonCSVType: FileType?
     @State private var importedURL: URL?
+    @State private var showingBatchImporter = false
 
     private var welcomeScreen: some View {
         VStack(spacing: 30) {
@@ -180,13 +181,24 @@ struct FileClassifierAndRecommenderView: View {
                 }
             }
 
-            Button(action: { isImporting = true }) {
-                Label("Import File from iCloud", systemImage: "icloud.and.arrow.down")
-                    .font(.headline)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+            VStack(spacing: 16) {
+                Button(action: { isImporting = true }) {
+                    Label("Import Single File", systemImage: "icloud.and.arrow.down")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                
+                Button(action: { showingBatchImporter = true }) {
+                    Label("Import Multiple Files", systemImage: "square.and.arrow.down.on.square")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
             }
             
             // Add a test button for creating sample 3D charts
@@ -194,7 +206,7 @@ struct FileClassifierAndRecommenderView: View {
                 Label("Create Sample 3D Chart", systemImage: "cube.transparent")
                     .font(.headline)
                     .padding()
-                    .background(Color.green)
+                    .background(Color.purple)
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
@@ -359,6 +371,9 @@ struct FileClassifierAndRecommenderView: View {
                 allowsMultipleSelection: false
             ) { result in
                 handleFileImport(result)
+            }
+            .sheet(isPresented: $showingBatchImporter) {
+                BatchImportView()
             }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
                 Button("OK") { errorMessage = nil }

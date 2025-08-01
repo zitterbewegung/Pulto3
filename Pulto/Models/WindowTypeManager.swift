@@ -8,6 +8,10 @@
 
 import SwiftUI
 import Foundation
+import RealityKit
+import ModelIO
+import UniformTypeIdentifiers
+import Combine
 import Charts
 
 // Type alias to resolve Project type conflicts
@@ -219,7 +223,7 @@ class WindowTypeManager: ObservableObject {
         windows[id]?.state.chartRecommendation = recommendation
         windows[id]?.state.lastModified = Date()
         
-        // Auto-set template to matplotlib for chart windows
+        // Auto-set template to matplotlib for forA
         if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
             windows[id]?.state.exportTemplate = .matplotlib
         }
@@ -1342,4 +1346,24 @@ class WindowTypeManager: ObservableObject {
         window.state.lastModified = Date()
         windows[windowID] = window
     }
+
+    //     guard var window = windows[windowID] else { return }
+    //     
+    //     // Convert ChartBuilder data to ChartData for storage
+    //     let chartData = ChartData(
+    //         title: chartBuilder.chartMetadata.title,
+    //         chartType: chartBuilder.chartType.rawValue.lowercased(),
+    //         xLabel: chartBuilder.chartMetadata.xAxisLabel,
+    //         yLabel: chartBuilder.chartMetadata.yAxisLabel,
+    //         xData: chartBuilder.chartData.xAxisData,
+    //         yData: chartBuilder.chartData.yAxisData.isEmpty ? 
+    //             chartBuilder.chartData.series.first?.values ?? [] : 
+    //             chartBuilder.chartData.yAxisData
+    //     )
+    //     
+    //     window.state.chartData = chartData
+    //     window.state.lastModified = Date()
+    //     windows[windowID] = window
+    //     objectWillChange.send()
+    // }
 }
