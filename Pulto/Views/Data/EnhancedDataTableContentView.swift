@@ -1,8 +1,8 @@
 //
-//  DataTableContentView.swift
+//  EnhancedDataTableContentView.swift
 //  Pulto
 //
-//  Enhanced DataFrame viewer with spreadsheet-like functionality
+//  Enhanced DataFrame viewer using new unique types to avoid conflicts
 //
 
 import SwiftUI
@@ -10,14 +10,15 @@ import Charts
 import RealityKit
 import UniformTypeIdentifiers
 
-// Enhanced DataFrame viewer with spreadsheet-like appearance - Cross-platform version
-struct DataTableContentView: View {
+// MARK: - Enhanced DataFrame Table View
+
+struct EnhancedDataTableContentView: View {
     let windowID: Int?
     let initialDataFrame: DataFrameData?
     
     @StateObject private var windowManager = WindowTypeManager.shared
-    @StateObject private var dataFrame: DataFrameModel
-    @StateObject private var importer = DataFrameImporter()
+    @StateObject private var dataFrame: EnhancedDataFrameModel
+    @StateObject private var importer = EnhancedDataFrameImporter()
     
     @State private var selectedCell: (row: Int, col: Int)? = nil
     @State private var hoveredCell: (row: Int, col: Int)? = nil
@@ -28,7 +29,7 @@ struct DataTableContentView: View {
     @State private var filterText = ""
     @State private var showingImportSheet = false
     @State private var showingColumnDetails = false
-    @State private var selectedColumn: DataColumn?
+    @State private var selectedColumn: EnhancedDataColumn?
     @State private var showingStatistics = false
     @State private var showingHistory = false
     @State private var showingExportOptions = false
@@ -88,17 +89,17 @@ struct DataTableContentView: View {
         
         // Convert legacy data or create new DataFrame
         if let legacyData = initialDataFrame {
-            let convertedDataFrame = DataFrameModel(from: legacyData)
+            let convertedDataFrame = EnhancedDataFrameModel(from: legacyData)
             self._dataFrame = StateObject(wrappedValue: convertedDataFrame)
         } else {
-            let sampleDataFrame = SampleDataGenerator.generateSalesData()
+            let sampleDataFrame = EnhancedSampleDataGenerator.generateSalesData()
             self._dataFrame = StateObject(wrappedValue: sampleDataFrame)
         }
     }
     
     // MARK: - Computed Properties
     
-    private var filteredData: DataFrameModel {
+    private var filteredData: EnhancedDataFrameModel {
         if filterText.isEmpty {
             return dataFrame
         }
@@ -148,7 +149,7 @@ struct DataTableContentView: View {
             saveDataToWindow()
         }
         .sheet(isPresented: $showingImportSheet) {
-            DataImportSheet(importer: importer) { importedDataFrame in
+            EnhancedDataImportSheet(importer: importer) { importedDataFrame in
                 dataFrame.columns = importedDataFrame.columns
                 dataFrame.name = importedDataFrame.name
                 dataFrame.metadata = importedDataFrame.metadata
@@ -157,7 +158,7 @@ struct DataTableContentView: View {
             }
         }
         .sheet(isPresented: $showingChartRecommender) {
-            ChartRecommenderSheet(
+            SimpleChartRecommenderSheet(
                 csvData: convertDataFrameToCSV(),
                 onChartSelected: { recommendation, chartData in
                     selectedChartRecommendation = recommendation
@@ -186,27 +187,10 @@ struct DataTableContentView: View {
             
             // Filter field
             HStack(spacing: 8) {
-                Button(action: {
-                    isFilterFieldFocused = true
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
-                        if filterText.isEmpty {
-                            Text("Filter data...")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                
                 TextField("Filter data...", text: $filterText)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 150)
                     .focused($isFilterFieldFocused)
-                    .onSubmit {
-                        isFilterFieldFocused = false
-                    }
                 
                 if !filterText.isEmpty {
                     Button(action: {
@@ -225,22 +209,22 @@ struct DataTableContentView: View {
                 Button(action: { loadSampleData() }) {
                     Label("Sample Data", systemImage: "doc.text")
                 }
-                .buttonStyle(DataTableButtonStyle(color: .blue))
+                .buttonStyle(EnhancedDataTableButtonStyle(color: .blue))
                 
                 Button(action: { showingImportSheet = true }) {
                     Label("Import", systemImage: "square.and.arrow.down")
                 }
-                .buttonStyle(DataTableButtonStyle(color: .green))
+                .buttonStyle(EnhancedDataTableButtonStyle(color: .green))
                 
                 Button(action: { showingChartRecommender = true }) {
                     Label("Create Chart", systemImage: "chart.xyaxis.line")
                 }
-                .buttonStyle(DataTableButtonStyle(color: .purple))
+                .buttonStyle(EnhancedDataTableButtonStyle(color: .purple))
                 
                 Button(action: { showingSidebar.toggle() }) {
                     Label("Details", systemImage: showingSidebar ? "sidebar.right" : "sidebar.left")
                 }
-                .buttonStyle(DataTableButtonStyle(color: .orange))
+                .buttonStyle(EnhancedDataTableButtonStyle(color: .orange))
             }
         }
         .padding(.horizontal)
@@ -306,9 +290,9 @@ struct DataTableContentView: View {
         .padding()
     }
     
-    // MARK: - Column Header View
+    // MARK: - Helper Views and Methods
     
-    private func columnHeaderView(column: DataColumn) -> some View {
+    private func columnHeaderView(column: EnhancedDataColumn) -> some View {
         HStack(spacing: 4) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(column.name)
@@ -346,37 +330,9 @@ struct DataTableContentView: View {
         .onTapGesture {
             toggleSort(column: column.name)
         }
-        .contextMenu {
-            Button("Column Details") {
-                selectedColumn = column
-                showingColumnDetails = true
-            }
-            Button("Sort Ascending") {
-                sortColumn = column.name
-                sortAscending = true
-                dataFrame.sort(byColumn: column.name, ascending: true)
-            }
-            Button("Sort Descending") {
-                sortColumn = column.name
-                sortAscending = false
-                dataFrame.sort(byColumn: column.name, ascending: false)
-            }
-            Divider()
-            Button("Insert Column Before") {
-                insertColumnBefore(column.name)
-            }
-            Button("Insert Column After") {
-                insertColumnAfter(column.name)
-            }
-            Button("Delete Column", role: .destructive) {
-                deleteColumn(column.name)
-            }
-        }
     }
     
-    // MARK: - Cell View
-    
-    private func cellView(rowIndex: Int, colIndex: Int, column: DataColumn) -> some View {
+    private func cellView(rowIndex: Int, colIndex: Int, column: EnhancedDataColumn) -> some View {
         let value = rowIndex < column.values.count ? column.values[rowIndex] : ""
         let isSelected = selectedCell?.row == rowIndex && selectedCell?.col == colIndex
         let isHovered = hoveredCell?.row == rowIndex && hoveredCell?.col == colIndex
@@ -436,24 +392,6 @@ struct DataTableContentView: View {
                 hoveredCell = nil
             }
         }
-        .contextMenu {
-            Button("Edit Cell") {
-                startCellEditing(rowIndex: rowIndex, columnIndex: colIndex)
-            }
-            Button("Copy Value") {
-                copyToClipboard(value)
-            }
-            Divider()
-            Button("Insert Row Above") {
-                dataFrame.insertRow(at: rowIndex)
-            }
-            Button("Insert Row Below") {
-                dataFrame.insertRow(at: rowIndex + 1)
-            }
-            Button("Delete Row", role: .destructive) {
-                dataFrame.removeRow(at: rowIndex)
-            }
-        }
     }
     
     // MARK: - Sidebar View
@@ -498,12 +436,6 @@ struct DataTableContentView: View {
             .padding()
         }
         .background(windowBackgroundColor)
-        .overlay(
-            Rectangle()
-                .fill(separatorColor)
-                .frame(width: 0.5),
-            alignment: .leading
-        )
     }
     
     // MARK: - Sidebar Tab Views
@@ -532,12 +464,6 @@ struct DataTableContentView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    if !column.metadata.description.isEmpty {
-                        Text(column.metadata.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
                     let stats = column.statistics
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Unique: \(stats.uniqueCount) | Null: \(stats.nullCount)")
@@ -554,10 +480,6 @@ struct DataTableContentView: View {
                 .padding(8)
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(6)
-                .onTapGesture {
-                    selectedColumn = column
-                    showingColumnDetails = true
-                }
             }
         }
     }
@@ -567,7 +489,6 @@ struct DataTableContentView: View {
             Text("Statistics")
                 .font(.headline)
             
-            // Overall DataFrame stats
             VStack(alignment: .leading, spacing: 8) {
                 Text("DataFrame Overview")
                     .font(.subheadline)
@@ -593,28 +514,6 @@ struct DataTableContentView: View {
             }
             .padding(8)
             .background(Color.blue.opacity(0.1))
-            .cornerRadius(6)
-            
-            // Column type distribution
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Column Types")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                let typeGroups = Dictionary(grouping: dataFrame.columns) { $0.dataType }
-                ForEach(Array(typeGroups.keys.sorted(by: { $0.displayName < $1.displayName })), id: \.self) { dataType in
-                    HStack {
-                        Image(systemName: dataType.icon)
-                            .foregroundColor(.blue)
-                        Text(dataType.displayName)
-                        Spacer()
-                        Text("\(typeGroups[dataType]?.count ?? 0)")
-                            .fontWeight(.medium)
-                    }
-                }
-            }
-            .padding(8)
-            .background(Color.green.opacity(0.1))
             .cornerRadius(6)
         }
     }
@@ -671,40 +570,11 @@ struct DataTableContentView: View {
                 }
                 .buttonStyle(.bordered)
                 
-                Button(action: exportAsTSV) {
-                    Label("Export as TSV", systemImage: "doc.text")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                
-                Button(action: exportAsJSON) {
-                    Label("Export as JSON", systemImage: "doc.text")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                
                 Button(action: exportAsPython) {
                     Label("Export as Python", systemImage: "doc.text")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-            }
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Quick Stats")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text("Total cells: \(dataFrame.rowCount * dataFrame.columnCount)")
-                    .font(.caption)
-                
-                Text("Non-empty cells: \(getNonEmptyCellCount())")
-                    .font(.caption)
-                
-                Text("Completion: \(String(format: "%.1f%%", getCompletionPercentage()))")
-                    .font(.caption)
             }
         }
     }
@@ -756,12 +626,6 @@ struct DataTableContentView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(windowBackgroundColor)
-        .overlay(
-            Rectangle()
-                .fill(separatorColor)
-                .frame(height: 0.5),
-            alignment: .top
-        )
     }
     
     // MARK: - Helper Functions
@@ -781,7 +645,7 @@ struct DataTableContentView: View {
         }
     }
     
-    private func formatCellValue(_ value: String, column: DataColumn) -> String {
+    private func formatCellValue(_ value: String, column: EnhancedDataColumn) -> String {
         guard !value.isEmpty else { return "" }
         
         switch column.dataType {
@@ -808,7 +672,7 @@ struct DataTableContentView: View {
         return value
     }
     
-    private func getCellTextColor(value: String, column: DataColumn) -> Color {
+    private func getCellTextColor(value: String, column: EnhancedDataColumn) -> Color {
         if value.isEmpty {
             return .secondary
         }
@@ -825,7 +689,7 @@ struct DataTableContentView: View {
         }
     }
     
-    private func getCellAlignment(column: DataColumn) -> Alignment {
+    private func getCellAlignment(column: EnhancedDataColumn) -> Alignment {
         switch column.dataType {
         case .integer, .double:
             return .trailing
@@ -870,7 +734,7 @@ struct DataTableContentView: View {
             return
         }
         
-        let convertedDataFrame = DataFrameModel(from: existingData)
+        let convertedDataFrame = EnhancedDataFrameModel(from: existingData)
         dataFrame.columns = convertedDataFrame.columns
         dataFrame.name = convertedDataFrame.name
         dataFrame.metadata = convertedDataFrame.metadata
@@ -883,7 +747,7 @@ struct DataTableContentView: View {
     }
     
     private func loadSampleData() {
-        let sampleData = SampleDataGenerator.generateSalesData()
+        let sampleData = EnhancedSampleDataGenerator.generateSalesData()
         dataFrame.columns = sampleData.columns
         dataFrame.name = sampleData.name
         dataFrame.metadata = sampleData.metadata
@@ -891,64 +755,9 @@ struct DataTableContentView: View {
         saveDataToWindow()
     }
     
-    // MARK: - Column Operations
-    
-    private func insertColumnBefore(_ columnName: String) {
-        guard let index = dataFrame.columns.firstIndex(where: { $0.name == columnName }) else { return }
-        let newColumn = DataColumn(name: "New Column", dataType: .string, values: Array(repeating: "", count: dataFrame.rowCount))
-        dataFrame.insertColumn(newColumn, at: index)
-    }
-    
-    private func insertColumnAfter(_ columnName: String) {
-        guard let index = dataFrame.columns.firstIndex(where: { $0.name == columnName }) else { return }
-        let newColumn = DataColumn(name: "New Column", dataType: .string, values: Array(repeating: "", count: dataFrame.rowCount))
-        dataFrame.insertColumn(newColumn, at: index + 1)
-    }
-    
-    private func deleteColumn(_ columnName: String) {
-        guard let index = dataFrame.columns.firstIndex(where: { $0.name == columnName }) else { return }
-        dataFrame.removeColumn(at: index)
-    }
-    
-    // MARK: - Export Functions
-    
     private func exportAsCSV() {
         let csv = dataFrame.toCSV()
         copyToClipboard(csv)
-    }
-    
-    private func exportAsTSV() {
-        let tsv = dataFrame.toCSV(delimiter: "\t")
-        copyToClipboard(tsv)
-    }
-    
-    private func exportAsJSON() {
-        // Convert to JSON format
-        var jsonData: [[String: Any]] = []
-        for rowIndex in 0..<dataFrame.rowCount {
-            var rowDict: [String: Any] = [:]
-            for column in dataFrame.columns {
-                if rowIndex < column.values.count {
-                    let value = column.values[rowIndex]
-                    switch column.dataType {
-                    case .integer:
-                        rowDict[column.name] = Int(value) ?? 0
-                    case .double:
-                        rowDict[column.name] = Double(value) ?? 0.0
-                    case .boolean:
-                        rowDict[column.name] = value.lowercased() == "true"
-                    default:
-                        rowDict[column.name] = value
-                    }
-                }
-            }
-            jsonData.append(rowDict)
-        }
-        
-        if let jsonDataObj = try? JSONSerialization.data(withJSONObject: jsonData, options: .prettyPrinted),
-           let jsonString = String(data: jsonDataObj, encoding: .utf8) {
-            copyToClipboard(jsonString)
-        }
     }
     
     private func exportAsPython() {
@@ -964,8 +773,6 @@ struct DataTableContentView: View {
         UIPasteboard.general.string = text
         #endif
     }
-    
-    // MARK: - Chart Integration
     
     private func convertDataFrameToCSV() -> CSVData {
         let headers = dataFrame.columns.map { $0.name }
@@ -997,21 +804,7 @@ struct DataTableContentView: View {
         print("Chart data saved to window \(windowID) for spatial visualization")
     }
     
-    // MARK: - Statistics Helpers
-    
-    private func getNonEmptyCellCount() -> Int {
-        return dataFrame.columns.reduce(0) { total, column in
-            total + column.values.filter { !$0.isEmpty }.count
-        }
-    }
-    
-    private func getCompletionPercentage() -> Double {
-        let totalCells = dataFrame.rowCount * dataFrame.columnCount
-        guard totalCells > 0 else { return 0 }
-        return Double(getNonEmptyCellCount()) / Double(totalCells) * 100.0
-    }
-    
-    private func getOperationColor(_ type: DataFrameOperation.OperationType) -> Color {
+    private func getOperationColor(_ type: EnhancedDataFrameOperation.EnhancedOperationType) -> Color {
         switch type {
         case .insert:
             return .green.opacity(0.2)
@@ -1023,293 +816,125 @@ struct DataTableContentView: View {
             return .orange.opacity(0.2)
         case .filter:
             return .purple.opacity(0.2)
-        case .importData, .export:
+        case .dataImport, .export:
             return .gray.opacity(0.2)
         case .typeChange:
             return .yellow.opacity(0.2)
         }
     }
-    
-    // Add this method after the other helper methods
-    
-    private func onDoubleClick(perform action: @escaping () -> Void) -> some View {
-        #if os(macOS)
-        return self.onTapGesture(count: 2, perform: action)
-        #else
-        return self.onTapGesture(count: 2, perform: action)
-        #endif
-    }
 }
 
 // MARK: - Enhanced Data Import Sheet
 
-struct DataImportSheet: View {
-    @ObservedObject var importer: DataFrameImporter
-    let onDataImported: (DataFrameModel) -> Void
+struct EnhancedDataImportSheet: View {
+    @ObservedObject var importer: EnhancedDataFrameImporter
+    let onDataImported: (EnhancedDataFrameModel) -> Void
     @Environment(\.dismiss) private var dismiss
     
-    @State private var selectedFormat: ImportFormat = .csv(delimiter: ",")
+    @State private var selectedFormat: EnhancedImportFormat = .csv(delimiter: ",")
     @State private var pasteText = ""
-    @State private var showingFilePicker = false
-    @State private var importConfiguration = ImportConfiguration()
+    @State private var showingFileImporter = false
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.down.on.square")
-                        .font(.system(size: 50))
-                        .foregroundColor(.blue)
-                    
-                    Text("Import Data")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Text("Import CSV, TSV, JSON, or paste data directly")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                Text("Import Enhanced Data")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
                 
-                // Import options
-                VStack(alignment: .leading, spacing: 16) {
-                    // File import
-                    Button(action: { showingFilePicker = true }) {
-                        Label("Import from File", systemImage: "doc.badge.plus")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Divider()
-                    
-                    // Paste data
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Or paste data directly:")
-                            .font(.headline)
-                        
-                        // Format picker
-                        Picker("Format", selection: $selectedFormat) {
-                            Text("CSV (comma)").tag(ImportFormat.csv(delimiter: ","))
-                            Text("TSV (tab)").tag(ImportFormat.csv(delimiter: "\t"))
-                            Text("JSON").tag(ImportFormat.json)
-                        }
-                        .pickerStyle(.segmented)
-                        
-                        TextEditor(text: $pasteText)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(height: 200)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                        
-                        Button("Import from Text") {
-                            Task {
-                                do {
-                                    let dataFrame = try await importer.importFromText(pasteText, format: selectedFormat)
-                                    onDataImported(dataFrame)
-                                    dismiss()
-                                } catch {
-                                    print("Import error: \(error)")
-                                }
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(pasteText.isEmpty)
-                    }
-                    
-                    Divider()
-                    
-                    // Sample data
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Or use sample data:")
-                            .font(.headline)
-                        
-                        HStack(spacing: 12) {
-                            Button("Sales Data") {
-                                let sampleData = SampleDataGenerator.generateSalesData()
-                                onDataImported(sampleData)
-                                dismiss()
-                            }
-                            .buttonStyle(.bordered)
-                            
-                            Button("Weather Data") {
-                                let sampleData = SampleDataGenerator.generateWeatherData()
-                                onDataImported(sampleData)
-                                dismiss()
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
+                Button(action: { showingFileImporter = true }) {
+                    Label("Import from File", systemImage: "doc.badge.plus")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
                 }
+                .buttonStyle(.plain)
+                
+                Button("Load Sample Data") {
+                    let sampleData = EnhancedSampleDataGenerator.generateSalesData()
+                    onDataImported(sampleData)
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
                 
                 Spacer()
             }
             .padding()
-            .navigationTitle("Import Data")
+            .navigationTitle("Enhanced Import")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        importer.cancelImport()
                         dismiss()
                     }
                 }
             }
         }
         .fileImporter(
-            isPresented: $showingFilePicker,
-            allowedContentTypes: [.commaSeparatedText, .tabSeparatedText, .json, .plainText, .data],
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.commaSeparatedText, .tabSeparatedText, .json],
             allowsMultipleSelection: false
         ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
-                    handleFileImport(url)
-                }
-            case .failure(let error):
-                print("File import error: \(error)")
-            }
+            handleFileImport(result)
         }
     }
     
-    private func handleFileImport(_ url: URL) {
-        Task {
-            do {
-                let dataFrame = try await importer.importFromFile(url: url)
-                await MainActor.run {
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            Task {
+                do {
+                    let dataFrame = try await importer.importFromFile(url: url)
                     onDataImported(dataFrame)
                     dismiss()
+                } catch {
+                    print("Import error: \(error)")
                 }
-            } catch {
-                print("Import error: \(error)")
             }
+            
+        case .failure(let error):
+            print("File selection error: \(error)")
         }
     }
 }
 
-struct ChartRecommenderSheet: View {
+// MARK: - Simple Chart Recommender Sheet
+
+struct SimpleChartRecommenderSheet: View {
     let csvData: CSVData
     let onChartSelected: (ChartRecommendation, ChartData) -> Void
     @Environment(\.dismiss) private var dismiss
     
-    @State private var recommendations: [ChartScore] = []
-    @State private var selectedRecommendation: ChartRecommendation?
-    
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                headerView
-                recommendationsList
-                actionButtons
-            }
-            .navigationBarHidden(true)
-            .onAppear {
-                loadRecommendations()
-            }
-        }
-    }
-    
-    private var headerView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "chart.xyaxis.line")
-                .font(.system(size: 50))
-                .foregroundColor(.blue)
-            
+        VStack(spacing: 20) {
             Text("Chart Recommendations")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                .font(.title)
             
-            Text("Based on your data structure")
-                .font(.subheadline)
+            Text("Enhanced DataFrame Chart Integration")
                 .foregroundColor(.secondary)
-        }
-    }
-    
-    private var recommendationsList: some View {
-        List(recommendations, id: \.recommendation) { score in
-            recommendationRow(score)
-        }
-    }
-    
-    private func recommendationRow(_ score: ChartScore) -> some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(score.recommendation.name)
-                    .font(.headline)
-                Text(score.reasoning)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            
+            Button("Create Line Chart") {
+                let chartData = ChartData(title: "Enhanced DataFrame Chart", chartType: "line")
+                onChartSelected(.lineChart, chartData)
             }
+            .buttonStyle(.borderedProminent)
             
-            Spacer()
-            
-            Text("\(Int(score.score * 100))%")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.blue)
-            
-            if selectedRecommendation == score.recommendation {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.blue)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectedRecommendation = score.recommendation
-        }
-    }
-    
-    private var actionButtons: some View {
-        HStack(spacing: 16) {
             Button("Cancel") {
                 dismiss()
             }
             .buttonStyle(.bordered)
-            
-            Button("Create Chart") {
-                createChart()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(selectedRecommendation == nil)
         }
         .padding()
     }
-    
-    private func loadRecommendations() {
-        recommendations = ChartRecommender.recommend(for: csvData)
-        selectedRecommendation = recommendations.first?.recommendation
-    }
-    
-    private func createChart() {
-        guard let selected = selectedRecommendation else { return }
-        let chartData = createChartData(from: csvData, recommendation: selected)
-        onChartSelected(selected, chartData)
-    }
-    
-    private func createChartData(from csvData: CSVData, recommendation: ChartRecommendation) -> ChartData {
-        // Simple implementation
-        let xData = Array(0..<csvData.rows.count).map { Double($0) }
-        let yData = Array(0..<csvData.rows.count).map { _ in Double.random(in: 0...100) }
-        
-        return ChartData(
-            title: "Chart from DataFrame",
-            chartType: recommendation.name.lowercased(),
-            xLabel: "Index",
-            yLabel: "Value",
-            xData: xData,
-            yData: yData
-        )
-    }
 }
 
-// MARK: - Custom Button Style
+// MARK: - Enhanced Button Style
 
-struct DataTableButtonStyle: ButtonStyle {
+struct EnhancedDataTableButtonStyle: ButtonStyle {
     let color: Color
     
     func makeBody(configuration: Configuration) -> some View {
@@ -1326,5 +951,5 @@ struct DataTableButtonStyle: ButtonStyle {
 // MARK: - Preview
 
 #Preview {
-    DataTableContentView(windowID: 1)
+    EnhancedDataTableContentView(windowID: 1)
 }

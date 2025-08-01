@@ -10,6 +10,7 @@ import SwiftUI
 struct LauncherView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
+    @State private var showingCSVImport = false
     
     var body: some View {
         VStack(spacing: 30) {
@@ -78,9 +79,7 @@ struct LauncherView: View {
                     .buttonStyle(.bordered)
                     
                     Button("Import CSV Data") {
-                        openWindow(id: "main")
-                        dismissWindow(id: "launcher")
-                        // TODO: Trigger CSV import
+                        showingCSVImport = true
                     }
                     .buttonStyle(.bordered)
                 }
@@ -89,6 +88,9 @@ struct LauncherView: View {
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
+        .sheet(isPresented: $showingCSVImport) {
+            FileClassifierAndRecommenderView()
+        }
     }
 }
 

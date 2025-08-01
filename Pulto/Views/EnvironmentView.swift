@@ -130,7 +130,7 @@ struct ProjectActionButtons: View {
                 .foregroundColor(.blue)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            
+
             Button(action: {
                 sheetManager.presentSheet(.templateGallery)
             }) {
@@ -144,7 +144,7 @@ struct ProjectActionButtons: View {
                 .foregroundColor(.green)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            
+
             Button(action: {
                 sheetManager.presentSheet(.classifierSheet)
             }) {
@@ -171,7 +171,7 @@ struct EnhancedActiveWindowsView: View {
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
     @Binding var selectedWindow: NewWindowID?
-    
+
     // Add parameters for toolbar
     let viewModel: PultoHomeViewModel
     let navigationState: NavigationState
@@ -179,21 +179,21 @@ struct EnhancedActiveWindowsView: View {
     let showInspector: Bool
     let onHomeButtonTap: () -> Void
     let onInspectorToggle: () -> Void
-    
+
     // Add Jupyter server settings
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
     @State private var jupyterServerStatus: ServerStatus = .unknown
     @State private var isCheckingJupyterServer = false
-    
+
     @State private var statusCheckTask: Task<Void, Never>?
     @State private var animationTask: Task<Void, Never>?
-    
+
     enum ServerStatus {
         case online
         case offline
         case unknown
         case checking
-        
+
         var color: Color {
             switch self {
             case .online: return .green
@@ -202,7 +202,7 @@ struct EnhancedActiveWindowsView: View {
             case .checking: return .blue
             }
         }
-        
+
         var icon: String {
             switch self {
             case .online: return "checkmark.circle.fill"
@@ -211,7 +211,7 @@ struct EnhancedActiveWindowsView: View {
             case .checking: return "arrow.clockwise.circle.fill"
             }
         }
-        
+
         var description: String {
             switch self {
             case .online: return "Online"
@@ -309,7 +309,7 @@ struct EnhancedActiveWindowsView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Toggle sidebar")
-                        
+
                         Button(action: {
                             checkJupyterServerStatus()
                         }) {
@@ -332,7 +332,7 @@ struct EnhancedActiveWindowsView: View {
                                 .stroke(.blue.opacity(0.3), lineWidth: 1)
                         }
                     }
-                    
+
                     // GROUP 2: Project & Content Creation (pill container)
                     HStack(spacing: 8) {
                         Button(action: {
@@ -391,12 +391,12 @@ struct EnhancedActiveWindowsView: View {
                     .padding(.vertical, 6)
                     .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                
+
                 // Principal toolbar item (center)
                 ToolbarItem(placement: .principal) {
                     EmptyView()
                 }
-                
+
                 // Trailing toolbar items (right side)
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     // GROUP 3: User & Settings (pill container)
@@ -475,26 +475,26 @@ struct EnhancedActiveWindowsView: View {
             cancelAllTasks()
         }
     }
-    
+
     // MARK: - FIXED: Jupyter Server Status Check with proper task management
     private func checkJupyterServerStatus() {
         // Cancel any existing task to prevent multiple concurrent requests
         statusCheckTask?.cancel()
-        
+
         guard !isCheckingJupyterServer else { return }
-        
+
         isCheckingJupyterServer = true
         jupyterServerStatus = .checking
-        
+
         // Create a manual rotation animation task
         startRotationAnimation()
-        
+
         statusCheckTask = Task {
             let status = await checkJupyterServer(url: defaultJupyterURL)
-            
+
             // Check if task was cancelled before updating UI
             guard !Task.isCancelled else { return }
-            
+
             await MainActor.run {
                 jupyterServerStatus = status
                 isCheckingJupyterServer = false
@@ -502,10 +502,10 @@ struct EnhancedActiveWindowsView: View {
             }
         }
     }
-    
+
     private func startRotationAnimation() {
         animationTask?.cancel()
-        
+
         animationTask = Task {
             while !Task.isCancelled && isCheckingJupyterServer {
                 await MainActor.run {
@@ -514,46 +514,46 @@ struct EnhancedActiveWindowsView: View {
                         // Use a changing value to trigger animation
                     }
                 }
-                
+
                 // Wait for 1 second before next rotation
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 0.5 seconds
             }
         }
     }
-    
+
     private func stopRotationAnimation() {
         animationTask?.cancel()
         animationTask = nil
     }
-    
+
     private func cancelAllTasks() {
         statusCheckTask?.cancel()
         statusCheckTask = nil
         animationTask?.cancel()
         animationTask = nil
     }
-    
+
     private func checkJupyterServer(url: String) async -> ServerStatus {
         guard let serverURL = URL(string: url) else {
             return .offline
         }
-        
+
         // Create a health check URL for Jupyter
         let healthCheckURL = serverURL.appendingPathComponent("api/kernels")
-        
+
         // Configure URLSession with timeout
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 5.0  // 5 second timeout
         config.timeoutIntervalForResource = 10.0
         let session = URLSession(configuration: config)
-        
+
         defer {
             session.invalidateAndCancel()  // IMPORTANT: Clean up session
         }
-        
+
         do {
             let (_, response) = try await session.data(from: healthCheckURL)
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 switch httpResponse.statusCode {
                 case 200...299:
@@ -565,7 +565,7 @@ struct EnhancedActiveWindowsView: View {
                     return .offline
                 }
             }
-            
+
             return .offline
         } catch {
             // Network error or server not reachable
@@ -623,11 +623,11 @@ struct WindowInspectorView: View {
                                 WindowInfoRow(label: "Position", value: "(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
                                 WindowInfoRow(label: "Size", value: "\(Int(window.position.width)) × \(Int(window.position.height))")
                                 WindowInfoRow(label: "Template", value: window.state.exportTemplate.rawValue)
-                                
+
                                 if !window.state.tags.isEmpty {
                                     WindowInfoRow(label: "Tags", value: window.state.tags.joined(separator: ", "))
                                 }
-                                
+
                                 WindowInfoRow(label: "Status", value: windowManager.isWindowActuallyOpen(window.id) ? "Open" : "Closed")
                             }
                         }
@@ -874,7 +874,7 @@ struct EnvironmentView: View {
     @State private var showInspector = false
     @State private var selectedWindow: NewWindowID? = nil
     @State private var columnVisibility = NavigationSplitViewVisibility.all
-    
+
     @State private var initialLoadTask: Task<Void, Never>?
     @State private var welcomeTask: Task<Void, Never>?
 
@@ -1243,7 +1243,7 @@ struct EnvironmentView: View {
                                 Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                    
+
                                 // Quick preset buttons for Jupyter
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Quick Options:")
@@ -1352,7 +1352,7 @@ struct EnvironmentView: View {
             welcomeTask?.cancel()
             welcomeTask = Task {
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                
+
                 if !Task.isCancelled {
                     await MainActor.run {
                         sheetManager.presentSheet(.welcome)
