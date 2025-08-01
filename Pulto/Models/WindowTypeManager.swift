@@ -210,7 +210,30 @@ class WindowTypeManager: ObservableObject {
     func getWindowChartData(for id: Int) -> ChartData? {
         return windows[id]?.state.chartData
     }
-
+    
+    // TEMPORARILY COMMENTED OUT: CSV data and chart recommendation methods
+    // These are causing type conflicts and will be re-implemented properly
+    /*
+    func updateWindowCSVData(_ id: Int, csvData: CSVData, recommendation: ChartRecommendation) {
+        windows[id]?.state.csvData = csvData
+        windows[id]?.state.chartRecommendation = recommendation
+        windows[id]?.state.lastModified = Date()
+        
+        // Auto-set template to matplotlib for chart windows
+        if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
+            windows[id]?.state.exportTemplate = .matplotlib
+        }
+    }
+    
+    func getWindowCSVData(for id: Int) -> CSVData? {
+        return windows[id]?.state.csvData
+    }
+    
+    func getWindowChartRecommendation(for id: Int) -> ChartRecommendation? {
+        return windows[id]?.state.chartRecommendation
+    }
+    */
+    
     // Chart3D data methods
     func updateWindowChart3DData(_ id: Int, chart3DData: Chart3DData) {
         windows[id]?.state.chart3DData = chart3DData

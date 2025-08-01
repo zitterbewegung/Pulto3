@@ -604,6 +604,7 @@ class WorkspaceManager: ObservableObject {
         do {
             let data = try Data(contentsOf: metadataURL)
             let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             self.workspaces = try decoder.decode([WorkspaceMetadata].self, from: data)
             
             // Verify files still exist and update file URLs

@@ -188,6 +188,16 @@ struct FileClassifierAndRecommenderView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
+            
+            // Add a test button for creating sample 3D charts
+            Button(action: { createSampleVolumetricChart() }) {
+                Label("Create Sample 3D Chart", systemImage: "cube.transparent")
+                    .font(.headline)
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
         }
         .padding()
     }
@@ -626,15 +636,316 @@ struct FileClassifierAndRecommenderView: View {
     }
 
     private func generateFullChart() {
+        guard let csvData = csvData, let selectedRecommendation = selectedRecommendation else { return }
+        
         let id = windowManager.getNextWindowID()
-        let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
+        let position = WindowPosition(x: 100, y: 100, z: 0, width: 1000, height: 700)
 
+        // Create regular chart window instead of volumetric chart window
         _ = windowManager.createWindow(.charts, id: id, position: position)
+        
+        // TEMPORARILY COMMENTED OUT: Store CSV data and chart recommendation in the window
+        // This is causing type conflicts and will be re-implemented properly
+        // windowManager.updateWindowCSVData(id, csvData: csvData, recommendation: selectedRecommendation)
+        
+        // For now, just add a tag to indicate this is a chart from file import
+        windowManager.addWindowTag(id, tag: "file-import")
+        windowManager.addWindowTag(id, tag: "chart-data")
+        
+        // Open a regular window with the new chart view
         openWindow(value: id)
         windowManager.markWindowAsOpened(id)
 
-        // TODO: Update window state with csvData and selectedRecommendation for rendering the chart
+        dismiss()
+    }
+    
+    // MARK: - CSV to 3D Chart Conversion
+    private func convertCSVToChart3D(csvData: CSVData, recommendation: ChartRecommendation) -> Chart3DData {
+        switch recommendation {
+        case .scatterPlot:
+            return createScatter3D(from: csvData)
+        case .barChart:
+            return createBar3D(from: csvData)
+        case .lineChart:
+            return createLine3D(from: csvData)
+        case .histogram:
+            return createHistogram3D(from: csvData)
+        case .areaChart:
+            return createArea3D(from: csvData)
+        case .pieChart:
+            return createPie3D(from: csvData)
+        }
+    }
+    
+    private func createScatter3D(from csvData: CSVData) -> Chart3DData {
+        let numericIndices = csvData.columnTypes.enumerated().compactMap { index, type in
+            type == .numeric ? index : nil
+        }
+        
+        guard numericIndices.count >= 2 else {
+            return Chart3DData(title: "3D Scatter Plot", chartType: "scatter", points: [])
+        }
+        
+        let xIndex = numericIndices[0]
+        let yIndex = numericIndices[1]
+        let zIndex = numericIndices.count > 2 ? numericIndices[2] : nil
+        
+        var points: [Point3D] = []
+        
+        for row in csvData.rows.prefix(100) { // Limit to 100 points for performance
+            guard xIndex < row.count, yIndex < row.count,
+                  let x = Float(row[xIndex]),
+                  let y = Float(row[yIndex]) else { continue }
+            
+            let z: Float
+            if let zIndex = zIndex, zIndex < row.count, let zValue = Float(row[zIndex]) {
+                z = zValue
+            } else {
+                // Use row index as Z if no third numeric column
+                z = Float(points.count) * 0.1
+            }
+            
+            points.append(Point3D(x: x, y: y, z: z))
+        }
+        
+        return Chart3DData(
+            title: "3D Scatter Plot - \(csvData.headers[xIndex]) vs \(csvData.headers[yIndex])",
+            chartType: "scatter",
+            points: points
+        )
+    }
+    
+    private func createBar3D(from csvData: CSVData) -> Chart3DData {
+        guard let categoryIndex = csvData.columnTypes.firstIndex(of: .categorical),
+              let numericIndex = csvData.columnTypes.firstIndex(of: .numeric) else {
+            return Chart3DData(title: "3D Bar Chart", chartType: "bar", points: [])
+        }
+        
+        var points: [Point3D] = []
+        
+        for (index, row) in csvData.rows.prefix(20).enumerated() {
+            guard categoryIndex < row.count, numericIndex < row.count,
+                  let value = Float(row[numericIndex]) else { continue }
+            
+            // Position bars in a grid
+            let x = Float(index % 5) * 2.0 - 4.0  // Grid X position
+            let z = Float(index / 5) * 2.0 - 4.0  // Grid Z position
+            
+            // Create multiple points to represent bar height
+            let barHeight = max(value * 0.1, 0.1) // Scale value for visibility
+            let segments = max(Int(barHeight * 10), 1)
+            
+            for segment in 0..<segments {
+                let y = Float(segment) * 0.2
+                points.append(Point3D(x: x, y: y, z: z))
+            }
+        }
+        
+        return Chart3DData(
+            title: "3D Bar Chart - \(csvData.headers[categoryIndex]) by \(csvData.headers[numericIndex])",
+            chartType: "bar",
+            points: points
+        )
+    }
+    
+    private func createLine3D(from csvData: CSVData) -> Chart3DData {
+        let numericIndices = csvData.columnTypes.enumerated().compactMap { index, type in
+            type == .numeric ? index : nil
+        }
+        
+        guard !numericIndices.isEmpty else {
+            return Chart3DData(title: "3D Line Chart", chartType: "line", points: [])
+        }
+        
+        var points: [Point3D] = []
+        
+        for (index, row) in csvData.rows.prefix(50).enumerated() {
+            let x = Float(index) * 0.2 - 5.0 // Spread along X axis
+            
+            // Use first numeric column for Y
+            guard numericIndices[0] < row.count,
+                  let y = Float(row[numericIndices[0]]) else { continue }
+            
+            // Use second numeric column for Z if available, otherwise use sine wave
+            let z: Float
+            if numericIndices.count > 1, numericIndices[1] < row.count,
+               let zValue = Float(row[numericIndices[1]]) {
+                z = zValue * 0.1
+            } else {
+                z = Float(sin(Float(index) * 0.3)) * 2.0
+            }
+            
+            points.append(Point3D(x: x, y: y * 0.1, z: z))
+        }
+        
+        return Chart3DData(
+            title: "3D Line Chart - \(csvData.headers[numericIndices[0]])",
+            chartType: "line",
+            points: points
+        )
+    }
+    
+    private func createHistogram3D(from csvData: CSVData) -> Chart3DData {
+        guard let numericIndex = csvData.columnTypes.firstIndex(of: .numeric) else {
+            return Chart3DData(title: "3D Histogram", chartType: "histogram", points: [])
+        }
+        
+        let values = csvData.rows.compactMap { row in
+            numericIndex < row.count ? Float(row[numericIndex]) : nil
+        }
+        
+        guard !values.isEmpty else {
+            return Chart3DData(title: "3D Histogram", chartType: "histogram", points: [])
+        }
+        
+        // Create histogram bins
+        let minValue = values.min() ?? 0
+        let maxValue = values.max() ?? 1
+        let binCount = 20
+        let binWidth = (maxValue - minValue) / Float(binCount)
+        
+        var binCounts = Array(repeating: 0, count: binCount)
+        
+        for value in values {
+            let binIndex = min(Int((value - minValue) / binWidth), binCount - 1)
+            binCounts[binIndex] += 1
+        }
+        
+        var points: [Point3D] = []
+        
+        for (binIndex, count) in binCounts.enumerated() {
+            let x = Float(binIndex) * 0.5 - Float(binCount) * 0.25
+            let height = Float(count) * 0.2
+            
+            // Create points for each bin as a vertical stack
+            for i in 0..<count {
+                let y = Float(i) * 0.1
+                let z = Float(0.0)
+                points.append(Point3D(x: x, y: y, z: z))
+            }
+        }
+        
+        return Chart3DData(
+            title: "3D Histogram - \(csvData.headers[numericIndex])",
+            chartType: "histogram",
+            points: points
+        )
+    }
+    
+    private func createArea3D(from csvData: CSVData) -> Chart3DData {
+        // Similar to line chart but with filled area below
+        let lineData = createLine3D(from: csvData)
+        var points = lineData.points
+        
+        // Add points below the line to create "area" effect
+        for point in lineData.points {
+            // Add points from ground level up to the line
+            let steps = max(Int(point.y * 10), 1)
+            for step in 0..<steps {
+                let fillY = Float(step) * 0.1
+                points.append(Point3D(x: point.x, y: fillY, z: point.z))
+            }
+        }
+        
+        return Chart3DData(
+            title: lineData.title.replacingOccurrences(of: "Line", with: "Area"),
+            chartType: "area",
+            points: points
+        )
+    }
+    
+    private func createPie3D(from csvData: CSVData) -> Chart3DData {
+        guard let categoryIndex = csvData.columnTypes.firstIndex(of: .categorical),
+              let numericIndex = csvData.columnTypes.firstIndex(of: .numeric) else {
+            return Chart3DData(title: "3D Pie Chart", chartType: "pie", points: [])
+        }
+        
+        // Group data by category
+        var categoryValues: [String: Float] = [:]
+        
+        for row in csvData.rows.prefix(20) {
+            guard categoryIndex < row.count, numericIndex < row.count,
+                  let value = Float(row[numericIndex]) else { continue }
+            
+            let category = row[categoryIndex]
+            categoryValues[category, default: 0] += value
+        }
+        
+        let total = categoryValues.values.reduce(0, +)
+        var points: [Point3D] = []
+        var currentAngle: Float = 0
+        
+        for (_, value) in categoryValues {
+            let percentage = value / total
+            let sliceAngle = percentage * 2 * Float.pi
+            let endAngle = currentAngle + sliceAngle
+            
+            // Create points for this pie slice
+            let segments = max(Int(sliceAngle * 10), 3)
+            for i in 0..<segments {
+                let angle = currentAngle + (Float(i) / Float(segments)) * sliceAngle
+                let radius = 2.0 + percentage * 2.0 // Vary radius by percentage
+                
+                let x = Float(cos(angle)) * radius
+                let z = Float(sin(angle)) * radius
+                let y = Float(0.0)
+                
+                points.append(Point3D(x: x, y: y, z: z))
+            }
+            
+            currentAngle = endAngle
+        }
+        
+        return Chart3DData(
+            title: "3D Pie Chart - \(csvData.headers[categoryIndex])",
+            chartType: "pie",
+            points: points
+        )
+    }
+    
+    // MARK: - Sample Chart Creation
+    private func createSampleVolumetricChart() {
+        let id = windowManager.getNextWindowID()
+        let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
 
+        // Create volumetric chart window
+        _ = windowManager.createWindow(.charts, id: id, position: position)
+        
+        // Create sample data representing sales over months with regions
+        var points: [Point3D] = []
+        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        let regions = ["North", "South", "East", "West"]
+        
+        for (monthIndex, _) in months.enumerated() {
+            for (regionIndex, _) in regions.enumerated() {
+                // Create sales data with some variation
+                let sales = Float(15000 + monthIndex * 1000 + regionIndex * 500 + Int.random(in: -2000...3000))
+                let profit = sales * 0.2 + Float(Int.random(in: -500...1000))
+                
+                // Position in 3D space
+                let x = (sales - 15000) / 5000.0  // Normalize sales
+                let y = (profit - 3000) / 1000.0  // Normalize profit  
+                let z = Float(monthIndex - 6) * 0.3  // Spread months along Z axis
+                
+                points.append(Point3D(x: x, y: y, z: z))
+            }
+        }
+        
+        let chart3DData = Chart3DData(
+            title: "Sample Sales Data - 3D Scatter Plot",
+            chartType: "scatter",
+            points: points
+        )
+        windowManager.updateWindowChart3DData(id, chart3DData: chart3DData)
+        
+        // Open the volumetric chart window  
+        openWindow(id: "volumetric-chart3d", value: id)
+        windowManager.markWindowAsOpened(id)
+        
+        print("✅ Created sample volumetric chart with \(points.count) data points")
+        print("🎯 Chart title: \(chart3DData.title)")
+        print("🎯 Chart type: \(chart3DData.chartType)")
+        
         dismiss()
     }
 }

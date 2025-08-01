@@ -644,7 +644,7 @@ struct Model3DData: Codable, Hashable {
     }
 }
 
-struct WindowState: Codable, Hashable {
+struct WindowState: Hashable {
     let id: Int = Int()
     var isMinimized: Bool = false
     var isMaximized: Bool = false
@@ -844,7 +844,7 @@ struct DataFrameData: Codable, Hashable {
     }
 }
 
-struct NewWindowID: Identifiable, Codable, Hashable {
+struct NewWindowID: Identifiable, Hashable {
     /// The unique identifier for the window.
     var id: Int
     /// The type of window to create

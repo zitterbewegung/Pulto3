@@ -201,24 +201,21 @@ struct EntryPoint: App {
                 let win = windowManager.getWindow(for: id),
                 let chartData = win.state.chart3DData
             {
-                Chart3DVolumetricView(
-                    windowID: id,
-                    chartData: chartData
-                )
-                .environmentObject(windowManager)
-                .environmentObject(entityManager)
-                .onAppear {
-                    windowManager.markWindowAsOpened(id)
-                }
-                .onDisappear {
-                    windowManager.markWindowAsClosed(id)
-                }
+                VolumetricChartView(windowID: id)
+                    .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .onAppear {
+                        windowManager.markWindowAsOpened(id)
+                    }
+                    .onDisappear {
+                        windowManager.markWindowAsClosed(id)
+                    }
             } else {
                 EmptyView()
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+        .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
     }
 
     private var immersiveWorkspace: some SwiftUI.Scene {
