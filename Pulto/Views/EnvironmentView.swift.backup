@@ -916,9 +916,7 @@ struct EnvironmentView: View {
                                 windowManager: windowManager,
                                 openWindow: { openWindow(value: $0) },
                                 closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: {
-                                    windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                                },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
                                 sheetManager: sheetManager,
                                 createWindow: createStandardWindow,
                                 selectedWindow: $selectedWindow,
@@ -963,9 +961,7 @@ struct EnvironmentView: View {
                                 windowManager: windowManager,
                                 openWindow: { openWindow(value: $0) },
                                 closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: {
-                                    windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                                },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
                                 sheetManager: sheetManager,
                                 createWindow: createStandardWindow,
                                 selectedWindow: $selectedWindow,
@@ -992,9 +988,7 @@ struct EnvironmentView: View {
                                 windowManager: windowManager,
                                 openWindow: { openWindow(value: $0) },
                                 closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: {
-                                    windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                                },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
                                 sheetManager: sheetManager,
                                 createWindow: createStandardWindow,
                                 selectedWindow: $selectedWindow,
@@ -1030,9 +1024,7 @@ struct EnvironmentView: View {
                             windowManager: windowManager,
                             openWindow: { openWindow(value: $0) },
                             closeWindow: { windowManager.removeWindow($0) },
-                            closeAllWindows: {
-                                windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                            },
+                            closeAllWindows: clearAllWindowsWithConfirmation,
                             sheetManager: sheetManager,
                             createWindow: createStandardWindow,
                             selectedWindow: $selectedWindow,
@@ -1197,7 +1189,7 @@ struct EnvironmentView: View {
                     openWindow: { openWindow(value: $0) },
                     closeWindow: { windowManager.removeWindow($0) },
                     closeAllWindows: {
-                        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+                        windowManager.getAllWindows().forEach { windowManager.removeWindow($0) }
                     },
                     sheetManager: sheetManager,
                     createWindow: { _ in }
@@ -2083,6 +2075,52 @@ private func SettingsSection<Content: View>(
         VStack(alignment: .leading, spacing: 8) { content() }
             .padding()
             .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - WindowType Extensions
+extension WindowType {
+    var icon: String {
+        switch self {
+        case .charts:     return "chart.line.uptrend.xyaxis"
+        case .spatial:    return "rectangle.3.group"
+        case .column:     return "tablecells"
+        case .volume:     return "gauge"
+        case .pointcloud: return "circle.grid.3x3"
+        case .model3d:    return "cube"
+        }
+    }
+
+    var inspectorDescription: String {
+        switch self {
+        case .charts: return "Interactive data visualization charts"
+        case .spatial: return "3D spatial data representation"
+        case .column: return "Tabular data display with sorting and filtering"
+        case .volume: return "Volumetric data visualization"
+        case .pointcloud: return "3D point cloud visualization"
+        case .model3d: return "3D model viewer and manipulation"
+        }
+    }
+
+    var inspectorIconColor: Color {
+        switch self {
+        case .charts: return .blue
+        case .spatial: return .purple
+        case .column: return .green
+        case .volume: return .orange
+        case .pointcloud: return .cyan
+        case .model3d: return .red
+        }
+    }
+
+    func toStandardWindowType() -> StandardWindowType {
+        switch self {
+        case .column: return .dataFrame
+        case .pointcloud: return .pointCloud
+        case .model3d: return .model3d
+        case .volume: return .iotDashboard
+        default: return .dataFrame
+        }
     }
 }
 

@@ -609,6 +609,7 @@ struct Model3DData: Codable, Hashable {
             for j in 0..<(segments * 2) {
                 let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
 
+                // Convert spherical to Cartesian coordinates
                 let x = radius * sin(phi) * cos(theta)
                 let y = radius * cos(phi)
                 let z = radius * sin(phi) * sin(theta)
@@ -641,6 +642,161 @@ struct Model3DData: Codable, Hashable {
         model.materials = materials
 
         return model
+    }
+}
+
+// Add PointCloudData structure if not already defined elsewhere
+struct PointCloudData: Codable, Hashable {
+    var points: [PointData]
+    var title: String
+    var xAxisLabel: String
+    var yAxisLabel: String
+    var zAxisLabel: String
+    var totalPoints: Int
+    var demoType: String
+    var parameters: [String: Double]
+    
+    struct PointData: Codable, Hashable {
+        var x: Double
+        var y: Double
+        var z: Double
+        var intensity: Double?
+        var color: String?
+        
+        init(x: Double, y: Double, z: Double, intensity: Double? = nil, color: String? = nil) {
+            self.x = x
+            self.y = y
+            self.z = z
+            self.intensity = intensity
+            self.color = color
+        }
+    }
+    
+    init(title: String = "Point Cloud",
+         xAxisLabel: String = "X",
+         yAxisLabel: String = "Y", 
+         zAxisLabel: String = "Z",
+         demoType: String = "custom",
+         parameters: [String: Double] = [:]) {
+        self.points = []
+        self.title = title
+        self.xAxisLabel = xAxisLabel
+        self.yAxisLabel = yAxisLabel
+        self.zAxisLabel = zAxisLabel
+        self.totalPoints = 0
+        self.demoType = demoType
+        self.parameters = parameters
+    }
+    
+    // Convert to Python code for Jupyter
+    func toPythonCode() -> String {
+        guard !points.isEmpty else {
+            return "# Empty point cloud\nprint('No point cloud data available')"
+        }
+        
+        let pointsString = points.prefix(1000).map { point in
+            if let intensity = point.intensity {
+                return "[\(point.x), \(point.y), \(point.z), \(intensity)]"
+            } else {
+                return "[\(point.x), \(point.y), \(point.z)]"
+            }
+        }.joined(separator: ",\n    ")
+        
+        let hasIntensity = points.first?.intensity != nil
+        
+        return """
+        # \(title)
+        # Generated from VisionOS Spatial Editor
+        
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        import plotly.graph_objects as go
+        
+        # Point cloud data (\(totalPoints) points)
+        points = np.array([
+            \(pointsString)
+        ])
+        
+        # Extract coordinates
+        x = points[:, 0]
+        y = points[:, 1] 
+        z = points[:, 2]
+        \(hasIntensity ? "intensity = points[:, 3]" : "")
+        
+        # Matplotlib 3D visualization
+        fig = plt.figure(figsize=(12, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        \(hasIntensity ? 
+        "scatter = ax.scatter(x, y, z, c=intensity, cmap='viridis', alpha=0.6)" :
+        "scatter = ax.scatter(x, y, z, alpha=0.6)")
+        
+        ax.set_xlabel('\(xAxisLabel)')
+        ax.set_ylabel('\(yAxisLabel)') 
+        ax.set_zlabel('\(zAxisLabel)')
+        ax.set_title('\(title)')
+        
+        \(hasIntensity ? "plt.colorbar(scatter, ax=ax, label='Intensity')" : "")
+        plt.tight_layout()
+        plt.show()
+        
+        # Plotly interactive 3D visualization
+        fig_plotly = go.Figure()
+        
+        fig_plotly.add_trace(go.Scatter3d(
+            x=x, y=y, z=z,
+            mode='markers',
+            marker=dict(
+                size=3,
+                \(hasIntensity ? "color=intensity, colorscale='Viridis', showscale=True," : "color='blue',")
+                opacity=0.7
+            ),
+            name='\(title)'
+        ))
+        
+        fig_plotly.update_layout(
+            title='\(title)',
+            scene=dict(
+                xaxis_title='\(xAxisLabel)',
+                yaxis_title='\(yAxisLabel)',
+                zaxis_title='\(zAxisLabel)'
+            ),
+            width=800,
+            height=600
+        )
+        
+        fig_plotly.show()
+        
+        # Print statistics
+        print(f"Point Cloud Statistics:")
+        print(f"- Total points: {len(points)}")
+        print(f"- X range: [{np.min(x):.3f}, {np.max(x):.3f}]")
+        print(f"- Y range: [{np.min(y):.3f}, {np.max(y):.3f}]") 
+        print(f"- Z range: [{np.min(z):.3f}, {np.max(z):.3f}]")
+        \(hasIntensity ? "print(f\"- Intensity range: [{np.min(intensity):.3f}, {np.max(intensity):.3f}]\")" : "")
+        """
+    }
+}
+
+// Add Chart3DData structure if not already defined elsewhere
+struct Chart3DData: Codable, Hashable {
+    var xData: [Double]
+    var yData: [Double] 
+    var zData: [Double]
+    var title: String
+    var chartType: String
+    
+    init(title: String = "3D Chart",
+         chartType: String = "scatter3d",
+         xData: [Double] = [],
+         yData: [Double] = [],
+         zData: [Double] = []) {
+        self.title = title
+        self.chartType = chartType
+        self.xData = xData
+        self.yData = yData
+        self.zData = zData
     }
 }
 
@@ -1069,13 +1225,9 @@ class PointCloudDemo {
 
         var pointCloudData = PointCloudData(
             title: "Wave Surface (\(resolution)×\(resolution) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Height",
             demoType: "wave",
             parameters: ["size": size, "resolution": Double(resolution)]
         )
-
         pointCloudData.points = wavePoints.map { point in
             PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
         }
@@ -1782,83 +1934,41 @@ struct NewWindow: View {
                             }
                         }
 
-                    // ───────────── CHARTS ─────────────
-                    case .charts:
-                        VStack {
-                            if !window.state.content.isEmpty {
-                                ScrollView {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Restored Content:")
-                                            .font(.headline)
-
-                                        Text(window.state.content)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.tertiarySystemBackground))
-                                            .cornerRadius(8)
-                                    }
-                                    .padding()
-                                }
-                                .frame(maxHeight: 200)
-
-                                Divider()
-                            }
-
-                            WindowChartView()
-                        }
-
                     // ───────────── SPATIAL EDITOR ─────────────
                     case .spatial:
-                        //if let pointCloud = window.state.pointCloudData {
-                        //    SpatialEditorView(windowID: id, initialPointCloud: pointCloud)
-                        //} else {
-                        SpatialEditorView(windowID: id)
-                        //}
-
-                    // ───────────── DATAFRAME ─────────────
-                    case .column:
-                        if let df = window.state.dataFrameData {
-                            DataTableContentView(windowID: id, initialDataFrame: df)
-                        } else {
-                            DataTableContentView(windowID: id)
-                        }
-
-                    // ───────────── VOLUME METRICS ─────────────
-                    case .volume:
                         VStack {
-                            if !window.state.content.isEmpty {
-                                ScrollView {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Model Metrics:")
-                                            .font(.headline)
+                            Spacer()
+                            
+                            VStack(spacing: 20) {
+                                Image(systemName: "move.3d")
+                                    .font(.system(size: 80))
+                                    .foregroundStyle(.linearGradient(
+                                        colors: [.gray, .gray],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
 
-                                        Text(window.state.content)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.tertiarySystemBackground))
-                                            .cornerRadius(8)
-                                    }
+                                Text("Spatial Editor")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.secondary)
+
+                                Text("Coming Soon")
+                                    .font(.title2)
+                                    .foregroundStyle(.orange)
                                     .padding()
-                                }
-                            } else {
-                                VStack(spacing: 20) {
-                                    Image(systemName: "gauge")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.blue)
+                                    .background(.orange.opacity(0.1))
+                                    .cornerRadius(10)
 
-                                    Text("Model Metrics Viewer")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("Performance metrics and monitoring dashboard")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .padding(40)
+                                Text("The spatial editor is currently under development")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.top)
                             }
+                            .padding(40)
+
+                            Spacer()
                         }
                     }
                 }
@@ -1870,7 +1980,8 @@ struct NewWindow: View {
             .onDisappear {
                 windowTypeManager.markWindowAsClosed(id)
             }
-        } else {
+        }
+        else {
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 50))
@@ -1897,6 +2008,152 @@ struct NewWindow: View {
         }
     }
 }
+
+// MARK: - Import Helper Functions
+
+private func importDataForSpatialEditor(from url: URL, windowID: Int) async {
+    do {
+        let content = try String(contentsOf: url)
+        let fileExtension = url.pathExtension.lowercased()
+        
+        switch fileExtension {
+        case "csv", "tsv":
+            // Parse CSV data
+            let delimiter: Character = fileExtension == "csv" ? "," : "\t"
+            if let csvData = CSVParser.parse(content, delimiter: delimiter) {
+                // Convert to DataFrame
+                let dataFrame = DataFrameData(
+                    columns: csvData.headers,
+                    rows: csvData.rows,
+                    dtypes: Dictionary(uniqueKeysWithValues: 
+                        zip(csvData.headers, csvData.columnTypes.map { $0.rawValue })
+                    )
+                )
+                
+                // Update window with DataFrame data
+                WindowTypeManager.shared.updateWindowDataFrame(windowID, dataFrame: dataFrame)
+                
+                // If data has 3D coordinates, also create point cloud
+                if let pointCloud = convertDataFrameToPointCloud(dataFrame, fileName: url.lastPathComponent) {
+                    WindowTypeManager.shared.updateWindowPointCloud(windowID, pointCloud: pointCloud)
+                }
+                
+                print("Successfully imported data for spatial editor: \(url.lastPathComponent)")
+            }
+            
+        case "json":
+            // Handle JSON data
+            if let jsonData = content.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                // Simple JSON to DataFrame conversion
+                if let dataFrame = convertJSONToDataFrame(json, fileName: url.lastPathComponent) {
+                    WindowTypeManager.shared.updateWindowDataFrame(windowID, dataFrame: dataFrame)
+                    print("Successfully imported JSON data: \(url.lastPathComponent)")
+                }
+            }
+            
+        default:
+            print("Unsupported file type for spatial editor: \(fileExtension)")
+        }
+        
+    } catch {
+        print("Failed to import data: \(error)")
+    }
+}
+
+private func convertDataFrameToPointCloud(_ dataFrame: DataFrameData, fileName: String) -> PointCloudData? {
+    // Look for columns that could be X, Y, Z coordinates
+    let headers = dataFrame.columns.map { $0.lowercased() }
+    
+    guard let xIndex = headers.firstIndex(where: { $0.contains("x") || $0 == "longitude" || $0 == "lon" }),
+          let yIndex = headers.firstIndex(where: { $0.contains("y") || $0 == "latitude" || $0 == "lat" }) else {
+        return nil
+    }
+    
+    let zIndex = headers.firstIndex(where: { $0.contains("z") || $0.contains("elevation") || $0.contains("height") })
+    let intensityIndex = headers.firstIndex(where: { $0.contains("intensity") || $0.contains("value") || $0.contains("weight") })
+    
+    var points: [PointCloudData.PointData] = []
+    
+    for row in dataFrame.rows {
+        guard xIndex < row.count, yIndex < row.count,
+              let x = Double(row[xIndex]), let y = Double(row[yIndex]) else {
+            continue
+        }
+        
+        let z = zIndex != nil && zIndex! < row.count ? Double(row[zIndex!]) ?? 0.0 : 0.0
+        let intensity = intensityIndex != nil && intensityIndex! < row.count ? Double(row[intensityIndex!]) : nil
+        
+        points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
+    }
+    
+    guard !points.isEmpty else { return nil }
+    
+    var pointCloudData = PointCloudData(
+        title: "Point Cloud from \(fileName)",
+        xAxisLabel: dataFrame.columns[xIndex],
+        yAxisLabel: dataFrame.columns[yIndex],
+        zAxisLabel: zIndex != nil ? dataFrame.columns[zIndex!] : "Z",
+        demoType: "imported",
+        parameters: ["rows": Double(points.count)]
+    )
+    
+    pointCloudData.points = points
+    pointCloudData.totalPoints = points.count
+    
+    return pointCloudData
+}
+
+private func convertJSONToDataFrame(_ json: [String: Any], fileName: String) -> DataFrameData? {
+    // Simple JSON to DataFrame conversion
+    // This is a basic implementation - you might want to handle nested structures differently
+    
+    var columns: [String] = []
+    var rows: [[String]] = []
+    
+    if let dataArray = json["data"] as? [[String: Any]] {
+        // Handle array of objects format
+        guard let firstObject = dataArray.first else { return nil }
+        
+        columns = Array(firstObject.keys).sorted()
+        
+        for object in dataArray {
+            let row = columns.map { key in
+                if let value = object[key] {
+                    return String(describing: value)
+                } else {
+                    return ""
+                }
+            }
+            rows.append(row)
+        }
+    } else if let directArray = json as? [String: Any] {
+        // Handle object with arrays format
+        columns = Array(directArray.keys).sorted()
+        
+        // Find the maximum array length
+        let maxLength = columns.compactMap { key in
+            (directArray[key] as? [Any])?.count
+        }.max() ?? 0
+        
+        for i in 0..<maxLength {
+            let row = columns.map { key in
+                if let array = directArray[key] as? [Any], i < array.count {
+                    return String(describing: array[i])
+                } else {
+                    return ""
+                }
+            }
+            rows.append(row)
+        }
+    }
+    
+    guard !columns.isEmpty && !rows.isEmpty else { return nil }
+    
+    return DataFrameData(columns: columns, rows: rows)
+}
+
+// ... existing code ...
 
 // MARK: - Volumetric Point Cloud View (new addition to display the point cloud)
 struct VolumetricPointCloudView: View {
@@ -1941,9 +2198,54 @@ struct VolumetricPointCloudView: View {
     }
 }
 
-// MARK: - Helper Functions
-
 // MARK: - Preview Provider
+
+// MARK: - WindowType Extensions
+extension WindowType {
+    var icon: String {
+        switch self {
+        case .charts:     return "chart.line.uptrend.xyaxis"
+        case .spatial:    return "move.3d"
+        case .column:     return "tablecells"
+        case .volume:     return "gauge"
+        case .pointcloud: return "dot.scope"
+        case .model3d:    return "cube"
+        }
+    }
+    
+    var inspectorIconColor: Color {
+        switch self {
+        case .charts: return .blue
+        case .spatial: return .green
+        case .column: return .orange
+        case .volume: return .red
+        case .pointcloud: return .purple
+        case .model3d: return .pink
+        }
+    }
+    
+    var inspectorDescription: String {
+        switch self {
+        case .charts: return "Interactive data visualization charts"
+        case .spatial: return "Spatial editor for 3D content"
+        case .column: return "Tabular data viewer and editor"
+        case .volume: return "Volume metrics and monitoring"
+        case .pointcloud: return "3D point cloud visualization"
+        case .model3d: return "3D model viewer and editor"
+        }
+    }
+    
+    func toStandardWindowType() -> StandardWindowType {
+        switch self {
+        case .charts: return .chartGenerator
+        case .spatial: return .dataFrame  // Default fallback
+        case .column: return .dataFrame
+        case .volume: return .iotDashboard
+        case .pointcloud: return .pointCloud
+        case .model3d: return .model3d
+        }
+    }
+}
 
 #Preview {
     NewWindow(id: 1)

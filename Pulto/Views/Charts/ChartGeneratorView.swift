@@ -9,6 +9,57 @@ import SwiftUI
 import Charts
 import UniformTypeIdentifiers
 
+// MARK: - File Document Types
+
+struct TextFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] = [.pythonScript, .plainText]
+    
+    var content: String
+    
+    init(content: String = "") {
+        self.content = content
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let string = String(data: data, encoding: .utf8)
+        else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        content = string
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = content.data(using: .utf8)!
+        return .init(regularFileWithContents: data)
+    }
+}
+
+struct ImageFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] = [.png, .jpeg]
+    
+    let chartBuilder: ChartBuilder?
+    
+    init(chartBuilder: ChartBuilder) {
+        self.chartBuilder = chartBuilder
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        // For reading images, we don't need the chart builder
+        self.chartBuilder = nil
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let placeholder = "Chart Image Placeholder"
+        let data = placeholder.data(using: .utf8)!
+        return .init(regularFileWithContents: data)
+    }
+}
+
+extension UTType {
+    static let pythonScript = UTType(filenameExtension: "py") ?? .plainText
+}
+
 // MARK: - Chart Generator View
 
 struct ChartGeneratorView: View {
@@ -86,7 +137,7 @@ struct ChartGeneratorView: View {
         }
         .fileExporter(
             isPresented: $showingCodeExporter,
-            document: PythonCodeDocument(code: chartBuilder.generatePythonCode()),
+            document: TextFileDocument(content: chartBuilder.generatePythonCode()),
             contentType: .pythonScript,
             defaultFilename: "chart_generator.py"
         ) { result in
@@ -94,7 +145,7 @@ struct ChartGeneratorView: View {
         }
         .fileExporter(
             isPresented: $showingChartExporter,
-            document: ChartImageDocument(chartBuilder: chartBuilder),
+            document: ImageFileDocument(chartBuilder: chartBuilder),
             contentType: .png,
             defaultFilename: "generated_chart.png"
         ) { result in
@@ -194,6 +245,11 @@ class ChartBuilder: ObservableObject {
     @Published var chartStyle: ChartStyle = ChartStyle()
     @Published var chartMetadata: ChartMetadata = ChartMetadata()
     
+    // Special initializer for file reading that doesn't require main actor
+    nonisolated init(forReading: Bool = false) {
+        // Initialize with default values
+    }
+    
     // MARK: - Chart Types
     
     enum ChartType: String, CaseIterable {
@@ -244,8 +300,7 @@ class ChartBuilder: ObservableObject {
     func importData(from url: URL) async {
         do {
             let content = try String(contentsOf: url)
-            let parser = CSVParser()
-            if let csvData = parser.parse(content) {
+            if let csvData = CSVParser.parse(content) {
                 chartData = ChartDataSet.fromCSV(csvData)
                 chartMetadata.title = url.deletingPathExtension().lastPathComponent
                 chartMetadata.description = "Imported from \(url.lastPathComponent)"
@@ -350,14 +405,16 @@ struct ChartDataSet {
         
         // Use first column as categories if it's categorical
         if let firstColumnType = csvData.columnTypes.first, firstColumnType == .categorical {
-            data.categories = csvData.rows.compactMap { $0.first }
+            data.categories = csvData.rows.compactMap { row -> String? in
+                return row.first
+            }
         }
         
         // Create series from numeric columns
         for (index, columnType) in csvData.columnTypes.enumerated() {
             if columnType == .numeric && index < csvData.headers.count {
                 let columnName = csvData.headers[index]
-                let values = csvData.rows.compactMap { row in
+                let values = csvData.rows.compactMap { row -> Double? in
                     guard index < row.count else { return nil }
                     return Double(row[index])
                 }
