@@ -1,2252 +1,2419 @@
-//  Enhanced NewWindowID.swift with Point Cloud Integration
-//  UnderstandingVisionos
-//
-//  Created by Joshua Herman on 5/25/25.
-//
-
 import SwiftUI
-import Foundation
-import Charts
 import UniformTypeIdentifiers
+import Foundation
 import RealityKit
 
-// ─────────────────────────────────────────────────────────────
-// MARK: - Window metadata
-// ─────────────────────────────────────────────────────────────
+// MARK: - Project Tab Enum
+enum ProjectTab: String, CaseIterable {
+    case create = "Create & Data"
+    case active = "Active"
+    case recent = "Recent"
 
-enum WindowType: String, CaseIterable, Codable, Hashable {
-    case charts      = "Charts"
-    case spatial     = "Spatial Editor"
-    case column      = "DataFrame Viewer"
-    case volume      = "Model Metric Viewer"
-    case pointcloud  = "Point Cloud Viewer"
-    case model3d     = "3D Model Viewer"
+    var icon: String {
+        switch self {
+        case .create: return "plus.circle.fill"
+        case .active: return "rectangle.stack.fill"
+        case .recent: return "clock.fill"
+        }
+    }
+}
+
+// MARK: - Navigation State
+enum NavigationState {
+    case home
+    case workspace
+}
+
+// MARK: - Window Actions
+enum WindowAction {
+    case open
+    case close
+    case focus
+    case duplicate
+}
+
+// MARK: - Standard Window Types (moved up for forward declarations)
+enum StandardWindowType: String, CaseIterable {
+    case dataFrame  = "Data Table"
+    case pointCloud = "Point Cloud"
+    case model3d    = "3D Model"
+    case iotDashboard = "IoT Dashboard"
 
     var displayName: String { rawValue }
 
-    var jupyterCellType: String {
+    var icon: String {
         switch self {
-        case .charts, .column, .volume, .pointcloud, .model3d: "code"
-        //case .charts, .column, .volume, .model3d: "code"
-        case .spatial: "spatial"
+        case .dataFrame:  return "tablecells"
+        case .pointCloud: return "circle.grid.3x3"
+        case .model3d:    return "cube"
+        case .iotDashboard: return "sensor.tag.radiowaves.forward"
         }
     }
-}
 
-struct WindowPosition: Codable, Hashable {
-    var x, y, z: Double
-    var width, height: Double
-    var depth: Double?
-
-    init(x: Double = 0, y: Double = 0, z: Double = 0,
-         width: Double = 400, height: Double = 300, depth: Double? = nil) {
-        (self.x, self.y, self.z) = (x, y, z)
-        (self.width, self.height) = (width, height)
-        self.depth = depth
-    }
-}
-
-enum ExportTemplate: String, CaseIterable, Codable, Hashable {
-    case plain, matplotlib, pandas, numpy, plotly, seaborn, custom, markdown
-
-    var defaultImports: [String] {
+    var iconColor: Color {
         switch self {
-        case .plain      : []
-        case .matplotlib : ["import matplotlib.pyplot as plt", "import numpy as np"]
-        case .pandas     : ["import pandas as pd", "import numpy as np"]
-        case .numpy      : ["import numpy as np"]
-        case .plotly     : ["import plotly.graph_objects as go",
-                            "import plotly.express as px", "import pandas as pd"]
-        case .seaborn    : ["import seaborn as sns", "import matplotlib.pyplot as plt",
-                            "import pandas as pd"]
-        case .custom, .markdown: []
+        case .dataFrame:  return .green
+        case .pointCloud: return .cyan
+        case .model3d:    return .red
+        case .iotDashboard: return .orange
         }
     }
 
-    var defaultContent: String {
+    var description: String {
         switch self {
-        case .plain: "# Add your code here"
-        case .matplotlib: """
-            # Create figure and axis
-            fig, ax = plt.subplots(figsize=(10, 6))
+        case .dataFrame:  return "Tabular data viewer"
+        case .pointCloud: return "3D point clouds"
+        case .model3d:    return "3D model viewer"
+        case .iotDashboard: return "Real-time IoT dashboard"
+        }
+    }
 
-            # Your plotting code here
-            # ax.plot(x, y)
-
-            plt.show()
-            """
-        case .pandas: """
-            # Create or load your DataFrame
-            # df = pd.read_csv('your_file.csv')
-            # df = pd.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]})
-
-            # Display DataFrame info
-            # print(df.head())
-            # print(df.describe())
-            """
-        case .numpy: """
-            # Create numpy arrays
-            # arr = np.array([1, 2, 3, 4, 5])
-
-            # Your numpy operations here
-            """
-        case .plotly: """
-            # Create interactive plot
-            # fig = go.Figure()
-            # fig.add_trace(go.Scatter(x=[1, 2, 3, 4], y=[10, 11, 12, 13]))
-            # fig.show()
-            """
-        case .seaborn: """
-            # Set style
-            sns.set_style("whitegrid")
-
-            # Create statistical plot
-            # sns.scatterplot(data=df, x='col1', y='col2')
-            # plt.show()
-            """
-        case .custom:   "# Add your custom code here"
-        case .markdown: "Add your markdown content here"
+    func toWindowType() -> WindowType {
+        switch self {
+        case .dataFrame:  return .column
+        case .pointCloud: return .pointcloud
+        case .model3d:    return .model3d
+        case .iotDashboard: return .volume  // Maps to volume type for IoT metrics
         }
     }
 }
 
-// Add this structure after PointCloudData
-struct VolumeData: Codable, Hashable {
-    var metrics: [String: Double]
-    var title: String
-    var category: String
-    var timestamp: Date
-    var unit: String?
-
-    init(title: String = "Volume Metrics",
-         category: String = "performance",
-         metrics: [String: Double] = [:],
-         unit: String? = nil) {
-        self.title = title
-        self.category = category
-        self.metrics = metrics
-        self.timestamp = Date()
-        self.unit = unit
-    }
-
-    // Convert to Python code for Jupyter
-    func toPythonCode() -> String {
-        guard !metrics.isEmpty else {
-            return "# Empty volume data\nprint('No volume data available')"
-        }
-
-        let metricsDict = metrics.map { "\"\($0.key)\": \($0.value)" }.joined(separator: ",\n    ")
-
-        return """
-        # \(title)
-        # Generated from VisionOS Volume Window
-        # Category: \(category)
-        
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import pandas as pd
-        from datetime import datetime
-        
-        # Volume metrics data
-        metrics = {
-            \(metricsDict)
-        }
-        
-        # Create DataFrame for easy manipulation
-        df_metrics = pd.DataFrame(list(metrics.items()), columns=['Metric', 'Value'])
-        
-        # Display metrics
-        print("Volume Metrics Summary:")
-        print("-" * 40)
-        for metric, value in metrics.items():
-            unit_str = "\(unit ?? "")"
-            print(f"{metric:20}: {value:10.3f} {unit_str}")
-        
-        # Create visualization
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-        
-        # Bar chart
-        ax1.bar(df_metrics['Metric'], df_metrics['Value'])
-        ax1.set_title('\(title) - Bar Chart')
-        ax1.tick_params(axis='x', rotation=45)
-        
-        # Pie chart (for positive values only)
-        positive_metrics = {k: v for k, v in metrics.items() if v > 0}
-        if positive_metrics:
-            ax2.pie(positive_metrics.values(), labels=positive_metrics.keys(), autopct='%1.1f%%')
-            ax2.set_title('\(title) - Distribution')
-        else:
-            ax2.text(0.5, 0.5, 'No positive values\\nfor pie chart', 
-                    ha='center', va='center', transform=ax2.transAxes)
-            ax2.set_title('Distribution (N/A)')
-        
-        plt.tight_layout()
-        plt.show()
-        
-        # Statistics
-        print(f"\\nStatistics:")
-        print(f"Total metrics: {len(metrics)}")
-        print(f"Average value: {np.mean(list(metrics.values())):.3f}")
-        print(f"Max value: {max(metrics.values()):.3f}")
-        print(f"Min value: {min(metrics.values()):.3f}")
-        """
-    }
-}
-
-// Add this structure after VolumeData
-struct ChartData: Codable, Hashable {
-    var xData: [Double]
-    var yData: [Double]
-    var chartType: String
-    var title: String
-    var xLabel: String
-    var yLabel: String
-    var color: String?
-    var style: String?
-
-    init(title: String = "Chart Data",
-         chartType: String = "line",
-         xLabel: String = "X",
-         yLabel: String = "Y",
-         xData: [Double] = [],
-         yData: [Double] = [],
-         color: String? = nil,
-         style: String? = nil) {
-        self.title = title
-        self.chartType = chartType
-        self.xLabel = xLabel
-        self.yLabel = yLabel
-        self.xData = xData
-        self.yData = yData
-        self.color = color
-        self.style = style
-    }
-
-    // Convert to Python code for Jupyter
-    func toPythonCode() -> String {
-        guard !xData.isEmpty && !yData.isEmpty else {
-            return "# Empty chart data\nprint('No chart data available')"
-        }
-
-        let xDataString = xData.map { String($0) }.joined(separator: ", ")
-        let yDataString = yData.map { String($0) }.joined(separator: ", ")
-
-        return """
-        # \(title)
-        # Generated from VisionOS Chart Window
-        
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import pandas as pd
-        
-        # Chart data
-        x_data = np.array([\(xDataString)])
-        y_data = np.array([\(yDataString)])
-        
-        # Create the chart
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        \(generatePlotCode())
-        
-        ax.set_xlabel('\(xLabel)')
-        ax.set_ylabel('\(yLabel)')
-        ax.set_title('\(title)')
-        ax.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.show()
-        
-        # Data statistics
-        print("Chart Data Statistics:")
-        print("-" * 30)
-        print(f"Data points: {len(x_data)}")
-        print(f"X range: [{np.min(x_data):.3f}, {np.max(x_data):.3f}]")
-        print(f"Y range: [{np.min(y_data):.3f}, {np.max(y_data):.3f}]")
-        print(f"Y mean: {np.mean(y_data):.3f}")
-        print(f"Y std: {np.std(y_data):.3f}")
-        
-        # Create DataFrame for further analysis
-        df = pd.DataFrame({'X': x_data, 'Y': y_data})
-        print("\\nDataFrame Preview:")
-        print(df.head())
-        """
-    }
-
-    private func generatePlotCode() -> String {
-        let colorCode = color != nil ? ", color='\(color!)'" : ""
-        let styleCode = style != nil ? ", linestyle='\(style!)'" : ""
-
-        switch chartType.lowercased() {
-        case "scatter":
-            return "ax.scatter(x_data, y_data\(colorCode), alpha=0.7)"
-        case "bar":
-            return "ax.bar(x_data, y_data\(colorCode))"
-        case "line":
-            return "ax.plot(x_data, y_data\(colorCode)\(styleCode), marker='o', markersize=4)"
-        case "area":
-            return "ax.fill_between(x_data, y_data\(colorCode), alpha=0.6)"
-        default:
-            return "ax.plot(x_data, y_data\(colorCode)\(styleCode))"
-        }
-    }
-
-    func toEnhancedPythonCode() -> String {
-        let xDataStr = xData.map { String($0) }.joined(separator: ", ")
-        let yDataStr = yData.map { String($0) }.joined(separator: ", ")
-
-        let colorStr = color ?? "blue"
-        let styleStr = style ?? "solid"
-
-        return """
-        # Chart Window - \(title)
-        # Chart Type: \(chartType)
-        # X Range: [\(xDataStr)]
-        # Y Range: [\(yDataStr)]
-        # Color: \(colorStr)
-        # Style: \(styleStr)
-        
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
-        # Chart data from VisionOS
-        x_data = [\(xDataStr)]
-        y_data = [\(yDataStr)]
-        
-        # Create the plot
-        plt.figure(figsize=(10, 6))
-        
-        \(generatePlotCode())
-        
-        plt.title('\(title)')
-        plt.xlabel('\(xLabel)')
-        plt.ylabel('\(yLabel)')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-        
-        # Display data summary
-        print(f"Chart: \(title)")
-        print(f"Type: \(chartType)")
-        print(f"Data points: {len(x_data)}")
-        print(f"X range: [{min(x_data):.2f}, {max(x_data):.2f}]")
-        print(f"Y range: [{min(y_data):.2f}, {max(y_data):.2f}]")
-        """
-    }
-
-}
-
-// Add this structure after ChartData
-struct Model3DData: Codable, Hashable {
-    var vertices: [Vertex3D]
-    var faces: [Face3D]
-    var normals: [Normal3D]?
-    var textures: [TextureCoord]?
-    var materials: [Material3D]
-    var title: String
-    var modelType: String
-    var scale: Double
-    var position: Position3D
-    var rotation: Rotation3D
-
-    struct Vertex3D: Codable, Hashable {
-        var x: Double
-        var y: Double
-        var z: Double
-    }
-
-    struct Face3D: Codable, Hashable {
-        var vertices: [Int]  // indices into vertex array
-        var materialIndex: Int?
-    }
-
-    struct Normal3D: Codable, Hashable {
-        var x: Double
-        var y: Double
-        var z: Double
-    }
-
-    struct TextureCoord: Codable, Hashable {
-        var u: Double
-        var v: Double
-    }
-
-    struct Material3D: Codable, Hashable {
-        var name: String
-        var color: String
-        var metallic: Double?
-        var roughness: Double?
-        var transparency: Double?
-    }
-
-    struct Position3D: Codable, Hashable {
-        var x: Double
-        var y: Double
-        var z: Double
-
-        init(x: Double = 0, y: Double = 0, z: Double = 0) {
-            self.x = x
-            self.y = y
-            self.z = z
-        }
-    }
-
-    struct Rotation3D: Codable, Hashable {
-        var x: Double
-        var y: Double
-        var z: Double
-
-        init(x: Double = 0, y: Double = 0, z: Double = 0) {
-            self.x = x
-            self.y = y
-            self.z = z
-        }
-    }
-
-    init(title: String = "3D Model",
-         modelType: String = "mesh",
-         scale: Double = 1.0,
-         position: Position3D = Position3D(),
-         rotation: Rotation3D = Rotation3D()) {
-        self.vertices = []
-        self.faces = []
-        self.normals = []
-        self.textures = []
-        self.materials = []
-        self.title = title
-        self.modelType = modelType
-        self.scale = scale
-        self.position = position
-        self.rotation = rotation
-    }
-
-    // Convert to Python code for Jupyter
-    func toPythonCode() -> String {
-        guard !vertices.isEmpty else {
-            return "# Empty 3D model\nprint('No 3D model data available')"
-        }
-
-        let verticesString = vertices.map { "[\($0.x), \($0.y), \($0.z)]" }.joined(separator: ",\n    ")
-        let facesString = faces.map { "[\($0.vertices.map { String($0) }.joined(separator: ", "))]" }.joined(separator: ",\n    ")
-
-        return """
-        # \(title)
-        # Generated from VisionOS 3D Model Viewer
-        
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        import plotly.graph_objects as go
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-        import plotly.express as px
-        
-        # 3D Model data (\(vertices.count) vertices, \(faces.count) faces)
-        vertices = np.array([
-            \(verticesString)
-        ])
-        
-        faces = [
-            \(facesString)
-        ]
-        
-        # Apply transformations
-        scale = \(scale)
-        position = np.array([\(position.x), \(position.y), \(position.z)])
-        
-        # Scale and translate vertices
-        scaled_vertices = vertices * scale + position
-        
-        # Matplotlib 3D visualization
-        fig = plt.figure(figsize=(12, 10))
-        ax = fig.add_subplot(111, projection='3d')
-        
-        # Create mesh
-        mesh_faces = []
-        for face in faces:
-            if len(face) >= 3:  // Valid face
-                face_vertices = scaled_vertices[face]
-                mesh_faces.append(face_vertices)
-        mesh_collection = Poly3DCollection(mesh_faces, alpha=0.7, facecolor='lightblue', edgecolor='black')
-        ax.add_collection3d(mesh_collection)
-        
-        # Plot vertices as points
-        ax.scatter(scaled_vertices[:, 0], scaled_vertices[:, 1], scaled_vertices[:, 2], 
-                  c='red', s=20, alpha=0.8)
-        
-        # Set labels and title
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('\(title)')
-        
-        # Set equal aspect ratio
-        max_range = np.array([scaled_vertices[:,0].max()-scaled_vertices[:,0].min(),
-                             scaled_vertices[:,1].max()-scaled_vertices[:,1].min(),
-                             scaled_vertices[:,2].max()-scaled_vertices[:,2].min()]).max() / 2.0
-        
-        mid_x = (scaled_vertices[:,0].max()+scaled_vertices[:,0].min()) * 0.5
-        mid_y = (scaled_vertices[:,1].max()+scaled_vertices[:,1].min()) * 0.5
-        mid_z = (scaled_vertices[:,2].max()+scaled_vertices[:,2].min()) * 0.5
-        
-        ax.set_xlim(mid_x - max_range, mid_x + max_range)
-        ax.set_ylim(mid_y - max_range, mid_y + max_range)
-        ax.set_zlim(mid_z - max_range, mid_z + max_range)
-        
-        plt.tight_layout()
-        plt.show()
-        
-        # Plotly interactive 3D visualization
-        fig_plotly = go.Figure()
-        
-        # Add mesh
-        if len(faces) > 0 and len(vertices) > 0:
-            # Convert faces to plotly format
-            i_coords = []
-            j_coords = []
-            k_coords = []
-            
-            for face in faces:
-                if len(face) >= 3:
-                    # Convert to triangles if needed
-                    for i in range(1, len(face) - 1):
-                        i_coords.append(face[0])
-                        j_coords.append(face[i])
-                        k_coords.append(face[i + 1])
-            
-            fig_plotly.add_trace(go.Mesh3d(
-                x=scaled_vertices[:, 0],
-                y=scaled_vertices[:, 1],
-                z=scaled_vertices[:, 2],
-                i=i_coords,
-                j=j_coords,
-                k=k_coords,
-                opacity=0.8,
-                color='lightblue',
-                name='\(title)'
-            ))
-        
-        # Add vertices as scatter
-        fig_plotly.add_trace(go.Scatter3d(
-            x=scaled_vertices[:, 0],
-            y=scaled_vertices[:, 1],
-            z=scaled_vertices[:, 2],
-            mode='markers',
-            marker=dict(size=3, color='red'),
-            name='Vertices'
-        ))
-        
-        fig_plotly.update_layout(
-            title='\(title)',
-            scene=dict(
-                xaxis_title='X',
-                yaxis_title='Y',
-                zaxis_title='Z',
-                aspectmode='cube'
-            ),
-            width=800,
-            height=600
-        )
-        
-        fig_plotly.show()
-        
-        # Print model statistics
-        print(f"3D Model Statistics:")
-        print(f"- Title: '\(title)'")
-        print(f"- Model Type: '\(modelType)'")
-        print(f"- Vertices: {len(vertices)}")
-        print(f"- Faces: {len(faces)}")
-        print(f"- Scale: {scale}")
-        print(f"- Position: [{position[0]:.2f}, {position[1]:.2f}, {position[2]:.2f}]")
-        print(f"- Bounding Box:")
-        print(f"  X: [{np.min(scaled_vertices[:, 0]):.2f}, {np.max(scaled_vertices[:, 0]):.2f}]")
-        print(f"  Y: [{np.min(scaled_vertices[:, 1]):.2f}, {np.max(scaled_vertices[:, 1]):.2f}]")
-        print(f"  Z: [{np.min(scaled_vertices[:, 2]):.2f}, {np.max(scaled_vertices[:, 2]):.2f}]")
-        """
-    }
-
-    // Helper method to generate basic shapes
-    static func generateCube(size: Double = 2.0) -> Model3DData {
-        let halfSize = size / 2.0
-
-        let vertices = [
-            Vertex3D(x: -halfSize, y: -halfSize, z: -halfSize), // 0
-            Vertex3D(x:  halfSize, y: -halfSize, z: -halfSize), // 1
-            Vertex3D(x:  halfSize, y:  halfSize, z: -halfSize), // 2
-            Vertex3D(x: -halfSize, y:  halfSize, z: -halfSize), // 3
-            Vertex3D(x: -halfSize, y: -halfSize, z:  halfSize), // 4
-            Vertex3D(x:  halfSize, y: -halfSize, z:  halfSize), // 5
-            Vertex3D(x:  halfSize, y:  halfSize, z:  halfSize), // 6
-            Vertex3D(x: -halfSize, y:  halfSize, z:  halfSize)  // 7
-        ]
-
-        let faces = [
-            Face3D(vertices: [0, 1, 2, 3], materialIndex: 0), // bottom
-            Face3D(vertices: [4, 7, 6, 5], materialIndex: 0), // top
-            Face3D(vertices: [0, 4, 5, 1], materialIndex: 0), // front
-            Face3D(vertices: [2, 6, 7, 3], materialIndex: 0), // back
-            Face3D(vertices: [0, 3, 7, 4], materialIndex: 0), // left
-            Face3D(vertices: [1, 5, 6, 2], materialIndex: 0)  // right
-        ]
-
-        let materials = [
-            Material3D(name: "default", color: "blue", metallic: 0.1, roughness: 0.5, transparency: 0.0)
-        ]
-
-        var model = Model3DData(title: "Cube (\(size)x\(size)x\(size))", modelType: "cube")
-        model.vertices = vertices
-        model.faces = faces
-        model.materials = materials
-
-        return model
-    }
-
-    static func generateSphere(radius: Double = 1.0, segments: Int = 16) -> Model3DData {
-        var vertices: [Vertex3D] = []
-        var faces: [Face3D] = []
-
-        // Generate vertices
-        for i in 0...segments {
-            let phi = Double(i) * .pi / Double(segments)
-            for j in 0..<(segments * 2) {
-                let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
-
-                // Convert spherical to Cartesian coordinates
-                let x = radius * sin(phi) * cos(theta)
-                let y = radius * cos(phi)
-                let z = radius * sin(phi) * sin(theta)
-
-                vertices.append(Vertex3D(x: x, y: y, z: z))
-            }
-        }
-
-        // Generate faces
-        for i in 0..<segments {
-            for j in 0..<(segments * 2) {
-                let current = i * (segments * 2) + j
-                let next = i * (segments * 2) + (j + 1) % (segments * 2)
-                let currentNext = (i + 1) * (segments * 2) + j
-                let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
-
-                if i < segments {
-                    faces.append(Face3D(vertices: [current, next, nextNext, currentNext], materialIndex: 0))
-                }
-            }
-        }
-
-        let materials = [
-            Material3D(name: "default", color: "green", metallic: 0.2, roughness: 0.3, transparency: 0.0)
-        ]
-
-        var model = Model3DData(title: "Sphere (r=\(radius))", modelType: "sphere")
-        model.vertices = vertices
-        model.faces = faces
-        model.materials = materials
-
-        return model
-    }
-}
-
-// Add PointCloudData structure if not already defined elsewhere
-struct PointCloudData: Codable, Hashable {
-    var points: [PointData]
-    var title: String
-    var xAxisLabel: String
-    var yAxisLabel: String
-    var zAxisLabel: String
-    var totalPoints: Int
-    var demoType: String
-    var parameters: [String: Double]
-    
-    struct PointData: Codable, Hashable {
-        var x: Double
-        var y: Double
-        var z: Double
-        var intensity: Double?
-        var color: String?
-        
-        init(x: Double, y: Double, z: Double, intensity: Double? = nil, color: String? = nil) {
-            self.x = x
-            self.y = y
-            self.z = z
-            self.intensity = intensity
-            self.color = color
-        }
-    }
-    
-    init(title: String = "Point Cloud",
-         xAxisLabel: String = "X",
-         yAxisLabel: String = "Y", 
-         zAxisLabel: String = "Z",
-         demoType: String = "custom",
-         parameters: [String: Double] = [:]) {
-        self.points = []
-        self.title = title
-        self.xAxisLabel = xAxisLabel
-        self.yAxisLabel = yAxisLabel
-        self.zAxisLabel = zAxisLabel
-        self.totalPoints = 0
-        self.demoType = demoType
-        self.parameters = parameters
-    }
-    
-    // Convert to Python code for Jupyter
-    func toPythonCode() -> String {
-        guard !points.isEmpty else {
-            return "# Empty point cloud\nprint('No point cloud data available')"
-        }
-        
-        let pointsString = points.prefix(1000).map { point in
-            if let intensity = point.intensity {
-                return "[\(point.x), \(point.y), \(point.z), \(intensity)]"
-            } else {
-                return "[\(point.x), \(point.y), \(point.z)]"
-            }
-        }.joined(separator: ",\n    ")
-        
-        let hasIntensity = points.first?.intensity != nil
-        
-        return """
-        # \(title)
-        # Generated from VisionOS Spatial Editor
-        
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        import plotly.graph_objects as go
-        
-        # Point cloud data (\(totalPoints) points)
-        points = np.array([
-            \(pointsString)
-        ])
-        
-        # Extract coordinates
-        x = points[:, 0]
-        y = points[:, 1] 
-        z = points[:, 2]
-        \(hasIntensity ? "intensity = points[:, 3]" : "")
-        
-        # Matplotlib 3D visualization
-        fig = plt.figure(figsize=(12, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        
-        \(hasIntensity ? 
-        "scatter = ax.scatter(x, y, z, c=intensity, cmap='viridis', alpha=0.6)" :
-        "scatter = ax.scatter(x, y, z, alpha=0.6)")
-        
-        ax.set_xlabel('\(xAxisLabel)')
-        ax.set_ylabel('\(yAxisLabel)') 
-        ax.set_zlabel('\(zAxisLabel)')
-        ax.set_title('\(title)')
-        
-        \(hasIntensity ? "plt.colorbar(scatter, ax=ax, label='Intensity')" : "")
-        plt.tight_layout()
-        plt.show()
-        
-        # Plotly interactive 3D visualization
-        fig_plotly = go.Figure()
-        
-        fig_plotly.add_trace(go.Scatter3d(
-            x=x, y=y, z=z,
-            mode='markers',
-            marker=dict(
-                size=3,
-                \(hasIntensity ? "color=intensity, colorscale='Viridis', showscale=True," : "color='blue',")
-                opacity=0.7
-            ),
-            name='\(title)'
-        ))
-        
-        fig_plotly.update_layout(
-            title='\(title)',
-            scene=dict(
-                xaxis_title='\(xAxisLabel)',
-                yaxis_title='\(yAxisLabel)',
-                zaxis_title='\(zAxisLabel)'
-            ),
-            width=800,
-            height=600
-        )
-        
-        fig_plotly.show()
-        
-        # Print statistics
-        print(f"Point Cloud Statistics:")
-        print(f"- Total points: {len(points)}")
-        print(f"- X range: [{np.min(x):.3f}, {np.max(x):.3f}]")
-        print(f"- Y range: [{np.min(y):.3f}, {np.max(y):.3f}]") 
-        print(f"- Z range: [{np.min(z):.3f}, {np.max(z):.3f}]")
-        \(hasIntensity ? "print(f\"- Intensity range: [{np.min(intensity):.3f}, {np.max(intensity):.3f}]\")" : "")
-        """
-    }
-}
-
-// Add Chart3DData structure if not already defined elsewhere
-struct Chart3DData: Codable, Hashable {
-    var xData: [Double]
-    var yData: [Double] 
-    var zData: [Double]
-    var title: String
-    var chartType: String
-    
-    init(title: String = "3D Chart",
-         chartType: String = "scatter3d",
-         xData: [Double] = [],
-         yData: [Double] = [],
-         zData: [Double] = []) {
-        self.title = title
-        self.chartType = chartType
-        self.xData = xData
-        self.yData = yData
-        self.zData = zData
-    }
-}
-
-struct WindowState: Hashable {
-    let id: Int = Int()
-    var isMinimized: Bool = false
-    var isMaximized: Bool = false
-    var opacity: Double = 1.0
-    var lastModified: Date = Date()
-    var content: String = ""
-    var exportTemplate: ExportTemplate = .plain
-    var customImports: [String] = []
-    var tags: [String] = []
-    var dataFrameData: DataFrameData? = nil
-    var pointCloudData: PointCloudData? = nil
-    var volumeData: VolumeData? = nil
-    var chartData: ChartData? = nil
-    var model3DData: Model3DData? = nil
-    var usdzBookmark: Data? = nil
-    var pointCloudBookmark: Data? = nil
-    var chart3DData: Chart3DData?
-
-    init(isMinimized: Bool = false, isMaximized: Bool = false,
-         opacity: Double = 1.0, content: String = "",
-         exportTemplate: ExportTemplate = .plain) {
-        self.isMinimized = isMinimized
-        self.isMaximized = isMaximized
-        self.opacity = opacity
-        self.content = content
-        self.exportTemplate = exportTemplate
-        self.lastModified = Date()
-    }
-}
-
-struct DataFrameData: Codable, Hashable {
-    var columns: [String]
-    var rows: [[String]]
-    var dtypes: [String: String] // column name to data type mapping
-    var shapeRows: Int // instead of tuple
-    var shapeColumns: Int // instead of tuple
-
-    // Computed property for convenient access
-    var shape: (Int, Int) {
-        return (shapeRows, shapeColumns)
-    }
-
-    init(columns: [String] = [], rows: [[String]] = [], dtypes: [String: String] = [:]) {
-        self.columns = columns
-        self.rows = rows
-        self.dtypes = dtypes
-        self.shapeRows = rows.count
-        self.shapeColumns = columns.count
-    }
-
-    // Helper methods
-    func toPandasCode() -> String {
-        guard !columns.isEmpty && !rows.isEmpty else {
-            return "# Empty DataFrame\ndf = pd.DataFrame()"
-        }
-
-        var code = "# DataFrame data\ndata = {\n"
-
-        for (colIndex, column) in columns.enumerated() {
-            let columnData = rows.map { $0.count > colIndex ? $0[colIndex] : "" }
-            let formattedData = columnData.map { "'\($0)'" }.joined(separator: ", ")
-            code += "    '\(column)': [\(formattedData)],\n"
-        }
-
-        code += "}\n\n"
-        code += "df = pd.DataFrame(data)\n\n"
-
-        // Add data type conversions if specified
-        if !dtypes.isEmpty {
-            code += "# Convert data types\n"
-            for (column, dtype) in dtypes {
-                switch dtype.lowercased() {
-                case "int", "integer":
-                    code += "df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce').astype('Int64')\n"
-                case "float", "numeric":
-                    code += "df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce')\n"
-                case "datetime", "date":
-                    code += "df['\(column)'] = pd.to_datetime(df['\(column)'], errors='coerce')\n"
-                case "bool", "boolean":
-                    code += "df['\(column)'] = df['\(column)'].astype('boolean')\n"
-                default:
-                    code += "# \(column): \(dtype)\n"
-                }
-            }
-            code += "\n"
-        }
-
-        code += "print(f\"DataFrame shape: {df.shape}\")\nprint(df.head())\nprint(df.info())"
-
-        return code
-    }
-
-    func toCSVString() -> String {
-        guard !columns.isEmpty else { return "" }
-
-        var csv = columns.joined(separator: ",") + "\n"
-        for row in rows {
-            let paddedRow = row + Array(repeating: "", count: max(0, columns.count - row.count))
-            csv += paddedRow.prefix(columns.count).joined(separator: ",") + "\n"
-        }
-        return csv
-    }
-
-    func toEnhancedPandasCode() -> String {
-        let columnsStr = columns.map { "'\($0)'" }.joined(separator: ", ")
-
-        // Create the data dictionary
-        var dataDict: [String] = []
-        for (index, column) in columns.enumerated() {
-            let columnValues = rows.map { row in
-                index < row.count ? row[index] : ""
-            }
-
-            // Format values based on data type
-            let dtype = dtypes[column] ?? "string"
-            let formattedValues: [String]
-
-            switch dtype {
-            case "int":
-                formattedValues = columnValues.map { Int($0) != nil ? $0 : "0" }
-            case "float":
-                formattedValues = columnValues.map { Double($0) != nil ? $0 : "0.0" }
-            default: // string
-                formattedValues = columnValues.map { "'\($0)'" }
-            }
-
-            let valuesStr = formattedValues.joined(separator: ", ")
-            dataDict.append("    '\(column)': [\(valuesStr)]")
-        }
-
-        let dataDictStr = "{\n\(dataDict.joined(separator: ",\n"))\n}"
-
-        // Generate dtypes dictionary
-        let dtypesStr = dtypes.map { "'\($0.key)': '\($0.value)'" }.joined(separator: ", ")
-
-        return """
-        # DataFrame Window - \(columns.count) columns, \(rows.count) rows
-        # DataFrame Columns: [\(columnsStr)]
-        # DataFrame Types: {\(dtypesStr)}
-        # DataFrame Rows: \(formatRowsForComment())
-        
-        import pandas as pd
-        import numpy as np
-        
-        # DataFrame data from VisionOS
-        data = \(dataDictStr)
-        
-        # Create DataFrame
-        df = pd.DataFrame(data)
-        
-        # Set data types
-        \(generateDtypeConversions())
-        
-        # Display DataFrame info
-        print("DataFrame Summary:")
-        print(f"Shape: {df.shape}")
-        print(f"Columns: {list(df.columns)}")
-        print("\\nData types:")
-        print(df.dtypes)
-        print("\\nFirst 10 rows:")
-        print(df.head(10))
-        print("\\nStatistical summary:")
-        print(df.describe(include='all'))
-        
-        # Display the full DataFrame
-        df
-        """
-    }
-
-    private func formatRowsForComment() -> String {
-        let formattedRows = rows.prefix(5).map { row in
-            let quotedRow = row.map { "'\($0)'" }.joined(separator: ", ")
-            return "[\(quotedRow)]"
-        }
-        let rowsStr = formattedRows.joined(separator: ", ")
-        let suffix = rows.count > 5 ? ", ..." : ""
-        return "[\(rowsStr)\(suffix)]"
-    }
-
-    private func generateDtypeConversions() -> String {
-        var conversions: [String] = []
-
-        for (column, dtype) in dtypes {
-            switch dtype {
-            case "int":
-                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce').astype('Int64')")
-            case "float":
-                conversions.append("df['\(column)'] = pd.to_numeric(df['\(column)'], errors='coerce')")
-            case "bool":
-                conversions.append("df['\(column)'] = df['\(column)'].astype('bool')")
-            default: // string
-                conversions.append("df['\(column)'] = df['\(column)'].astype('string')")
-            }
-        }
-
-        return conversions.joined(separator: "\n")
-    }
-}
-
-struct NewWindowID: Identifiable, Hashable {
-    /// The unique identifier for the window.
-    var id: Int
-    /// The type of window to create
-    var windowType: WindowType
-    /// Position and size information
-    var position: WindowPosition
-    /// Window state information
-    var state: WindowState
-    /// Creation timestamp
-    var createdAt: Date
-
-    init(id: Int, windowType: WindowType,
-         position: WindowPosition = WindowPosition(),
-         state: WindowState = WindowState()) {
-        self.id = id
-        self.windowType = windowType
-        self.position = position
-        self.state = state
-        self.createdAt = Date()
-    }
-}
-
-// Point Cloud Demo Integration
-class PointCloudDemo {
-
-    // MARK: - Demo Functions
-
-    /// Generate a simple sphere point cloud
-    static func generateSpherePointCloud(radius: Double = 10.0, points: Int = 1000) -> [(x: Double, y: Double, z: Double)] {
-        var pointCloud: [(x: Double, y: Double, z: Double)] = []
-
-        for _ in 0..<points {
-            // Random angles
-            let theta = Double.random(in: 0...(2 * .pi))
-            let phi = Double.random(in: 0...(.pi))
-
-            // Convert spherical to Cartesian coordinates
-            let x = radius * sin(phi) * cos(theta)
-            let y = radius * sin(phi) * sin(theta)
-            let z = radius * cos(phi)
-
-            pointCloud.append((x: x, y: y, z: z))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a torus (donut) point cloud
-    static func generateTorusPointCloud(majorRadius: Double = 10.0, minorRadius: Double = 3.0, points: Int = 2000) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        for _ in 0..<points {
-            let u = Double.random(in: 0...(2 * .pi))
-            let v = Double.random(in: 0...(2 * .pi))
-
-            let x = (majorRadius + minorRadius * cos(v)) * cos(u)
-            let y = (majorRadius + minorRadius * cos(v)) * sin(u)
-            let z = minorRadius * sin(v)
-
-            // Calculate intensity based on height (z-coordinate)
-            let intensity = (z + minorRadius) / (2 * minorRadius)
-
-            pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a wave surface point cloud
-    static func generateWaveSurface(size: Double = 20.0, resolution: Int = 50) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        let step = size / Double(resolution)
-
-        for i in 0..<resolution {
-            for j in 0..<resolution {
-                let x = -size/2 + Double(i) * step
-                let y = -size/2 + Double(j) * step
-
-                // Wave equation: z = A * sin(kx * x) * sin(ky * y)
-                let z = 3.0 * sin(0.3 * x) * sin(0.3 * y)
-
-                // Intensity based on height
-                let intensity = (z + 3.0) / 6.0
-
-                pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-            }
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a spiral galaxy point cloud
-    static func generateSpiralGalaxy(arms: Int = 3, points: Int = 5000) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
-        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
-
-        for i in 0..<points {
-            let armIndex = i % arms
-            let armAngle = (2.0 * .pi * Double(armIndex)) / Double(arms)
-
-            // Distance from center
-            let r = Double.random(in: 1...20)
-
-            // Spiral angle
-            let theta = armAngle + (r * 0.3)
-
-            // Add some randomness
-            let spread = 2.0 / (1.0 + r * 0.1)
-            let xOffset = Double.random(in: -spread...spread)
-            let yOffset = Double.random(in: -spread...spread)
-
-            let x = r * cos(theta) + xOffset
-            let y = r * sin(theta) + yOffset
-            let z = Double.random(in: -1...1) * (1.0 / (1.0 + r * 0.1))
-
-            // Intensity decreases with distance from center
-            let intensity = 1.0 / (1.0 + r * 0.05)
-
-            pointCloud.append((x: x, y: y, z: z, color: nil, intensity: intensity))
-        }
-
-        return pointCloud
-    }
-
-    /// Generate a cube with noise
-    static func generateNoisyCube(size: Double = 10.0, pointsPerFace: Int = 500) -> [(x: Double, y: Double, z: Double)] {
-        var pointCloud: [(x: Double, y: Double, z: Double)] = []
-        let halfSize = size / 2.0
-        let noiseLevel = 0.5
-
-        // Generate points for each face
-        for _ in 0..<pointsPerFace {
-            // Top face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: halfSize + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Bottom face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: -halfSize + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Front face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Back face
-            pointCloud.append((
-                x: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                y: -halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Right face
-            pointCloud.append((
-                x: halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-
-            // Left face
-            pointCloud.append((
-                x: -halfSize + Double.random(in: -noiseLevel...noiseLevel),
-                y: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel),
-                z: Double.random(in: -halfSize...halfSize) + Double.random(in: -noiseLevel...noiseLevel)
-            ))
-        }
-
-        return pointCloud
-    }
-
-    // Enhanced generation methods that return PointCloudData
-    static func generateSpherePointCloudData(radius: Double = 10.0, points: Int = 1000) -> PointCloudData {
-        let spherePoints = generateSpherePointCloud(radius: radius, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Sphere Point Cloud (\(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "sphere",
-            parameters: ["radius": radius, "points": Double(points)]
-        )
-
-        pointCloudData.points = spherePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: nil, color: nil)
-        }
-        pointCloudData.totalPoints = spherePoints.count
-
-        return pointCloudData
-    }
-
-    static func generateTorusPointCloudData(majorRadius: Double = 10.0, minorRadius: Double = 3.0, points: Int = 2000) -> PointCloudData {
-        let torusPoints = generateTorusPointCloud(majorRadius: majorRadius, minorRadius: minorRadius, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Torus Point Cloud (\(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "torus",
-            parameters: ["majorRadius": majorRadius, "minorRadius": minorRadius, "points": Double(points)]
-        )
-
-        pointCloudData.points = torusPoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = torusPoints.count
-
-        return pointCloudData
-    }
-
-    static func generateWaveSurfaceData(size: Double = 20.0, resolution: Int = 50) -> PointCloudData {
-        let wavePoints = generateWaveSurface(size: size, resolution: resolution)
-
-        var pointCloudData = PointCloudData(
-            title: "Wave Surface (\(resolution)×\(resolution) points)",
-            demoType: "wave",
-            parameters: ["size": size, "resolution": Double(resolution)]
-        )
-        pointCloudData.points = wavePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = wavePoints.count
-
-        return pointCloudData
-    }
-
-    static func generateSpiralGalaxyData(arms: Int = 3, points: Int = 5000) -> PointCloudData {
-        let galaxyPoints = generateSpiralGalaxy(arms: arms, points: points)
-
-        var pointCloudData = PointCloudData(
-            title: "Spiral Galaxy (\(arms) arms, \(points) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "galaxy",
-            parameters: ["arms": Double(arms), "points": Double(points)]
-        )
-
-        pointCloudData.points = galaxyPoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: point.intensity, color: point.color)
-        }
-        pointCloudData.totalPoints = galaxyPoints.count
-
-        return pointCloudData
-    }
-
-    static func generateNoisyCubeData(size: Double = 10.0, pointsPerFace: Int = 500) -> PointCloudData {
-        let cubePoints = generateNoisyCube(size: size, pointsPerFace: pointsPerFace)
-
-        var pointCloudData = PointCloudData(
-            title: "Noisy Cube (\(pointsPerFace * 6) points)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "cube",
-            parameters: ["size": size, "pointsPerFace": Double(pointsPerFace)]
-        )
-
-        pointCloudData.points = cubePoints.map { point in
-            PointCloudData.PointData(x: point.x, y: point.y, z: point.z, intensity: nil, color: nil)
-        }
-        pointCloudData.totalPoints = cubePoints.count
-
-        return pointCloudData
-    }
-
-    // MARK: - Demo Execution
-
-    static func runAllDemos() {
-        print(" Point Cloud Demo Starting...")
-        print("    - Generating Sphere Point Cloud...")
-        let sphereData = generateSpherePointCloudData(radius: 10.0, points: 1000)
-        let sphereCode = sphereData.toPythonCode()
-        print("    - Saving point cloud to sphere_pointcloud.py")
-        print("...")
-        print(" Point Cloud Demo Complete!")
-        print(" Generated: sphere_pointcloud.py")
-    }
-
-    static func saveJupyterCode(_ code: String, to filename: String) {
-        var documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path
-        if (documentPath == nil) {
-            documentPath = NSHomeDirectory() + "/Documents"
-        }
-
-        let filePath = documentPath! + "/" + filename
-
-        do {
-            try code.write(toFile: filePath, atomically: false, encoding: .utf8)
-            print("Saved: \(filePath)")
-        } catch {
-            print("Error saving \(filename): \(error)")
-        }
-    }
-
-    // New function to load point cloud from file (supports CSV and simple ASCII PLY for demo)
-    static func loadPointCloud(from url: URL) -> [PointCloudData.PointData] {
-        let extensionType = url.pathExtension.lowercased()
-        var points: [PointCloudData.PointData] = []
-
-        do {
-            let content = try String(contentsOf: url)
-
-            if extensionType == "csv" || extensionType == "xyz" {
-                let lines = content.components(separatedBy: .newlines)
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
-                    let components = trimmed.components(separatedBy: CharacterSet(charactersIn: ", "))
-                    if components.count >= 3,
-                       let x = Double(components[0]),
-                       let y = Double(components[1]),
-                       let z = Double(components[2]) {
-                        let intensity = components.count > 3 ? Double(components[3]) : nil
-                        points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
-                    }
-                }
-            } else if extensionType == "ply" {
-                // Simple ASCII PLY parser for demo (assumes vertex x y z [intensity])
-                let lines = content.components(separatedBy: .newlines)
-                var inHeader = true
-                var vertexCount = 0
-                var hasIntensity = false
-
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed == "end_header" {
-                        inHeader = false
-                        continue
-                    }
-                    if inHeader {
-                        if trimmed.hasPrefix("element vertex ") {
-                            vertexCount = Int(trimmed.components(separatedBy: " ")[2]) ?? 0
-                        } else if trimmed == "property float intensity" {
-                            hasIntensity = true
-                        }
-                        continue
-                    }
-                    if !trimmed.isEmpty {
-                        let components = trimmed.components(separatedBy: " ")
-                        if components.count >= 3,
-                           let x = Double(components[0]),
-                           let y = Double(components[1]),
-                           let z = Double(components[2]) {
-                            let intensity = hasIntensity && components.count > 3 ? Double(components[3]) : nil
-                            points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
-                        }
-                    }
-                }
-            } else {
-                print("Unsupported format: \(extensionType)")
-            }
-        } catch {
-            print("Failed to load file: \(error)")
-        }
-
-        return points
-    }
-}
-
-// Break down the sidebar into smaller components
-struct WindowSelectorView: View {
-    @ObservedObject var windowManager: WindowTypeManager
-    @Binding var selectedWindowID: Int?
-    let onWindowSelected: (NewWindowID) -> Void
+// MARK: - Window info row component
+struct WindowInfoRow: View {
+    let label: String
+    let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Select Window")
-                .font(.headline)
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
-            if windowManager.getAllWindows().isEmpty {
-                Text("No windows available")
-                    .foregroundColor(.secondary)
-                    .italic()
-            } else {
-                windowListView
-            }
-        }
-    }
+            Spacer()
 
-    private var windowListView: some View {
-        ScrollView {
-            LazyVStack(spacing: 4) {
-                ForEach(windowManager.getAllWindows()) { window in
-                    WindowRowView(
-                        window: window,
-                        isSelected: selectedWindowID == window.id,
-                        onTap: {
-                            selectedWindowID = window.id
-                            onWindowSelected(window)
-                        }
-                    )
-                }
-            }
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
         }
-        .frame(maxHeight: 150)
     }
 }
 
-struct WindowRowView: View {
+// MARK: - Toolbar Components
+
+struct PultoTitleView: View {
+    var body: some View {
+        Text("Pulto")
+            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .foregroundStyle(
+                LinearGradient(colors: [.blue, .purple],
+                               startPoint: .leading,
+                               endPoint:   .trailing)
+            )
+    }
+}
+
+struct ProjectActionButtons: View {
+    let sheetManager: SheetManager
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: {
+                sheetManager.presentSheet(.workspaceDialog)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus.square.fill")
+                    Text("New")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.1))
+                .foregroundColor(.blue)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            Button(action: {
+                sheetManager.presentSheet(.templateGallery)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.fill")
+                    Text("Templates")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.1))
+                .foregroundColor(.green)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            Button(action: {
+                sheetManager.presentSheet(.classifierSheet)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.badge.plus")
+                    Text("Import")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.1))
+                .foregroundColor(.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+}
+
+// MARK: - Enhanced Active Windows View
+struct EnhancedActiveWindowsView: View {
+    let windowManager: WindowTypeManager
+    let openWindow: (Int) -> Void
+    let closeWindow: (Int) -> Void
+    let closeAllWindows: () -> Void
+    let sheetManager: SheetManager
+    let createWindow: (StandardWindowType) -> Void
+    @Binding var selectedWindow: NewWindowID?
+
+    // Add parameters for toolbar
+    let viewModel: PultoHomeViewModel
+    let navigationState: NavigationState
+    let showNavigationView: Bool
+    let showInspector: Bool
+    let onHomeButtonTap: () -> Void
+    let onInspectorToggle: () -> Void
+
+    // Add Jupyter server settings
+    @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
+    @State private var jupyterServerStatus: ServerStatus = .unknown
+    @State private var isCheckingJupyterServer = false
+
+    @State private var statusCheckTask: Task<Void, Never>?
+    @State private var animationTask: Task<Void, Never>?
+
+    enum ServerStatus {
+        case online
+        case offline
+        case unknown
+        case checking
+
+        var color: Color {
+            switch self {
+            case .online: return .green
+            case .offline: return .red
+            case .unknown: return .orange
+            case .checking: return .blue
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .online: return "checkmark.circle.fill"
+            case .offline: return "xmark.circle.fill"
+            case .unknown: return "questionmark.circle.fill"
+            case .checking: return "arrow.clockwise.circle.fill"
+            }
+        }
+
+        var description: String {
+            switch self {
+            case .online: return "Online"
+            case .offline: return "Offline"
+            case .unknown: return "Unknown"
+            case .checking: return "Checking..."
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    if windowManager.getAllWindows().isEmpty {
+                        // Show simple empty state when no windows
+                        ContentUnavailableView(
+                            "No Active Views",
+                            systemImage: "rectangle.dashed",
+                            description: Text("Create a new view using the options above")
+                        )
+                    } else {
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Quick Actions Section
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Text("Quick Actions")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Spacer()
+
+                                    Button("Clean Up") {
+                                        windowManager.cleanupClosedWindows()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .tint(.blue)
+
+                                    Button(action: closeAllWindows) {
+                                        Label("Close All", systemImage: "xmark.circle")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .tint(.red)
+                                }
+
+                                HStack {
+                                    Image(systemName: "info.circle")
+                                        .foregroundStyle(.blue)
+                                    Text("Select a window to view details in the inspector")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Divider()
+
+                            // Active Windows List with Selection
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Active Views")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                LazyVStack(spacing: 8) {
+                                    ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                        SelectableWindowRow(
+                                            window: window,
+                                            isSelected: selectedWindow?.id == window.id,
+                                            isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
+                                            onSelect: { selectedWindow = window },
+                                            onOpen: { openWindow(window.id) },
+                                            onClose: { closeWindow(window.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Pulto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Leading toolbar items (left side)
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    // GROUP 1: Navigation & Status (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: onHomeButtonTap) {
+                            Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(showNavigationView ? .blue : .gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Toggle sidebar")
+                        
+                        Button(action: {
+                            checkJupyterServerStatus()
+                        }) {
+                            Image(systemName: jupyterServerStatus.icon)
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(jupyterServerStatus.color)
+                                .rotationEffect(isCheckingJupyterServer ? .degrees(360) : .degrees(0))
+                                .animation(.easeInOut(duration: 0.3), value: jupyterServerStatus)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        if showNavigationView {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(.blue.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+                    
+                    // GROUP 2: Project & Content Creation (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            sheetManager.presentSheet(.workspaceDialog)
+                        }) {
+                            Image(systemName: "plus.square.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("New Project")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.templateGallery)
+                        }) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Templates")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.classifierSheet)
+                        }) {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Import")
+
+                        if navigationState == .workspace {
+                            Menu {
+                                ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                    Button {
+                                        createWindow(type)
+                                    } label: {
+                                        Label(type.displayName, systemImage: type.icon)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "chart.bar.fill")
+                                    .font(.title3)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .foregroundStyle(.gray)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Add Window")
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                
+                // Principal toolbar item (center)
+                ToolbarItem(placement: .principal) {
+                    EmptyView()
+                }
+                
+                // Trailing toolbar items (right side)
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // GROUP 3: User & Settings (pill container)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            sheetManager.presentSheet(.settings)
+                        }) {
+                            Image(systemName: "gearshape")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Settings")
+
+                        Button(action: {
+                            sheetManager.presentSheet(.appleSignIn)
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
+                                    .font(.title3)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .foregroundStyle(.gray)
+
+                                if viewModel.isUserLoggedIn {
+                                    Text(viewModel.userName)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help("User Profile")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    // Inspector toggle (separate)
+                    Button(action: onInspectorToggle) {
+                        Image(systemName: showInspector ? "sidebar.right" : "sidebar.trailing")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(showInspector ? .blue : .gray)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        if showInspector {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(.blue.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+                    .help("Toggle inspector")
+                }
+            }
+        }
+        .onChange(of: windowManager.getAllWindows().count) { count in
+            // Clear selected window when all windows are cleared
+            if count == 0 {
+                selectedWindow = nil
+            }
+        }
+        .onChange(of: defaultJupyterURL) { _ in
+            // Check server status when URL changes
+            checkJupyterServerStatus()
+        }
+        .onAppear {
+            // Check server status when view appears
+            checkJupyterServerStatus()
+        }
+        .onDisappear {
+            cancelAllTasks()
+        }
+    }
+    
+    // MARK: - FIXED: Jupyter Server Status Check with proper task management
+    private func checkJupyterServerStatus() {
+        // Cancel any existing task to prevent multiple concurrent requests
+        statusCheckTask?.cancel()
+
+        guard !isCheckingJupyterServer else { return }
+
+        isCheckingJupyterServer = true
+        jupyterServerStatus = .checking
+
+        // Create a manual rotation animation task
+        startRotationAnimation()
+
+        statusCheckTask = Task {
+            let status = await checkJupyterServer(url: defaultJupyterURL)
+
+            // Check if task was cancelled before updating UI
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                jupyterServerStatus = status
+                isCheckingJupyterServer = false
+                stopRotationAnimation()
+            }
+        }
+    }
+
+    private func startRotationAnimation() {
+        animationTask?.cancel()
+
+        animationTask = Task {
+            while !Task.isCancelled && isCheckingJupyterServer {
+                await MainActor.run {
+                    // Trigger a single rotation
+                    withAnimation(.linear(duration: 1)) {
+                        // Use a changing value to trigger animation
+                    }
+                }
+
+                // Wait for 1 second before next rotation
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 0.5 seconds
+            }
+        }
+    }
+
+    private func stopRotationAnimation() {
+        animationTask?.cancel()
+        animationTask = nil
+    }
+
+    private func cancelAllTasks() {
+        statusCheckTask?.cancel()
+        statusCheckTask = nil
+        animationTask?.cancel()
+        animationTask = nil
+    }
+
+    private func checkJupyterServer(url: String) async -> ServerStatus {
+        guard let serverURL = URL(string: url) else {
+            return .offline
+        }
+
+        // Create a health check URL for Jupyter
+        let healthCheckURL = serverURL.appendingPathComponent("api/kernels")
+
+        // Configure URLSession with timeout
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 5.0  // 5 second timeout
+        config.timeoutIntervalForResource = 10.0
+        let session = URLSession(configuration: config)
+
+        defer {
+            session.invalidateAndCancel()  // IMPORTANT: Clean up session
+        }
+
+        do {
+            let (_, response) = try await session.data(from: healthCheckURL)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                switch httpResponse.statusCode {
+                case 200...299:
+                    return .online
+                case 401, 403:
+                    // Authentication required but server is running
+                    return .online
+                default:
+                    return .offline
+                }
+            }
+
+            return .offline
+        } catch {
+            // Network error or server not reachable
+            return .offline
+        }
+    }
+}
+
+// MARK: - Inspector Components
+
+struct WindowInspectorView: View {
+    let selectedWindow: NewWindowID?
+    let windowManager: WindowTypeManager
+    let onWindowAction: (WindowAction, Int) -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                if let window = selectedWindow {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Window Header
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: window.windowType.icon)
+                                    .font(.title2)
+                                    .foregroundStyle(window.windowType.inspectorIconColor)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Window #\(window.id)")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+
+                                    Text(window.windowType.displayName)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+                            }
+
+                            Text(window.windowType.inspectorDescription)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                        // Window Properties
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Properties")
+                                .font(.headline)
+
+                            VStack(spacing: 8) {
+                                WindowInfoRow(label: "Created", value: window.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                WindowInfoRow(label: "Position", value: "(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                                WindowInfoRow(label: "Size", value: "\(Int(window.position.width)) × \(Int(window.position.height))")
+                                WindowInfoRow(label: "Template", value: window.state.exportTemplate.rawValue)
+                                
+                                if !window.state.tags.isEmpty {
+                                    WindowInfoRow(label: "Tags", value: window.state.tags.joined(separator: ", "))
+                                }
+                                
+                                WindowInfoRow(label: "Status", value: windowManager.isWindowActuallyOpen(window.id) ? "Open" : "Closed")
+                            }
+                        }
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                        // Window Actions
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Actions")
+                                .font(.headline)
+
+                            VStack(spacing: 8) {
+                                Button(action: { onWindowAction(.open, window.id) }) {
+                                    HStack {
+                                        Image(systemName: "play.circle.fill")
+                                        Text("Open Window")
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.blue.opacity(0.1))
+                                    .foregroundColor(.blue)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+
+                                Button(action: { onWindowAction(.focus, window.id) }) {
+                                    HStack {
+                                        Image(systemName: "eye.circle.fill")
+                                        Text("Focus Window")
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.green.opacity(0.1))
+                                    .foregroundColor(.green)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+
+                                Button(action: { onWindowAction(.duplicate, window.id) }) {
+                                    HStack {
+                                        Image(systemName: "doc.on.doc.fill")
+                                        Text("Duplicate Window")
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.orange.opacity(0.1))
+                                    .foregroundColor(.orange)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+
+                                Button(action: { onWindowAction(.close, window.id) }) {
+                                    HStack {
+                                        Image(systemName: "xmark.circle.fill")
+                                        Text("Close Window")
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundColor(.red)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                            }
+                        }
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                    }
+                } else {
+                    ContentUnavailableView(
+                        "No Window Selected",
+                        systemImage: "rectangle.dashed",
+                        description: Text("Select a window from the list to view its details")
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle("Inspector")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+// MARK: - Missing Window Components
+
+struct SelectableWindowRow: View {
     let window: NewWindowID
     let isSelected: Bool
-    let onTap: () -> Void
+    let isActuallyOpen: Bool
+    let onSelect: () -> Void
+    let onOpen: () -> Void
+    let onClose: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
-        Button(action: onTap) {
-            HStack {
-                windowInfoView
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                // Window type icon
+                Image(systemName: window.windowType.icon)
+                    .font(.title3)
+                    .foregroundStyle(window.windowType.inspectorIconColor)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Window #\(window.id)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    Text(window.windowType.displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if !window.state.tags.isEmpty {
+                        Text(window.state.tags.joined(separator: ", "))
+                            .font(.caption2)
+                            .foregroundStyle(.blue)
+                    }
+                }
+
                 Spacer()
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.blue)
+
+                // Status indicator
+                HStack(spacing: 8) {
+                    if isActuallyOpen {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 8, height: 8)
+                    } else {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 8, height: 8)
+                    }
+
+                    // Action buttons
+                    Button(action: onOpen) {
+                        Image(systemName: "play.circle")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle")
+                            .font(.title3)
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(8)
-            .background(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.05))
-            .cornerRadius(6)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    private var windowInfoView: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(window.windowType.displayName) #\(window.id)")
-                .font(.subheadline)
-                .bold()
-            Text("\(window.state.exportTemplate.rawValue)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            if !window.state.tags.isEmpty {
-                Text("Tags: \(window.state.tags.joined(separator: ", "))")
-                    .font(.caption)
-                    .foregroundColor(.blue)
+            .padding(12)
+            .background(isSelected ? Color.blue.opacity(0.1) : (isHovered ? Color.gray.opacity(0.05) : Color.clear))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? .blue : .clear, lineWidth: 2)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
-struct WindowConfigurationView: View {
-    let windowID: Int
-    @ObservedObject var windowManager: WindowTypeManager
-    @Binding var selectedTemplate: ExportTemplate
-    @Binding var customImports: String
-    @Binding var newTag: String
-    @Binding var windowContent: String
+struct WindowRow: View {
+    let window: NewWindowID
+    let isActuallyOpen: Bool
+    let onOpen: () -> Void
+    let onClose: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Window #\(windowID) Configuration")
-                .font(.headline)
+        HStack(spacing: 12) {
+            // Window type icon
+            Image(systemName: window.windowType.icon)
+                .font(.title3)
+                .foregroundStyle(window.windowType.inspectorIconColor)
+                .frame(width: 24)
 
-            templateSectionView
-            tagsSectionView
-            importsSectionView
-            contentSectionView
-            templatePreviewView
-        }
-    }
-
-    private var templateSectionView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Export Template")
-                .font(.subheadline)
-                .bold()
-            Picker("Template", selection: $selectedTemplate) {
-                ForEach(ExportTemplate.allCases, id: \.self) { template in
-                    Text(template.rawValue).tag(template)
-                }
-            }
-            .pickerStyle(MenuPickerStyle())
-            .onChange(of: selectedTemplate) { newValue in
-                windowManager.updateWindowTemplate(windowID, template: newValue)
-            }
-        }
-    }
-
-    private var tagsSectionView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Tags")
-                .font(.subheadline)
-                .bold()
-
-            HStack {
-                TextField("Add tag", text: $newTag)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Button("Add") {
-                    if !newTag.isEmpty {
-                        windowManager.addWindowTag(windowID, tag: newTag)
-                        newTag = ""
-                    }
-                }
-                .disabled(newTag.isEmpty)
-            }
-
-            existingTagsView
-        }
-    }
-
-    @ViewBuilder
-    private var existingTagsView: some View {
-        if let window = windowManager.getWindow(for: windowID), !window.state.tags.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(window.state.tags, id: \.self) { tag in
-                        Text(tag)
-                            .padding(.horizontal, 6)
-                            //.padding(.vertical: 2)
-                            .background(Color.blue.opacity(0.2))
-                            .cornerRadius(4)
-                            .font(.caption)
-                    }
-                }
-            }
-        }
-    }
-
-    private var importsSectionView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Custom Imports")
-                .font(.subheadline)
-                .bold()
-            Text("One import per line")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            TextEditor(text: $customImports)
-                .frame(height: 60)
-                .border(Color.gray.opacity(0.3))
-                .font(.system(.caption, design: .monospaced))
-                .onChange(of: customImports) { newValue in
-                    let imports = newValue.components(separatedBy: .newlines)
-                        .map { $0.trimmingCharacters(in: .whitespaces) }
-                        .filter { !$0.isEmpty }
-                    windowManager.updateWindowImports(windowID, imports: imports)
-                }
-        }
-    }
-
-    private var contentSectionView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Window Content")
-                .font(.subheadline)
-                .bold()
-            TextEditor(text: $windowContent)
-                .frame(height: 100)
-                .border(Color.gray.opacity(0.3))
-                .font(.system(.caption, design: .monospaced))
-                .onChange(of: windowContent) { newValue in
-                    windowManager.updateWindowContent(windowID, content: newValue)
-                }
-        }
-    }
-
-    @ViewBuilder
-    private var templatePreviewView: some View {
-        if selectedTemplate != .plain,
-           let window = windowManager.getWindow(for: windowID),
-           window.state.content.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Template Preview")
+                Text("Window #\(window.id)")
                     .font(.subheadline)
-                    .bold()
-                ScrollView {
-                    Text(selectedTemplate.defaultContent)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(4)
+                    .fontWeight(.medium)
+
+                Text(window.windowType.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !window.state.tags.isEmpty {
+                    Text(window.state.tags.joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
                 }
-                .frame(height: 80)
-                .padding(6)
+            }
+
+            Spacer()
+
+            // Status and actions
+            HStack(spacing: 8) {
+                if isActuallyOpen {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+                } else {
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 8, height: 8)
+                }
+
+                Button(action: onOpen) {
+                    Image(systemName: "play.circle")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle")
+                        .font(.title3)
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(12)
+        .background(isHovered ? Color.gray.opacity(0.05) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onHover { isHovered = $0 }
     }
 }
 
-struct ExportActionsView: View {
-    @ObservedObject var windowManager: WindowTypeManager
+// MARK: - Main Environment View
+struct EnvironmentView: View {
+    // Window management
+    @State private var nextWindowID = 1
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    @StateObject private var windowManager    = WindowTypeManager.shared
+    @StateObject private var workspaceManager = WorkspaceManager.shared
+
+    // UI State
+    @StateObject private var viewModel         = PultoHomeViewModel()
+
+    // Single sheet management - no more multiple @State variables!
+    @StateObject private var sheetManager = SheetManager()
+
+    // Navigation state
+    @State private var navigationState: NavigationState = .workspace
+    @State private var showNavigationView = true
+    @State private var showInspector = false
+    @State private var selectedWindow: NewWindowID? = nil
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
+
+    @State private var initialLoadTask: Task<Void, Never>?
+    @State private var welcomeTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 8) {
-            Divider()
-
-            Text("Export Actions")
-                .font(.headline)
-
-            Button("Export to Jupyter Notebook") {
-                    if let fileURL = windowManager.saveNotebookToFile() {
-                        print("Notebook saved to: \(fileURL.path)")
+        VStack(spacing: 0) {
+            // Main content area
+            Group {
+                if navigationState == .home {
+                    // Show the home view
+                    PultoHomeContentView(
+                        viewModel: viewModel,
+                        sheetManager: sheetManager,
+                        onOpenWorkspace: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                navigationState = .workspace
+                                showNavigationView = true
+                            }
+                        }
+                    )
+                } else {
+                    // Show the workspace - Enhanced three-column layout for visionOS
+                    if showNavigationView && showInspector {
+                        // Three-column layout: Sidebar + Content + Inspector
+                        NavigationSplitView(columnVisibility: $columnVisibility) {
+                            // Sidebar with Recent Projects navigation
+                            RecentProjectsSidebar(
+                                workspaceManager: workspaceManager,
+                                loadWorkspace: loadWorkspace
+                            )
+                            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+                        } content: {
+                            // Main content view with NavigationStack toolbar
+                            EnhancedActiveWindowsView(
+                                windowManager: windowManager,
+                                openWindow: { openWindow(value: $0) },
+                                closeWindow: { windowManager.removeWindow($0) },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
+                                sheetManager: sheetManager,
+                                createWindow: createStandardWindow,
+                                selectedWindow: $selectedWindow,
+                                viewModel: viewModel,
+                                navigationState: navigationState,
+                                showNavigationView: showNavigationView,
+                                showInspector: showInspector,
+                                onHomeButtonTap: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showNavigationView.toggle()
+                                    }
+                                },
+                                onInspectorToggle: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showInspector.toggle()
+                                    }
+                                }
+                            )
+                            .navigationSplitViewColumnWidth(min: 600, ideal: 800, max: 1200)
+                        } detail: {
+                            // Inspector panel
+                            WindowInspectorView(
+                                selectedWindow: selectedWindow,
+                                windowManager: windowManager,
+                                onWindowAction: { action, windowId in
+                                    handleWindowAction(action, windowId: windowId)
+                                }
+                            )
+                            .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+                        }
+                        .navigationSplitViewStyle(.balanced)
+                    } else if showNavigationView && !showInspector {
+                        // Two-column layout: Sidebar + Content (no inspector)
+                        NavigationSplitView {
+                            RecentProjectsSidebar(
+                                workspaceManager: workspaceManager,
+                                loadWorkspace: loadWorkspace
+                            )
+                            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+                        } detail: {
+                            EnhancedActiveWindowsView(
+                                windowManager: windowManager,
+                                openWindow: { openWindow(value: $0) },
+                                closeWindow: { windowManager.removeWindow($0) },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
+                                sheetManager: sheetManager,
+                                createWindow: createStandardWindow,
+                                selectedWindow: $selectedWindow,
+                                viewModel: viewModel,
+                                navigationState: navigationState,
+                                showNavigationView: showNavigationView,
+                                showInspector: showInspector,
+                                onHomeButtonTap: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showNavigationView.toggle()
+                                    }
+                                },
+                                onInspectorToggle: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showInspector.toggle()
+                                    }
+                                }
+                            )
+                        }
+                    } else if !showNavigationView && showInspector {
+                        // Two-column layout: Content + Inspector (no sidebar)
+                        NavigationSplitView {
+                            EnhancedActiveWindowsView(
+                                windowManager: windowManager,
+                                openWindow: { openWindow(value: $0) },
+                                closeWindow: { windowManager.removeWindow($0) },
+                                closeAllWindows: clearAllWindowsWithConfirmation,
+                                sheetManager: sheetManager,
+                                createWindow: createStandardWindow,
+                                selectedWindow: $selectedWindow,
+                                viewModel: viewModel,
+                                navigationState: navigationState,
+                                showNavigationView: showNavigationView,
+                                showInspector: showInspector,
+                                onHomeButtonTap: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showNavigationView.toggle()
+                                    }
+                                },
+                                onInspectorToggle: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showInspector.toggle()
+                                    }
+                                }
+                            )
+                            .navigationSplitViewColumnWidth(min: 600, ideal: 900, max: 1200)
+                        } detail: {
+                            WindowInspectorView(
+                                selectedWindow: selectedWindow,
+                                windowManager: windowManager,
+                                onWindowAction: { action, windowId in
+                                    handleWindowAction(action, windowId: windowId)
+                                }
+                            )
+                            .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+                        }
+                    } else {
+                        // Single column: Content only (no sidebar, no inspector)
+                        EnhancedActiveWindowsView(
+                            windowManager: windowManager,
+                            openWindow: { openWindow(value: $0) },
+                            closeWindow: { windowManager.removeWindow($0) },
+                            closeAllWindows: clearAllWindowsWithConfirmation,
+                            sheetManager: sheetManager,
+                            createWindow: createStandardWindow,
+                            selectedWindow: $selectedWindow,
+                            viewModel: viewModel,
+                            navigationState: navigationState,
+                            showNavigationView: showNavigationView,
+                            showInspector: showInspector,
+                            onHomeButtonTap: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showNavigationView.toggle()
+                                }
+                            },
+                            onInspectorToggle: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showInspector.toggle()
+                                }
+                            }
+                        )
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(8)
-
-            Button("Copy Notebook JSON") {
-                let notebookJSON = windowManager.exportToJupyterNotebook()
-                #if os(macOS)
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(notebookJSON, forType: .string)
-                #endif
             }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
+        }
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .padding(20)
+        .task {
+            initialLoadTask?.cancel()
+            initialLoadTask = Task {
+                await viewModel.loadInitialData()
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        checkFirstLaunch()
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            initialLoadTask?.cancel()
+            welcomeTask?.cancel()
+        }
+        .singleSheetManager(sheetManager) { sheetType, data in
+            AnyView(sheetContent(for: sheetType, data: data))
         }
     }
-}
 
-struct NewWindow: View {
-    let id: Int
-    @StateObject private var windowTypeManager = WindowTypeManager.shared
-    @Environment(\.openWindow) private var openWindow   // visionOS-safe window opener
-    @State var showFileImporter = false  // For USDZ import
-    @State var showPointCloudImporter = false  // For point cloud import
+    // MARK: - Single Sheet Content Builder
+    @ViewBuilder
+    private func sheetContent(for type: SheetType, data: AnyHashable?) -> some View {
+        switch type {
+        case .workspaceDialog:
+            WorkspaceDialogWrapper(windowManager: windowManager)
+                .environmentObject(sheetManager)
 
-    var body: some View {
-        if let window = windowTypeManager.getWindowSafely(for: id) {
-            VStack(spacing: 0) {
-                // Window header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(window.windowType.displayName) - Window #\(id)")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+        case .templateGallery:
+            TemplateView()
+                .frame(minWidth: 800, minHeight: 600)
+                .environmentObject(sheetManager)
 
-                        if !window.state.tags.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "tag")
-                                    .font(.caption)
-                                Text(window.state.tags.joined(separator: ", "))
-                                    .font(.caption)
-                            }
-                            .foregroundStyle(.secondary)
+        case .notebookImport:
+            NotebookImportDialogWrapper(windowManager: windowManager)
+                .environmentObject(sheetManager)
+
+        case .classifierSheet:
+            FileClassifierAndRecommenderView()
+                .environmentObject(windowManager)
+                .environmentObject(sheetManager)
+
+        case .welcome:
+            WelcomeSheetWrapper()
+                .environmentObject(sheetManager)
+
+        case .settings:
+            SettingsSheetWrapper()
+                .environmentObject(sheetManager)
+
+        case .appleSignIn:
+            AppleSignInWrapper()
+                .frame(width: 700, height: 800)
+                .environmentObject(sheetManager)
+
+        case .activeWindows:
+            ActiveWindowsSheetWrapper()
+                .environmentObject(sheetManager)
+                .environmentObject(windowManager)
+
+        default:
+            EmptyView()
+                .environmentObject(sheetManager)
+        }
+    }
+
+    // MARK: - Sheet Wrapper Views (these handle their own dismissal)
+
+    struct WorkspaceDialogWrapper: View {
+        let windowManager: WindowTypeManager
+        @EnvironmentObject var sheetManager: SheetManager
+
+        var body: some View {
+            WorkspaceDialog(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                ),
+                windowManager: windowManager
+            )
+        }
+    }
+
+    struct NotebookImportDialogWrapper: View {
+        let windowManager: WindowTypeManager
+        @EnvironmentObject var sheetManager: SheetManager
+
+        var body: some View {
+            NotebookImportDialog(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                ),
+                windowManager: windowManager
+            )
+        }
+    }
+
+    struct WelcomeSheetWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+
+        var body: some View {
+            WelcomeSheet(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in
+                        // Mark welcome as dismissed when the sheet is closed
+                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                        sheetManager.dismissSheet()
+                    }
+                )
+            )
+        }
+    }
+
+    struct AppleSignInWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+
+        var body: some View {
+            AppleSignInView(
+                isPresented: Binding(
+                    get: { true },
+                    set: { _ in sheetManager.dismissSheet() }
+                )
+            )
+        }
+    }
+
+    struct ActiveWindowsSheetWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+        @StateObject private var windowManager = WindowTypeManager.shared
+        @Environment(\.openWindow) private var openWindow
+
+        var body: some View {
+            NavigationStack {
+                ActiveWindowsView(
+                    windowManager: windowManager,
+                    openWindow: { openWindow(value: $0) },
+                    closeWindow: { windowManager.removeWindow($0) },
+                    closeAllWindows: {
+                        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+                    },
+                    sheetManager: sheetManager,
+                    createWindow: { _ in }
+                )
+                .navigationTitle("Active Windows")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            sheetManager.dismissSheet()
                         }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .frame(width: 1000, height: 700)
+        }
+    }
+
+    struct SettingsSheetWrapper: View {
+        @EnvironmentObject var sheetManager: SheetManager
+        @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
+        @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
+
+        var body: some View {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    // Settings Content
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            // Auto-Save
+                            SettingsSection("Workspace") {
+                                Toggle("Auto-save after every window action", isOn: .constant(true))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 4)
+                            }
+
+                            // Jupyter
+                            SettingsSection("Jupyter Server") {
+                                HStack {
+                                    Text("Default Server URL")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+
+                                TextField("Enter Jupyter server URL", text: $defaultJupyterURL)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.body, design: .monospaced))
+
+                                Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                // Quick preset buttons for Jupyter
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Quick Options:")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+
+                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                        ForEach(["http://localhost:8888", "http://localhost:8889", "http://127.0.0.1:8888"], id: \.self) { url in
+                                            Button(url) {
+                                                defaultJupyterURL = url
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .font(.caption)
+                                            .fontDesign(.monospaced)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Superset
+                            SettingsSection("Superset Server") {
+                                HStack {
+                                    Text("Default Server URL")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+
+                                TextField("Enter Superset server URL", text: $defaultSupersetURL)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(.body, design: .monospaced))
+
+                                Text("Default Apache Superset server to connect to for dashboard visualizations")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                // Quick preset buttons
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Quick Options:")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+
+                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                        ForEach(["http://localhost:8088", "https://your-superset-instance.com"], id: \.self) { url in
+                                            Button(url) {
+                                                defaultSupersetURL = url
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .font(.caption)
+                                            .fontDesign(.monospaced)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // General
+                            SettingsSection("General") {
+                                Toggle("Enable Notifications", isOn: .constant(true))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                HStack {
+                                    Text("Maximum Recent Projects")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                    Text("10")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding()
                     }
 
                     Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Pos: (\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Text("Template: \(window.state.exportTemplate.rawValue)")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-
-                        if !window.state.content.isEmpty {
-                            Text("Has Content")
-                                .font(.caption2)
-                                .foregroundStyle(.green)
+                }
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            sheetManager.dismissSheet()
                         }
+                        .buttonStyle(.borderedProminent)
                     }
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground).opacity(0.3))
+            }
+            .frame(width: 700, height: 600)
+        }
+    }
 
-                Divider()
+    // MARK: - Helper Methods
 
-                // Display the appropriate view based on window type with restored data
-                HStack {
-                    switch window.windowType {
-                    // ───────────── 3-D MODEL ─────────────
-                    case .model3d:
-                        VStack {
-                            Spacer()
-                            // For the demo buttons:
-                            Button {
-                                // Generate a demo cube
-                                let cubeModel = Model3DData.generateCube(size: 2.0)
+    private func checkFirstLaunch() {
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "HasLaunchedBefore")
+        let welcomeSheetDismissed = UserDefaults.standard.bool(forKey: "WelcomeSheetDismissed")
 
-                                // Convert to Python code and store as content
-                                let pythonCode = cubeModel.toPythonCode()
-                                windowTypeManager.updateWindowContent(id, content: pythonCode)
+        // Only show welcome sheet if app has never launched AND welcome has never been dismissed
+        if !hasLaunchedBefore && !welcomeSheetDismissed {
+            // Use Task instead of DispatchQueue to prevent memory leaks
+            welcomeTask?.cancel()
+            welcomeTask = Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
 
-                                // Store a marker that this is 3D content
-                                windowTypeManager.addWindowTag(id, tag: "3D-Cube")
-                            } label: {
-                                Label("Demo: Cube", systemImage: "cube")
-                                    .font(.headline)
-                                    .padding()
-                                    .background(.green.opacity(0.2))
-                                    .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-                            VStack(spacing: 20) {
-                                Image(systemName: "cube.transparent.fill")
-                                    .font(.system(size: 80))
-                                    .foregroundStyle(.linearGradient(
-                                        colors: [.orange, .pink],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-
-                                Text("3D Model Viewer")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-
-                                if let model3D = window.state.model3DData {
-                                    VStack(spacing: 12) {
-                                        Text(model3D.title)
-                                            .font(.title2)
-                                            .foregroundStyle(.secondary)
-
-                                        HStack(spacing: 40) {
-                                            VStack {
-                                                Text("\(model3D.vertices.count)")
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
-                                                Text("Vertices")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            VStack {
-                                                Text("\(model3D.faces.count)")
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
-                                                Text("Faces")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            VStack {
-                                                 Text(model3D.modelType)
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
-                                                Text("Type")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        .padding(.top)
-                                    }
-                                } else if window.state.usdzBookmark != nil {
-                                    Text("Imported USDZ Model")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Text("This content is displayed in a volumetric window")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top)
-
-                                Button {
-                                    // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-model3d", value: id)
-                                } label: {
-                                    Label("Open Volumetric View", systemImage: "view.3d")
-                                        .font(.headline)
-                                        .padding()
-                                        .background(.orange.opacity(0.2))
-                                        .cornerRadius(10)
-                                }
-                                .buttonStyle(.plain)
-
-                                Button {
-                                    showFileImporter = true
-                                } label: {
-                                    Label("Import USDZ Model", systemImage: "square.and.arrow.down")
-                                        .font(.headline)
-                                        .padding()
-                                        .background(.blue.opacity(0.2))
-                                        .cornerRadius(10)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(40)
-
-                            Spacer()
-                        }
-                        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.usdz], allowsMultipleSelection: false) { result in
-                            if let url = try? result.get().first {
-                                Task {
-                                    do {
-                                        // Save the bookmark
-                                        let bookmark = try url.bookmarkData()
-                                        windowTypeManager.updateUSDZBookmark(for: id, bookmark: bookmark)
-
-                                        // For now, create a placeholder Model3DData
-                                        // In a real app, you would parse the USDZ file here
-                                        let placeholderModel = Model3DData(
-                                            title: url.lastPathComponent,
-                                            modelType: "usdz",
-                                            scale: 1.0
-                                        )
-
-                                        // Update the model data so the volumetric window can display it
-                                        windowTypeManager.updateWindowModel3D(id, modelData: placeholderModel)
-
-                                    } catch {
-                                        print("Failed to import USDZ: \(error)")
-                                    }
-                                }
-                            }
-                        }
-                    // ───────────── POINT CLOUD ─────────────
-                    case .pointcloud:
-                        VStack {
-                            Spacer()
-
-                            VStack(spacing: 20) {
-                                Image(systemName: "dot.scope")
-                                    .font(.system(size: 80))
-                                    .foregroundStyle(.linearGradient(
-                                        colors: [.purple, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-
-                                Text("Point Cloud Viewer")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-
-                                if let pointCloud = window.state.pointCloudData {
-                                    VStack(spacing: 12) {
-                                        Text(pointCloud.title)
-                                            .font(.title2)
-                                            .foregroundStyle(.secondary)
-
-                                        HStack(spacing: 40) {
-                                            VStack {
-                                                Text("\(pointCloud.totalPoints)")
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
-                                                Text("Points")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            VStack {
-                                                 Text(pointCloud.demoType)
-                                                    .font(.title)
-                                                    .fontWeight(.semibold)
-                                                Text("Type")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        .padding(.top)
-                                    }
-                                } else if window.state.pointCloudBookmark != nil {
-                                    Text("Imported Point Cloud")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Text("This content is displayed in a volumetric window")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top)
-
-                                Button {
-                                    // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-pointclouddemo", value: id)
-                                } label: {
-                                    Label("Open Point Cloud View", systemImage: "view.3d")
-                                        .font(.headline)
-                                        .padding()
-                                        .background(.purple.opacity(0.2))
-                                        .cornerRadius(10)
-                                }
-                                .buttonStyle(.plain)
-
-                                Button {
-                                    showPointCloudImporter = true
-                                } label: {
-                                    Label("Import Point Cloud", systemImage: "square.and.arrow.down")
-                                        .font(.headline)
-                                        .padding()
-                                        .background(.green.opacity(0.2))
-                                        .cornerRadius(10)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(40)
-
-                            Spacer()
-                        }
-                        .fileImporter(isPresented: $showPointCloudImporter, allowedContentTypes: [
-                            .commaSeparatedText,  // CSV
-                            UTType(filenameExtension: "ply") ?? .data,  // PLY
-                            UTType(filenameExtension: "pcd") ?? .data,  // PCD
-                            UTType(filenameExtension: "xyz") ?? .data   // XYZ
-                        ], allowsMultipleSelection: false) { result in
-                            switch result {
-                            case .success(let urls):
-                                if let url = urls.first {
-                                    let supportedExtensions = ["ply", "pcd", "xyz", "csv"]
-                                    if supportedExtensions.contains(url.pathExtension.lowercased()) {
-                                        Task {
-                                            // Load the point cloud data directly (no bookmark needed, access granted here)
-                                            let loadedPoints = PointCloudDemo.loadPointCloud(from: url)
-
-                                            // Create PointCloudData
-                                            var pointCloudData = PointCloudData(
-                                                title: "Imported Point Cloud: \(url.lastPathComponent)",
-                                                demoType: "imported",
-                                                parameters: ["file": 1.0] // Placeholder
-                                            )
-                                            pointCloudData.points = loadedPoints
-                                            pointCloudData.totalPoints = loadedPoints.count
-
-                                            // Update the window with the data
-                                            windowTypeManager.updateWindowPointCloud(id, pointCloud: pointCloudData)
-
-                                            // Automatically open the volumetric view with the loaded data
-                                            openWindow(id: "volumetric-pointclouddemo", value: id)
-
-                                            print("Successfully imported point cloud: \(url.lastPathComponent)")
-                                        }
-                                    } else {
-                                        print("Unsupported file type: \(url.pathExtension)")
-                                    }
-                                }
-                            case .failure(let error):
-                                print("Error importing point cloud: \(error.localizedDescription)")
-                            }
-                        }
-
-                    // ───────────── SPATIAL EDITOR ─────────────
-                    case .spatial:
-                        VStack {
-                            Spacer()
-                            
-                            VStack(spacing: 20) {
-                                Image(systemName: "move.3d")
-                                    .font(.system(size: 80))
-                                    .foregroundStyle(.linearGradient(
-                                        colors: [.gray, .gray],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ))
-
-                                Text("Spatial Editor")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.secondary)
-
-                                Text("Coming Soon")
-                                    .font(.title2)
-                                    .foregroundStyle(.orange)
-                                    .padding()
-                                    .background(.orange.opacity(0.1))
-                                    .cornerRadius(10)
-
-                                Text("The spatial editor is currently under development")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.top)
-                            }
-                            .padding(40)
-
-                            Spacer()
-                        }
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        sheetManager.presentSheet(.welcome)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .onAppear {
-                windowTypeManager.markWindowAsOpened(id)
-            }
-            .onDisappear {
-                windowTypeManager.markWindowAsClosed(id)
             }
         }
-        else {
-            VStack(spacing: 20) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 50))
-                    .foregroundStyle(.orange)
 
-                Text("Window #\(id) Unavailable")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+        // Mark that the app has launched
+        if !hasLaunchedBefore {
+            UserDefaults.standard.set(true, forKey: "HasLaunchedBefore")
+        }
+    }
 
-                Text("This window may have been closed or removed from the workspace.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+    @MainActor
+    private func createStandardWindow(_ type: StandardWindowType) {
+        let position = WindowPosition(
+            x: 100 + Double(nextWindowID * 20),
+            y: 100 + Double(nextWindowID * 20),
+            z: 0,
+            width:  800,
+            height: 600
+        )
 
-                Button("Cleanup Closed Windows") {
-                    windowTypeManager.cleanupClosedWindows()
-                }
-                .buttonStyle(.bordered)
+        let windowType = type.toWindowType()
+        _ = windowManager.createWindow(windowType,
+                                       id:       nextWindowID,
+                                       position: position)
+        openWindow(value: nextWindowID)
+        windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+
+    @MainActor
+    private func loadWorkspace(_ workspace: WorkspaceMetadata) {
+        Task {
+            // Load the workspace into the window manager
+            try await workspaceManager.loadWorkspace(
+                workspace,
+                into: windowManager,
+                clearExisting: true
+            ) { id in
+                openWindow(value: id)
+                windowManager.markWindowAsOpened(id)
             }
-            .padding(40)
-            .onAppear {
-                windowTypeManager.markWindowAsClosed(id)
+            print(" Loaded workspace: \(workspace.name)")
+        }
+    }
+
+    @MainActor
+    private func clearAllWindowsWithConfirmation() {
+        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+    }
+
+    // MARK: - Window Action Handler
+    private func handleWindowAction(_ action: WindowAction, windowId: Int) {
+        switch action {
+        case .open:
+            openWindow(value: windowId)
+            windowManager.markWindowAsOpened(windowId)
+        case .close:
+            windowManager.removeWindow(windowId)
+        case .focus:
+            openWindow(value: windowId)
+        case .duplicate:
+            // Create duplicate window
+            let originalWindow = windowManager.getAllWindows().first { $0.id == windowId }
+            if let original = originalWindow {
+                let duplicateType = original.windowType.toStandardWindowType()
+                createStandardWindow(duplicateType)
             }
         }
+    }
+
+    private var supportedFileTypes: [UTType] {
+        [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
+         .usdz]
     }
 }
 
-// MARK: - Import Helper Functions
-
-private func importDataForSpatialEditor(from url: URL, windowID: Int) async {
-    do {
-        let content = try String(contentsOf: url)
-        let fileExtension = url.pathExtension.lowercased()
-        
-        switch fileExtension {
-        case "csv", "tsv":
-            // Parse CSV data
-            let delimiter: Character = fileExtension == "csv" ? "," : "\t"
-            if let csvData = CSVParser.parse(content, delimiter: delimiter) {
-                // Convert to DataFrame
-                let dataFrame = DataFrameData(
-                    columns: csvData.headers,
-                    rows: csvData.rows,
-                    dtypes: Dictionary(uniqueKeysWithValues: 
-                        zip(csvData.headers, csvData.columnTypes.map { $0.rawValue })
-                    )
-                )
-                
-                // Update window with DataFrame data
-                WindowTypeManager.shared.updateWindowDataFrame(windowID, dataFrame: dataFrame)
-                
-                // If data has 3D coordinates, also create point cloud
-                if let pointCloud = convertDataFrameToPointCloud(dataFrame, fileName: url.lastPathComponent) {
-                    WindowTypeManager.shared.updateWindowPointCloud(windowID, pointCloud: pointCloud)
-                }
-                
-                print("Successfully imported data for spatial editor: \(url.lastPathComponent)")
-            }
-            
-        case "json":
-            // Handle JSON data
-            if let jsonData = content.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                // Simple JSON to DataFrame conversion
-                if let dataFrame = convertJSONToDataFrame(json, fileName: url.lastPathComponent) {
-                    WindowTypeManager.shared.updateWindowDataFrame(windowID, dataFrame: dataFrame)
-                    print("Successfully imported JSON data: \(url.lastPathComponent)")
-                }
-            }
-            
-        default:
-            print("Unsupported file type for spatial editor: \(fileExtension)")
-        }
-        
-    } catch {
-        print("Failed to import data: \(error)")
-    }
-}
-
-private func convertDataFrameToPointCloud(_ dataFrame: DataFrameData, fileName: String) -> PointCloudData? {
-    // Look for columns that could be X, Y, Z coordinates
-    let headers = dataFrame.columns.map { $0.lowercased() }
-    
-    guard let xIndex = headers.firstIndex(where: { $0.contains("x") || $0 == "longitude" || $0 == "lon" }),
-          let yIndex = headers.firstIndex(where: { $0.contains("y") || $0 == "latitude" || $0 == "lat" }) else {
-        return nil
-    }
-    
-    let zIndex = headers.firstIndex(where: { $0.contains("z") || $0.contains("elevation") || $0.contains("height") })
-    let intensityIndex = headers.firstIndex(where: { $0.contains("intensity") || $0.contains("value") || $0.contains("weight") })
-    
-    var points: [PointCloudData.PointData] = []
-    
-    for row in dataFrame.rows {
-        guard xIndex < row.count, yIndex < row.count,
-              let x = Double(row[xIndex]), let y = Double(row[yIndex]) else {
-            continue
-        }
-        
-        let z = zIndex != nil && zIndex! < row.count ? Double(row[zIndex!]) ?? 0.0 : 0.0
-        let intensity = intensityIndex != nil && intensityIndex! < row.count ? Double(row[intensityIndex!]) : nil
-        
-        points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
-    }
-    
-    guard !points.isEmpty else { return nil }
-    
-    var pointCloudData = PointCloudData(
-        title: "Point Cloud from \(fileName)",
-        xAxisLabel: dataFrame.columns[xIndex],
-        yAxisLabel: dataFrame.columns[yIndex],
-        zAxisLabel: zIndex != nil ? dataFrame.columns[zIndex!] : "Z",
-        demoType: "imported",
-        parameters: ["rows": Double(points.count)]
-    )
-    
-    pointCloudData.points = points
-    pointCloudData.totalPoints = points.count
-    
-    return pointCloudData
-}
-
-private func convertJSONToDataFrame(_ json: [String: Any], fileName: String) -> DataFrameData? {
-    // Simple JSON to DataFrame conversion
-    // This is a basic implementation - you might want to handle nested structures differently
-    
-    var columns: [String] = []
-    var rows: [[String]] = []
-    
-    if let dataArray = json["data"] as? [[String: Any]] {
-        // Handle array of objects format
-        guard let firstObject = dataArray.first else { return nil }
-        
-        columns = Array(firstObject.keys).sorted()
-        
-        for object in dataArray {
-            let row = columns.map { key in
-                if let value = object[key] {
-                    return String(describing: value)
-                } else {
-                    return ""
-                }
-            }
-            rows.append(row)
-        }
-    } else if let directArray = json as? [String: Any] {
-        // Handle object with arrays format
-        columns = Array(directArray.keys).sorted()
-        
-        // Find the maximum array length
-        let maxLength = columns.compactMap { key in
-            (directArray[key] as? [Any])?.count
-        }.max() ?? 0
-        
-        for i in 0..<maxLength {
-            let row = columns.map { key in
-                if let array = directArray[key] as? [Any], i < array.count {
-                    return String(describing: array[i])
-                } else {
-                    return ""
-                }
-            }
-            rows.append(row)
-        }
-    }
-    
-    guard !columns.isEmpty && !rows.isEmpty else { return nil }
-    
-    return DataFrameData(columns: columns, rows: rows)
-}
-
-// ... existing code ...
-
-// MARK: - Volumetric Point Cloud View (new addition to display the point cloud)
-struct VolumetricPointCloudView: View {
-    let windowID: Int
-    @ObservedObject var manager = WindowTypeManager.shared
+// MARK: - Pulto Home Content View
+struct PultoHomeContentView: View {
+    @ObservedObject var viewModel: PultoHomeViewModel
+    let sheetManager: SheetManager
+    let onOpenWorkspace: () -> Void
+    @Environment(\.openWindow) private var openWindow
+    @StateObject private var windowManager = WindowTypeManager.shared
 
     var body: some View {
-        if let window = manager.getWindow(for: windowID),
-           let pointCloudData = window.state.pointCloudData {
-            RealityView { content in
-                let root = Entity()
+        // Main content without toolbar (since it's now in the navigation bar)
+        ScrollView {
+            VStack(spacing: 24) {
+                SimpleHeaderView(viewModel: viewModel, onLoginTap: {
+                    sheetManager.presentSheet(.appleSignIn)
+                }, onSettingsTap: {
+                    sheetManager.presentSheet(.settings)
+                })
 
-                for point in pointCloudData.points {
-                    let color = colorForIntensity(point.intensity)
-                    let material = SimpleMaterial(color: color, isMetallic: false)
-                    let sphere = ModelEntity(mesh: .generateSphere(radius: 0.005), materials: [material])
-                    sphere.position = SIMD3(Float(point.x), Float(point.y), Float(point.z))
-                    root.addChild(sphere)
+                PrimaryActionsGrid(
+                    sheetManager: sheetManager,
+                    onOpenProject: onOpenWorkspace,
+                    createNewProject: createNewProject
+                )
+
+                if viewModel.isLoadingProjects {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading projects...")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(24)
+                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                } else if !viewModel.recentProjects.isEmpty {
+                    RecentProjectsSection(
+                        projects: viewModel.recentProjects,
+                        onProjectTap: openRecentProject
+                    )
                 }
-
-                content.add(root)
             }
-            .ornament(attachmentAnchor: .scene(.bottom)) {
-                Text(pointCloudData.title)
-                    .font(.headline)
-                    .padding()
-            }
-        } else {
-            Text("No point cloud data available")
-                .font(.title)
-                .foregroundStyle(.red)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 20)
         }
     }
 
-    private func colorForIntensity(_ intensity: Double?) -> UIColor {
-        if let intensity = intensity {
-            let gray = CGFloat(intensity)
-            return UIColor(white: gray, alpha: 1.0)
-        } else {
-            return .white
+    private func openRecentProject(_ project: Project) {
+        Task {
+            // Update the project's last modified date
+            await viewModel.updateProjectLastModified(project.id)
+
+            // Store the selected project in the window manager
+            windowManager.setSelectedProject(project)
+
+            // Switch to workspace view
+            onOpenWorkspace()
+        }
+    }
+
+    private func createNewProject() {
+        Task {
+            do {
+                // Generate a unique project name with timestamp
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyyMMdd_HHmmss"
+                let timestamp = formatter.string(from: Date())
+                let projectName = "New_Project_\(timestamp)"
+
+                // Create the project with automatic notebook generation
+                if let notebookURL = windowManager.createNewProjectWithNotebook(projectName: projectName) {
+                    print(" Created new project with notebook: \(notebookURL.lastPathComponent)")
+
+                    // Create a new project object
+                    let newProject = Project(
+                        name: projectName.replacingOccurrences(of: "_", with: " "),
+                        type: "Data Visualization",
+                        icon: "chart.bar.doc.horizontal",
+                        color: .blue,
+                        lastModified: Date(),
+                        visualizations: 3,
+                        dataPoints: 0,
+                        collaborators: 1,
+                        filename: notebookURL.lastPathComponent
+                    )
+
+                    // Add to recent projects
+                    await viewModel.addRecentProject(newProject)
+
+                    // Set as selected project
+                    windowManager.setSelectedProject(newProject)
+
+                    print(" New project '\(newProject.name)' created successfully")
+                } else {
+                    print(" Failed to create notebook for new project")
+                    // Still continue to open the workspace even if notebook creation failed
+                }
+
+                // Switch to workspace view
+                await MainActor.run {
+                    onOpenWorkspace()
+                }
+
+            } catch {
+                print(" Error creating new project: \(error)")
+                // Still try to open the workspace
+                await MainActor.run {
+                    onOpenWorkspace()
+                }
+            }
         }
     }
 }
 
-// MARK: - Preview Provider
+// MARK: - Original ActiveWindowsView (maintained for compatibility)
+struct ActiveWindowsView: View {
+    let windowManager: WindowTypeManager
+    let openWindow: (Int) -> Void
+    let closeWindow: (Int) -> Void
+    let closeAllWindows: () -> Void
+    let sheetManager: SheetManager
+    let createWindow: (StandardWindowType) -> Void
+    @State private var selectedType: StandardWindowType? = nil
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                if windowManager.getAllWindows().isEmpty {
+                    // Show simple empty state when no windows
+                    ContentUnavailableView(
+                        "No Active Views",
+                        systemImage: "rectangle.dashed",
+                        description: Text("Create a new view using the options above")
+                    )
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Cleanup Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Window Management")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Button("Clean Up") {
+                                    windowManager.cleanupClosedWindows()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.blue)
+
+                                Button(action: closeAllWindows) {
+                                    Label("Close All", systemImage: "xmark.circle")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.red)
+                            }
+
+                            HStack {
+                                Image(systemName: "info.circle")
+                                    .foregroundStyle(.blue)
+                                Text("Clean up removes windows that were created but never opened or were closed externally")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
+                        // Statistics Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Overview")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            HStack(spacing: 16) {
+                                StatCard(
+                                    title: "Total Windows",
+                                    value: "\(windowManager.getAllWindows().count)",
+                                    icon: "rectangle.stack"
+                                )
+
+                                StatCard(
+                                    title: "Actually Open",
+                                    value: "\(windowManager.getAllWindows(onlyOpen: true).count)",
+                                    icon: "checkmark.circle"
+                                )
+
+                                StatCard(
+                                    title: "Window Types",
+                                    value: "\(Set(windowManager.getAllWindows().map(\.windowType)).count)",
+                                    icon: "square.grid.2x2"
+                                )
+                            }
+                        }
+
+                        // Window Distribution
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Window Distribution")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()), GridItem(.flexible())
+                            ], spacing: 8) {
+                                ForEach(WindowType.allCases, id: \.self) { type in
+                                    let count = windowManager.getAllWindows()
+                                        .filter { $0.windowType == type }.count
+                                    let openCount = windowManager.getAllWindows(onlyOpen: true)
+                                        .filter { $0.windowType == type }.count
+                                    if count > 0 {
+                                        HStack {
+                                            Image(systemName: type.icon)
+                                                .foregroundStyle(.blue)
+                                            Text(type.displayName)
+                                                .font(.subheadline)
+                                            Spacer()
+                                            Text("\(openCount)/\(count)")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            }
+                        }
+
+                        // Quick Actions
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Quick Actions")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                Menu("Create Window") {
+                                    ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                        Button {
+                                            createWindow(type)
+                                        } label: {
+                                            Label(type.displayName, systemImage: type.icon)
+                                        }
+                                    }
+                                } primaryAction: {
+                                    // Default action when button is tapped directly
+                                    createWindow(.dataFrame)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()), GridItem(.flexible())
+                            ], spacing: 12) {
+                                ForEach(StandardWindowType.allCases, id: \.self) { type in
+                                    Button {
+                                        createWindow(type)
+                                    } label: {
+                                        VStack(spacing: 8) {
+                                            Image(systemName: type.icon)
+                                                .font(.title2)
+                                                .foregroundStyle(type.iconColor)
+
+                                            Text(type.displayName)
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+
+                                            Text(type.description)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .padding()
+                                        .frame(maxWidth: .infinity, minHeight: 100)
+                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(selectedType == type ? type.iconColor : .clear, lineWidth: 2)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .onHover { isHovered in
+                                        selectedType = isHovered ? type : nil
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        // Active Windows List
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Active Windows")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            LazyVStack(spacing: 8) {
+                                ForEach(windowManager.getAllWindows(), id: \.id) { window in
+                                    WindowRow(
+                                        window: window,
+                                        isActuallyOpen: windowManager.isWindowActuallyOpen(window.id),
+                                        onOpen: { openWindow(window.id) },
+                                        onClose: { closeWindow(window.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .onChange(of: windowManager.getAllWindows().count) { count in
+            // Clear selected type when all windows are cleared
+            if count == 0 {
+                selectedType = nil
+            }
+        }
+    }
+}
+
+// MARK: - Recent Projects Sidebar
+struct RecentProjectsSidebar: View {
+    @ObservedObject var workspaceManager: WorkspaceManager
+    let loadWorkspace: (WorkspaceMetadata) -> Void
+    @State private var selectedWorkspace: WorkspaceMetadata?
+    @State private var showingProjectDetail = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if showingProjectDetail, let selectedWorkspace = selectedWorkspace {
+                // Show project detail view
+                ProjectDetailView(
+                    workspace: selectedWorkspace,
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showingProjectDetail = false
+                            self.selectedWorkspace = nil
+                        }
+                    },
+                    onLoad: { loadWorkspace(selectedWorkspace) }
+                )
+            } else {
+                // Show main projects list
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Text("Recent Projects")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+                    .padding()
+
+                    if workspaceManager.getCustomWorkspaces().isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+
+                            Text("No projects yet")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+
+                            Text("Create a new project to get started")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding()
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
+                                    ProjectSummaryCard(
+                                        workspace: workspace,
+                                        onSelect: {
+                                            selectedWorkspace = workspace
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showingProjectDetail = true
+                                            }
+                                        },
+                                        onLoad: { loadWorkspace(workspace) }
+                                    )
+                                }
+                            }
+                            .padding()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Project Summary Card (for main list)
+struct ProjectSummaryCard: View {
+    let workspace: WorkspaceMetadata
+    let onSelect: () -> Void
+    let onLoad: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Project Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workspace.name)
+                        .font(.headline)
+
+                    if !workspace.description.isEmpty {
+                        Text(workspace.description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                VStack(spacing: 8) {
+                    Button("Load") {
+                        onLoad()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+
+                    Button("Details") {
+                        onSelect()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            // Tags Preview (show first 3 tags)
+            if !workspace.tags.isEmpty {
+               ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(workspace.tags.prefix(4), id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+
+                        if workspace.tags.count > 4 {
+                            Text("+\(workspace.tags.count - 4)")
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.gray.opacity(0.15))
+                                .foregroundStyle(.secondary)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+
+            // Progress indicator or status
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Created")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Spacer()
+                        Text(workspace.createdDate, style: .date)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isHovered ? .blue.opacity(0.05) : .clear)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(isHovered ? .blue.opacity(0.3) : .gray.opacity(0.1), lineWidth: 1)
+                }
+        }
+        .scaleEffect(isHovered ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .onHover { isHovered = $0 }
+        .onTapGesture {
+            onSelect()
+        }
+    }
+}
+
+// MARK: - Project Detail View (replaces ProjectDetailCard)
+struct ProjectDetailView: View {
+    let workspace: WorkspaceMetadata
+    let onBack: () -> Void
+    let onLoad: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with back button
+            HStack {
+                Button(action: onBack) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.left")
+                            .font(.headline)
+                        Text("Back")
+                            .font(.headline)
+                    }
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button("Load Project") {
+                    onLoad()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+            }
+            .padding()
+
+            // Project content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Project Header
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(workspace.name)
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            if !workspace.description.isEmpty {
+                                Text(workspace.description)
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        // Project Stats
+                        HStack(spacing: 20) {
+                            Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
+                            Label(workspace.displaySize, systemImage: "doc")
+                            Label(workspace.formattedModifiedDate, systemImage: "clock")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+
+                    // Project Tags
+                    if !workspace.tags.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Tags")
+                                .font(.headline)
+
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                                ForEach(workspace.tags, id: \.self) { tag in
+                                    Text(tag)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.2))
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                    }
+
+                    // Category Info
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Category")
+                            .font(.headline)
+
+                        HStack {
+                            Image(systemName: workspace.category.iconName)
+                                .foregroundStyle(workspace.category.color)
+                            Text(workspace.category.displayName)
+                                .font(.subheadline)
+                            Spacer()
+                        }
+                    }
+                    .padding()
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                }
+                .padding()
+            }
+        }
+    }
+}
+
+// MARK: - Helper Views
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon:  String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// MARK: - Helper Views for Settings
+private func SettingsSection<Content: View>(
+    _ title: String,
+    @ViewBuilder content: () -> Content
+) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+        Text(title)
+            .font(.headline)
+            .fontWeight(.semibold)
+
+        VStack(alignment: .leading, spacing: 8) { content() }
+            .padding()
+            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
 
 // MARK: - WindowType Extensions
 extension WindowType {
     var icon: String {
         switch self {
         case .charts:     return "chart.line.uptrend.xyaxis"
-        case .spatial:    return "move.3d"
+        case .spatial:    return "rectangle.3.group"
         case .column:     return "tablecells"
         case .volume:     return "gauge"
-        case .pointcloud: return "dot.scope"
+        case .pointcloud: return "circle.grid.3x3"
         case .model3d:    return "cube"
         }
     }
-    
-    var inspectorIconColor: Color {
-        switch self {
-        case .charts: return .blue
-        case .spatial: return .green
-        case .column: return .orange
-        case .volume: return .red
-        case .pointcloud: return .purple
-        case .model3d: return .pink
-        }
-    }
-    
+
     var inspectorDescription: String {
         switch self {
         case .charts: return "Interactive data visualization charts"
-        case .spatial: return "Spatial editor for 3D content"
-        case .column: return "Tabular data viewer and editor"
-        case .volume: return "Volume metrics and monitoring"
+        case .spatial: return "3D spatial data representation"
+        case .column: return "Tabular data display with sorting and filtering"
+        case .volume: return "Volumetric data visualization"
         case .pointcloud: return "3D point cloud visualization"
-        case .model3d: return "3D model viewer and editor"
+        case .model3d: return "3D model viewer and manipulation"
         }
     }
-    
+
+    var inspectorIconColor: Color {
+        switch self {
+        case .charts: return .blue
+        case .spatial: return .purple
+        case .column: return .green
+        case .volume: return .orange
+        case .pointcloud: return .cyan
+        case .model3d: return .red
+        }
+    }
+
     func toStandardWindowType() -> StandardWindowType {
         switch self {
-        case .charts: return .chartGenerator
-        case .spatial: return .dataFrame  // Default fallback
         case .column: return .dataFrame
-        case .volume: return .iotDashboard
         case .pointcloud: return .pointCloud
         case .model3d: return .model3d
+        case .volume: return .iotDashboard
+        default: return .dataFrame
         }
     }
 }
 
-#Preview {
-    NewWindow(id: 1)
+// MARK: - Welcome Components
+struct WelcomeSheet: View {
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .font(.largeTitle)
+                                .foregroundStyle(.blue)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Welcome to Pulto")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+
+                                Text("Your spatial data visualization workspace")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+                        }
+
+                        Text("Get started with spatial computing and data visualization in visionOS")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+
+                    // Getting Started Steps
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Getting Started")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        VStack(alignment: .leading, spacing: 16) {
+                            WelcomeStep(
+                                icon: "1.circle.fill",
+                                title: "Create Your First Project",
+                                description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                            )
+
+                            WelcomeStep(
+                                icon: "2.circle.fill",
+                                title: "Import Your Data",
+                                description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
+                            )
+
+                            WelcomeStep(
+                                icon: "3.circle.fill",
+                                title: "Build Visualizations",
+                                description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                            )
+                        }
+                    }
+
+                    Divider()
+
+                    // Pro Tips
+                    VStack(alignment: .leading, spacing: 20) {
+                        HStack {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundStyle(.yellow)
+                            Text("Pro Tips")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                        }
+
+                        VStack(alignment: .leading, spacing: 16) {
+                            ProTip(
+                                icon: "person.circle.fill",
+                                color: .green,
+                                title: "Sign in to sync your projects",
+                                description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
+                            )
+
+                            ProTip(
+                                icon: "gearshape.fill",
+                                color: .orange,
+                                title: "Configure your workspace",
+                                description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
+                            )
+
+                            ProTip(
+                                icon: "cube.fill",
+                                color: .purple,
+                                title: "Explore volumetric 3D models",
+                                description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
+                            )
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") {
+                        // Mark welcome as dismissed when closed
+                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                        isPresented = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .frame(width: 600, height: 700)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
+    }
+}
+
+struct WelcomeStep: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+struct ProTip: View {
+    let icon:  String
+    let color: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.title2)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.medium)
+
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct WelcomeContentView: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            // Header with dismiss button
+            HStack {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .font(.largeTitle)
+                            .foregroundStyle(.blue)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome to Pulto")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            Text("Your spatial data visualization workspace")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Text("Get started with spatial computing and data visualization in visionOS")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Getting Started Steps
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Getting Started")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    WelcomeStep(
+                        icon: "1.circle.fill",
+                        title: "Create Your First Project",
+                        description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                    )
+
+                    WelcomeStep(
+                        icon: "2.circle.fill",
+                        title: "Import Your Data",
+                        description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
+                    )
+
+                    WelcomeStep(
+                        icon: "3.circle.fill",
+                        title: "Build Visualizations",
+                        description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                    )
+                }
+            }
+
+            Divider()
+
+            // Pro Tips
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(.yellow)
+                    Text("Pro Tips")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    ProTip(
+                        icon: "person.circle.fill",
+                        color: .green,
+                        title: "Sign in to sync your projects",
+                        description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
+                    )
+
+                    ProTip(
+                        icon: "gearshape.fill",
+                        color: .orange,
+                        title: "Configure your workspace",
+                        description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
+                    )
+
+                    ProTip(
+                        icon: "cube.fill",
+                        color: .purple,
+                        title: "Explore volumetric 3D models",
+                        description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
+                    )
+                }
+            }
+
+            // Action buttons
+            HStack {
+                Spacer()
+
+                Button("Get Started") {
+                    // Mark welcome as dismissed when user clicks Get Started
+                    UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                    onDismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            .padding(.top)
+        }
+        .padding(24)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
+    }
+}
+
+// MARK: - Previews
+struct EnvironmentView_Previews: PreviewProvider {
+    static var previews: some View { EnvironmentView() }
 }

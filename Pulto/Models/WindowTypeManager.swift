@@ -8,10 +8,6 @@
 
 import SwiftUI
 import Foundation
-import RealityKit
-import ModelIO
-import UniformTypeIdentifiers
-import Combine
 import Charts
 
 // Type alias to resolve Project type conflicts
@@ -63,12 +59,12 @@ class WindowTypeManager: ObservableObject {
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
-        
+
         // NEW: Clean up entities when window closes
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupWindow(id)
         }
-        
+
         objectWillChange.send()
     }
 
@@ -214,30 +210,7 @@ class WindowTypeManager: ObservableObject {
     func getWindowChartData(for id: Int) -> ChartData? {
         return windows[id]?.state.chartData
     }
-    
-    // TEMPORARILY COMMENTED OUT: CSV data and chart recommendation methods
-    // These are causing type conflicts and will be re-implemented properly
-    /*
-    func updateWindowCSVData(_ id: Int, csvData: CSVData, recommendation: ChartRecommendation) {
-        windows[id]?.state.csvData = csvData
-        windows[id]?.state.chartRecommendation = recommendation
-        windows[id]?.state.lastModified = Date()
-        
-        // Auto-set template to matplotlib for forA
-        if let window = windows[id], window.windowType == .charts && window.state.exportTemplate == .plain {
-            windows[id]?.state.exportTemplate = .matplotlib
-        }
-    }
-    
-    func getWindowCSVData(for id: Int) -> CSVData? {
-        return windows[id]?.state.csvData
-    }
-    
-    func getWindowChartRecommendation(for id: Int) -> ChartRecommendation? {
-        return windows[id]?.state.chartRecommendation
-    }
-    */
-    
+
     // Chart3D data methods
     func updateWindowChart3DData(_ id: Int, chart3DData: Chart3DData) {
         windows[id]?.state.chart3DData = chart3DData
@@ -550,7 +523,7 @@ class WindowTypeManager: ObservableObject {
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupAll()
         }
-        
+
         windows.removeAll()
         openWindowIDs.removeAll()
         objectWillChange.send()
@@ -949,7 +922,7 @@ class WindowTypeManager: ObservableObject {
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupWindow(id)
         }
-        
+
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
     }
@@ -1193,27 +1166,27 @@ class WindowTypeManager: ObservableObject {
     }
 
     // MARK: - Project Creation with Notebook Generation
-    
+
     func createNewProjectWithNotebook(projectName: String) -> URL? {
         print("🚀 Creating new project: \(projectName)")
-        
+
         // Create a basic project structure with template windows
         createTemplateWindows()
-        
+
         // Generate and save the notebook
         let sanitizedName = projectName.replacingOccurrences(of: " ", with: "_")
         let notebookURL = saveNotebookToFile(filename: sanitizedName)
-        
+
         if let url = notebookURL {
             print("📓 Notebook created at: \(url.path)")
             print("📊 Project contains \(getAllWindows().count) template windows")
         } else {
             print("❌ Failed to create notebook file")
         }
-        
+
         return notebookURL
     }
-    
+
     private func createTemplateWindows() {
         // Create a welcome markdown window
         let welcomeWindowID = getNextWindowID()
@@ -1240,7 +1213,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(welcomeWindowID, tag: "welcome")
         addWindowTag(welcomeWindowID, tag: "getting-started")
-        
+
         // Create a sample chart window
         let chartWindowID = getNextWindowID()
         let chartWindow = createWindow(.charts, id: chartWindowID)
@@ -1270,7 +1243,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(chartWindowID, tag: "sample")
         addWindowTag(chartWindowID, tag: "chart")
-        
+
         // Create a data table template
         let dataWindowID = getNextWindowID()
         let dataWindow = createWindow(.column, id: dataWindowID)
@@ -1299,7 +1272,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(dataWindowID, tag: "sample")
         addWindowTag(dataWindowID, tag: "data")
-        
+
         print("✅ Created template windows for new project")
     }
 
@@ -1338,7 +1311,7 @@ class WindowTypeManager: ObservableObject {
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
         }
     }
-    
+
     // Add this method to your existing WindowTypeManager class
     func removeWindowTag(_ windowID: Int, tag: String) {
         guard var window = windows[windowID] else { return }
@@ -1346,24 +1319,4 @@ class WindowTypeManager: ObservableObject {
         window.state.lastModified = Date()
         windows[windowID] = window
     }
-
-    //     guard var window = windows[windowID] else { return }
-    //     
-    //     // Convert ChartBuilder data to ChartData for storage
-    //     let chartData = ChartData(
-    //         title: chartBuilder.chartMetadata.title,
-    //         chartType: chartBuilder.chartType.rawValue.lowercased(),
-    //         xLabel: chartBuilder.chartMetadata.xAxisLabel,
-    //         yLabel: chartBuilder.chartMetadata.yAxisLabel,
-    //         xData: chartBuilder.chartData.xAxisData,
-    //         yData: chartBuilder.chartData.yAxisData.isEmpty ? 
-    //             chartBuilder.chartData.series.first?.values ?? [] : 
-    //             chartBuilder.chartData.yAxisData
-    //     )
-    //     
-    //     window.state.chartData = chartData
-    //     window.state.lastModified = Date()
-    //     windows[windowID] = window
-    //     objectWillChange.send()
-    // }
 }
