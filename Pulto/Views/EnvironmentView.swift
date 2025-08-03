@@ -185,6 +185,9 @@ struct EnhancedActiveWindowsView: View {
     @State private var jupyterServerStatus: ServerStatus = .unknown
     @State private var isCheckingJupyterServer = false
 
+    // Add workspace manager for recent projects
+    @StateObject private var workspaceManager = WorkspaceManager.shared
+
     @State private var statusCheckTask: Task<Void, Never>?
     @State private var animationTask: Task<Void, Never>?
 
@@ -227,7 +230,34 @@ struct EnhancedActiveWindowsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     if windowManager.getAllWindows().isEmpty {
-                        // Show simple empty state when no windows
+                        // Show recent projects when no windows are active
+                        if !workspaceManager.getCustomWorkspaces().isEmpty {
+                            VStack(alignment: .leading, spacing: 20) {
+                                HStack {
+                                    Text("Recent Projects")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    Spacer()
+                                }
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(workspaceManager.getCustomWorkspaces().prefix(10)) { workspace in
+                                            RecentProjectCard(
+                                                workspace: workspace,
+                                                onTap: { workspace in
+                                                    // Handle loading the workspace
+                                                    // This would need to be passed in as a parameter
+                                                }
+                                            )
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                }
+                            }
+                        }
+                        
+                        // Show simple empty state when no windows and no recent projects
                         ContentUnavailableView(
                             "No Active Views",
                             systemImage: "rectangle.dashed",
@@ -850,6 +880,57 @@ struct WindowRow: View {
         .background(isHovered ? Color.gray.opacity(0.05) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Recent Project Card for Horizontal Layout
+struct RecentProjectCard: View {
+    let workspace: WorkspaceMetadata
+    let onTap: (WorkspaceMetadata) -> Void
+    
+    var body: some View {
+        Button(action: {
+            onTap(workspace)
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Project Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue.opacity(0.1))
+                        .frame(width: 60, height: 60)
+                    
+                    Image(systemName: "folder.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                }
+                
+                // Project Name
+                Text(workspace.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                
+                // Project Details
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Image(systemName: "rectangle.stack")
+                            .font(.caption)
+                        Text("\(workspace.totalWindows) views")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                    
+                    Text(workspace.formattedModifiedDate)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 140)
+            .padding(12)
+            .background(Color.gray.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -2224,7 +2305,7 @@ struct WelcomeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") {
-                        // Mark welcome as dismissed when closed
+                        // Mark welcome as dismissed when the sheet is closed
                         UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
                         isPresented = false
                     }
@@ -2290,6 +2371,7 @@ struct ProTip: View {
     }
 }
 
+// MARK: - Welcome Content View
 struct WelcomeContentView: View {
     let onDismiss: () -> Void
 
