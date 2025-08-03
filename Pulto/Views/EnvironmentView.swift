@@ -258,11 +258,24 @@ struct EnhancedActiveWindowsView: View {
                         }
                         
                         // Show simple empty state when no windows and no recent projects
-                        ContentUnavailableView(
-                            "No Active Views",
-                            systemImage: "rectangle.dashed",
-                            description: Text("Create a new view using the options above")
-                        )
+                        VStack(spacing: 16) {
+                            Image(systemName: "rectangle.dashed")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+                            
+                            VStack(spacing: 8) {
+                                Text("No Active Views")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                Text("Create a new view using the options above")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     } else {
                         VStack(alignment: .leading, spacing: 20) {
                             // Quick Actions Section
