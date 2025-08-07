@@ -368,7 +368,8 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.blue.opacity(0.1))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         if showNavigationView {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -432,7 +433,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                 }
 
                 // Principal toolbar item (center)
@@ -477,7 +478,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
 
                     // Inspector toggle (separate)
                     Button(action: onInspectorToggle) {
@@ -489,7 +490,7 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         if showInspector {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1521,7 +1522,8 @@ struct EnvironmentView: View {
         }
     }
 
-    private var supportedFileTypes: [UTType] {
+    // Existing code...
+    @State private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
          .usdz]
     }
@@ -1750,7 +1752,7 @@ struct ActiveWindowsView: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
+                                        .padding(.vertical, 6)  
                                         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
@@ -1803,12 +1805,9 @@ struct ActiveWindowsView: View {
                                                 .foregroundStyle(.secondary)
                                                 .multilineTextAlignment(.center)
                                         }
-                                        .padding()
-                                        .frame(maxWidth: .infinity, minHeight: 100)
-                                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)  
                                         .overlay {
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(selectedType == type ? type.iconColor : .clear, lineWidth: 2)
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -2011,10 +2010,10 @@ struct ProjectSummaryCard: View {
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isHovered ? .blue.opacity(0.05) : .clear)
+                .fill(isHovered ? .orange.opacity(0.1) : Color.clear)
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(isHovered ? .blue.opacity(0.3) : .gray.opacity(0.1), lineWidth: 1)
+                        .stroke(isHovered ? .orange.opacity(0.3) : .gray.opacity(0.1), lineWidth: 1)
                 }
         }
         .scaleEffect(isHovered ? 1.01 : 1.0)
