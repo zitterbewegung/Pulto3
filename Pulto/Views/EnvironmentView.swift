@@ -1522,8 +1522,8 @@ struct EnvironmentView: View {
         }
     }
 
-    // Existing code...
-    @State private var supportedFileTypes: [UTType] {
+    // FIXED: Removed @State from computed property
+    private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
          .usdz]
     }
