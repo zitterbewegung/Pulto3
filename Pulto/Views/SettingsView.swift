@@ -21,6 +21,11 @@ struct SettingsView: View {
     @AppStorage("enableNotifications") private var enableNotifications: Bool = true
     @AppStorage("themePreference") private var themePreference: String = "Auto"
     
+    // Feature flags for hiding window types
+    @AppStorage("hideIoTDashboardFeature") private var hideIoTDashboardFeature: Bool = false
+    @AppStorage("hideDataTableFeature") private var hideDataTableFeature: Bool = false
+    @AppStorage("hideTemplateGalleryButton") private var hideTemplateGalleryButton: Bool = false
+
     @State private var selectedTab: SettingsTab = .general
     
     enum SettingsTab: String, CaseIterable {
@@ -413,6 +418,27 @@ struct SettingsView: View {
                     }
                 }
                 
+                SettingsSection("Feature Flags") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Hide IoT Dashboard Feature", isOn: $hideIoTDashboardFeature)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Toggle("Hide Data Table Feature", isOn: $hideDataTableFeature)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Toggle("Hide Template Gallery Button", isOn: $hideTemplateGalleryButton)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Text("These flags hide specific features behind a feature toggle for development and testing")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
+                    }
+                }
+
                 SettingsSection("Debug Information") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("App Version: 1.0.0")

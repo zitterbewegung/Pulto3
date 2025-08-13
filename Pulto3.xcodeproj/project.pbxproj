@@ -114,13 +114,6 @@
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
-		DCA420E72E214A9600C57416 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Backend/Dockerfile.dev,
-			);
-			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
-		};
 		DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -150,7 +143,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
 		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
-		DC3F86072E103C3A0042AAD3 /* server */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCA420E72E214A9600C57416 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = server; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
 		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC24085E2E2ED7C40062838C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
 		DC7094F42E20A5F10000CC3A /* Data */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Data; sourceTree = "<group>"; };
@@ -204,7 +196,6 @@
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
-				DC3F86072E103C3A0042AAD3 /* server */,
 				DC3F86062E0F7CD80042AAD3 /* complete_deployment_guide.sh */,
 				DC3F86032E0F79D70042AAD3 /* .github */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,

@@ -197,6 +197,11 @@ class SpatialAudioManager: ObservableObject {
         }
     }
     
+    // MARK: - Startup Sound
+    func playStartupSound() {
+        playSpatialTone(frequency: 800, position: [0, 0, 0], duration: 0.3)
+    }
+    
     // MARK: - Spatial Audio for Data Points
     
     func playDataPointSound(for entity: Entity, dataValue: Double) {

@@ -580,6 +580,8 @@ Run specific test categories:
 
 The tests are now **much simpler and self-contained** - they should compile and run without any issues. The simulator launch problems are separate from the test compilation, and the tests themselves are working correctly!
 
+https://github.com/spaceml-org/pyrocast
+
 MIT License
 
 Copyright (c) 2022 Jordi Bruin

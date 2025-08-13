@@ -7,6 +7,7 @@
 
 import SwiftUI
 import RealityKit
+import AVFoundation
 
 // MARK: - Notification Extensions
 extension Notification.Name {
@@ -28,6 +29,9 @@ struct EntryPoint: App {
     @State private var shouldRestoreOnActive = false
     @State private var wasInBackground = false
 
+    // Audio manager for startup sound
+    private let audioManager = AudioManager.shared
+
     // MARK: Scene graph
     @SceneBuilder
     var body: some SwiftUI.Scene {
@@ -44,6 +48,16 @@ struct EntryPoint: App {
         setupProjectNotifications()
         setupMainWindowProtection()
         setupAppLifecycleNotifications()
+        
+        // Play startup sound
+        playStartupSound()
+    }
+    
+    private func playStartupSound() {
+        // Delay slightly to ensure audio session is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            audioManager.playStartupSound()
+        }
     }
     
     // MARK: - 2-D Scenes
