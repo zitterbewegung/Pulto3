@@ -1,0 +1,42 @@
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/SupersetDashboardView.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SupersetDashboardView.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SupersetDashboardView.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SupersetDashboardView.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SupersetDashboardView.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SupersetDashboardView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/DataTableContentView.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/DataTableContentView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/DataTableContentView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/DataTableContentView.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/DataTableContentView.swiftconstvalues"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/DataTableContentView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/PultoHomeView.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PultoHomeView.swiftdeps"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PultoHomeView.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PultoHomeView.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PultoHomeView.swiftconstvalues"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PultoHomeView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/ProjectBrowserView.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ProjectBrowserView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ProjectBrowserView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ProjectBrowserView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ProjectBrowserView.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ProjectBrowserView.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/RecommendedChartView.swift":
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RecommendedChartView.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RecommendedChartView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RecommendedChartView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RecommendedChartView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RecommendedChartView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/SampleChartView.swift":
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SampleChartView.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SampleChartView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SampleChartView.swiftdeps"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SampleChartView.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SampleChartView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/Chart3DView.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Chart3DView.swiftdeps"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Chart3DView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Chart3DView.o"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Chart3DView.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Chart3DView.swiftconstvalues"

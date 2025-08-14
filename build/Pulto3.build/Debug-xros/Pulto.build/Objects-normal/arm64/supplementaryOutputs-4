@@ -1,0 +1,48 @@
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/RealTimeStreamingArchitecture.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RealTimeStreamingArchitecture.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RealTimeStreamingArchitecture.dia"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RealTimeStreamingArchitecture.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RealTimeStreamingArchitecture.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/RealTimeStreamingArchitecture.o"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/Import/JupyterNotebook.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/JupyterNotebook.swiftdeps"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/JupyterNotebook.o"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/JupyterNotebook.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/JupyterNotebook.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/JupyterNotebook.d"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/Import/PLYToJSONView.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PLYToJSONView.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PLYToJSONView.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PLYToJSONView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PLYToJSONView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PLYToJSONView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/PointCloudData.swift":
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PointCloudData.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PointCloudData.d"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PointCloudData.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PointCloudData.swiftconstvalues"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/PointCloudData.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/SharedNotebookTypes.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SharedNotebookTypes.swiftdeps"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SharedNotebookTypes.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SharedNotebookTypes.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SharedNotebookTypes.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SharedNotebookTypes.o"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/Import/SensorData.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SensorData.dia"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SensorData.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SensorData.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SensorData.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SensorData.d"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/Import/SpatialWorkflowManager.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialWorkflowManager.swiftdeps"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialWorkflowManager.o"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialWorkflowManager.dia"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialWorkflowManager.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialWorkflowManager.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Models/SheetManager.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SheetManager.dia"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SheetManager.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SheetManager.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SheetManager.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SheetManager.o"

@@ -1551,6 +1551,11 @@ struct PultoHomeContentView: View {
                     createNewProject: createNewProject
                 )
 
+                // Add FileImportRowView
+                FileImportRowView { fileURL in
+                    handleFileImport(fileURL)
+                }
+
                 if viewModel.isLoadingProjects {
                     VStack(spacing: 12) {
                         ProgressView()
@@ -1637,6 +1642,52 @@ struct PultoHomeContentView: View {
                 }
             }
         }
+    }
+
+    // MARK: - File Import Handler
+    private func handleFileImport(_ fileURL: URL) {
+        let fileExtension = fileURL.pathExtension.lowercased()
+        
+        // Determine the appropriate window type based on file extension
+        let windowType: StandardWindowType
+        switch fileExtension {
+        case "usdz":
+            windowType = .model3d
+        case "ply", "pcd", "xyz", "pts":
+            windowType = .pointCloud
+        default:
+            windowType = .dataFrame // Default fallback
+        }
+        
+        // Create a window for the imported file
+        createWindowForImportedFile(windowType, fileURL: fileURL)
+        
+        // Switch to workspace view to show the new window
+        onOpenWorkspace()
+    }
+    
+    private func createWindowForImportedFile(_ type: StandardWindowType, fileURL: URL) {
+        let position = WindowPosition(
+            x: 100 + Double(Int.random(in: 0...100)),
+            y: 100 + Double(Int.random(in: 0...100)),
+            z: 0,
+            width: 800,
+            height: 600
+        )
+        
+        let windowType = type.toWindowType()
+        let newWindowID = Int.random(in: 1000...9999) // Generate a unique ID
+        
+        _ = windowManager.createWindow(windowType,
+                                       id: newWindowID,
+                                       position: position)
+        
+        // Store the file URL with the window (this would need to be implemented in WindowTypeManager)
+        // For now, just open the window
+        openWindow(value: newWindowID)
+        windowManager.markWindowAsOpened(newWindowID)
+        
+        print(" Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
     }
 }
 

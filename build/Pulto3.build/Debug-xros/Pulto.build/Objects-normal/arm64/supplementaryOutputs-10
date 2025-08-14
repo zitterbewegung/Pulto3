@@ -1,0 +1,42 @@
+"/Users/r2q2/Projects/Pulto3/Pulto/Extensions/SCNVector3+Transform.swift":
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SCNVector3+Transform.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SCNVector3+Transform.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SCNVector3+Transform.dia"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SCNVector3+Transform.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SCNVector3+Transform.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/SpatialEditorView.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialEditorView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialEditorView.o"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialEditorView.swiftconstvalues"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialEditorView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SpatialEditorView.dia"
+"/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/DerivedSources/GeneratedAssetSymbols.swift":
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GeneratedAssetSymbols.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GeneratedAssetSymbols.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/SaveNotebookDialog.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SaveNotebookDialog.dia"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SaveNotebookDialog.swiftdeps"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SaveNotebookDialog.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SaveNotebookDialog.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SaveNotebookDialog.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/EnvironmentRestoreDialog.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/EnvironmentRestoreDialog.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/EnvironmentRestoreDialog.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/EnvironmentRestoreDialog.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/EnvironmentRestoreDialog.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/EnvironmentRestoreDialog.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/WindowChartView.swift":
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WindowChartView.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WindowChartView.swiftconstvalues"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WindowChartView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WindowChartView.dia"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WindowChartView.o"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/WorkspaceDialog.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WorkspaceDialog.dia"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WorkspaceDialog.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WorkspaceDialog.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WorkspaceDialog.swiftconstvalues"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/WorkspaceDialog.swiftdeps"

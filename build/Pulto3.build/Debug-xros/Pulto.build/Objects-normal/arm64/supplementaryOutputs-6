@@ -1,0 +1,48 @@
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/Model3DVolumetricView.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Model3DVolumetricView.swiftdeps"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Model3DVolumetricView.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Model3DVolumetricView.d"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Model3DVolumetricView.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/Model3DVolumetricView.swiftconstvalues"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/ModelSelectionView.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelSelectionView.dia"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelSelectionView.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelSelectionView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelSelectionView.swiftdeps"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelSelectionView.d"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/ModelImportTypes.swift":
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelImportTypes.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelImportTypes.d"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelImportTypes.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelImportTypes.dia"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/ModelImportTypes.o"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/GridConstants.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GridConstants.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GridConstants.swiftconstvalues"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GridConstants.dia"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GridConstants.o"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/GridConstants.d"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/SimpleRestoreDialog.swift":
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SimpleRestoreDialog.swiftdeps"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SimpleRestoreDialog.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SimpleRestoreDialog.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SimpleRestoreDialog.o"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/SimpleRestoreDialog.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/Import/BatchImportView.swift":
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/BatchImportView.dia"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/BatchImportView.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/BatchImportView.swiftconstvalues"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/BatchImportView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/BatchImportView.swiftdeps"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/USDZLoaderView.swift":
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/USDZLoaderView.swiftconstvalues"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/USDZLoaderView.d"
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/USDZLoaderView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/USDZLoaderView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/USDZLoaderView.dia"
+"/Users/r2q2/Projects/Pulto3/Pulto/Views/Data/VolumetricModelView.swift":
+  object: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/VolumetricModelView.o"
+  swift-dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/VolumetricModelView.swiftdeps"
+  diagnostics: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/VolumetricModelView.dia"
+  dependencies: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/VolumetricModelView.d"
+  const-values: "/Users/r2q2/Projects/Pulto3/build/Pulto3.build/Debug-xros/Pulto.build/Objects-normal/arm64/VolumetricModelView.swiftconstvalues"

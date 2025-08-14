@@ -27,6 +27,7 @@
 		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
 		DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */; };
 		DC9BB5BF2E39D7E10043F42B /* NotebookCellViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */; };
+		DCBB4FAC2E4D79A90094B0BC /* FileImportRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
 		DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */; };
 		DCDD6FB72E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */; };
@@ -81,6 +82,7 @@
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
 		DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookCellViewer.swift; sourceTree = "<group>"; };
 		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
+		DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileImportRowView.swift; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
 		DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveWorkspaceView.swift; sourceTree = "<group>"; };
@@ -142,7 +144,6 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DC28CF682E02695000F3705E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
-		DC3F86032E0F79D70042AAD3 /* .github */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = .github; sourceTree = "<group>"; };
 		DC3F8DD52E103E090042AAD3 /* PultoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PultoTests; sourceTree = "<group>"; };
 		DC7094552E206D110000CC3A /* Extensions */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DC7094582E206D300000CC3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DC24085E2E2ED7C40062838C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Extensions; sourceTree = "<group>"; };
 		DC7094F42E20A5F10000CC3A /* Data */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Data; sourceTree = "<group>"; };
@@ -197,7 +198,6 @@
 			isa = PBXGroup;
 			children = (
 				DC3F86062E0F7CD80042AAD3 /* complete_deployment_guide.sh */,
-				DC3F86032E0F79D70042AAD3 /* .github */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DC7630212E17017200BE77CD /* DEV.md */,
@@ -274,6 +274,7 @@
 				DC28EA382E036B7D00586089 /* NotebookImportDialog.swift */,
 				DC0E89982DE366E900B27198 /* OpenWindowView.swift */,
 				DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */,
+				DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */,
 				DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */,
 				DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */,
 				DC661B342E04A126005454FE /* SpatialEditorView.swift */,
@@ -433,6 +434,7 @@
 				DC28CF6E2E026E2300F3705E /* TemplateNotebook.swift in Sources */,
 				DCDD6FB72E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift in Sources */,
 				DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */,
+				DCBB4FAC2E4D79A90094B0BC /* FileImportRowView.swift in Sources */,
 				DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */,
 				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,
 				DCFC32E02E15DCAF002A2AA4 /* WorkspaceDialog.swift in Sources */,
