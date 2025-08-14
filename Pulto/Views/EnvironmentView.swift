@@ -240,42 +240,63 @@ struct EnhancedActiveWindowsView: View {
                                     Spacer()
                                 }
                                 
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(workspaceManager.getCustomWorkspaces().prefix(10)) { workspace in
-                                            RecentProjectCard(
-                                                workspace: workspace,
-                                                onTap: { workspace in
-                                                    // Handle loading the workspace
-                                                    // This would need to be passed in as a parameter
-                                                }
-                                            )
-                                        }
+                                LazyVGrid(columns: [
+                                    GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
+                                ], spacing: 16) {
+                                    ForEach(workspaceManager.getCustomWorkspaces().prefix(12)) { workspace in
+                                        RecentProjectCard(
+                                            workspace: workspace,
+                                            onTap: { workspace in
+                                                // Handle loading the workspace
+                                                // This would need to be passed in as a parameter
+                                            }
+                                        )
                                     }
-                                    .padding(.horizontal, 12)
+                                }
+                                .padding(.horizontal, 12)
+                            }
+                        } else {
+                            // Show placeholder when no recent projects exist
+                            VStack(spacing: 16) {
+                                Image(systemName: "folder.badge.questionmark")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    Text("No Recent Projects")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Create a new project to get started")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                         }
                         
-                        // Show simple empty state when no windows and no recent projects
-                        VStack(spacing: 16) {
-                            Image(systemName: "rectangle.dashed")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            
-                            VStack(spacing: 8) {
-                                Text("No Active Views")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                
-                                Text("Create a new view using the options above")
-                                    .font(.subheadline)
+                        if workspaceManager.getCustomWorkspaces().isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "rectangle.dashed")
+                                    .font(.system(size: 48))
                                     .foregroundStyle(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    Text("No Active Views")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Create a new view using the options above")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding()
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     } else {
                         VStack(alignment: .leading, spacing: 20) {
                             // Quick Actions Section
@@ -896,7 +917,7 @@ struct WindowRow: View {
     }
 }
 
-// MARK: - Recent Project Card for Horizontal Layout
+// MARK: - Recent Project Card for Grid Layout
 struct RecentProjectCard: View {
     let workspace: WorkspaceMetadata
     let onTap: (WorkspaceMetadata) -> Void
@@ -910,7 +931,7 @@ struct RecentProjectCard: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.blue.opacity(0.1))
-                        .frame(width: 60, height: 60)
+                        .frame(height: 60)
                     
                     Image(systemName: "folder.fill")
                         .font(.title2)
@@ -921,7 +942,8 @@ struct RecentProjectCard: View {
                 Text(workspace.name)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 
                 // Project Details
                 VStack(alignment: .leading, spacing: 4) {
@@ -938,7 +960,8 @@ struct RecentProjectCard: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(width: 140)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 140)
             .padding(12)
             .background(Color.gray.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -1204,236 +1227,6 @@ struct EnvironmentView: View {
         }
     }
 
-    // MARK: - Sheet Wrapper Views (these handle their own dismissal)
-
-    struct WorkspaceDialogWrapper: View {
-        let windowManager: WindowTypeManager
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            WorkspaceDialog(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                ),
-                windowManager: windowManager
-            )
-        }
-    }
-
-    struct NotebookImportDialogWrapper: View {
-        let windowManager: WindowTypeManager
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            NotebookImportDialog(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                ),
-                windowManager: windowManager
-            )
-        }
-    }
-
-    struct WelcomeSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            WelcomeSheet(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in
-                        // Mark welcome as dismissed when the sheet is closed
-                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
-                        sheetManager.dismissSheet()
-                    }
-                )
-            )
-        }
-    }
-
-    struct AppleSignInWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            AppleSignInView(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                )
-            )
-        }
-    }
-
-    struct ActiveWindowsSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-        @StateObject private var windowManager = WindowTypeManager.shared
-        @Environment(\.openWindow) private var openWindow
-
-        var body: some View {
-            NavigationStack {
-                ActiveWindowsView(
-                    windowManager: windowManager,
-                    openWindow: { openWindow(value: $0) },
-                    closeWindow: { windowManager.removeWindow($0) },
-                    closeAllWindows: {
-                        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                    },
-                    sheetManager: sheetManager,
-                    createWindow: { _ in }
-                )
-                .navigationTitle("Active Windows")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") {
-                            sheetManager.dismissSheet()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .frame(width: 1000, height: 700)
-        }
-    }
-
-    struct SettingsSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-        @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
-        @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
-
-        var body: some View {
-            NavigationStack {
-                VStack(spacing: 20) {
-                    // Settings Content
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // Auto-Save
-                            SettingsSection("Workspace") {
-                                Toggle("Auto-save after every window action", isOn: .constant(true))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 4)
-                            }
-
-                            // Jupyter
-                            SettingsSection("Jupyter Server") {
-                                HStack {
-                                    Text("Default Server URL")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                }
-
-                                TextField("Enter Jupyter server URL", text: $defaultJupyterURL)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.body, design: .monospaced))
-
-                                Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                // Quick preset buttons for Jupyter
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quick Options:")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                        ForEach(["http://localhost:8888", "http://localhost:8889", "http://127.0.0.1:8888"], id: \.self) { url in
-                                            Button(url) {
-                                                defaultJupyterURL = url
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .font(.caption)
-                                            .fontDesign(.monospaced)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Superset
-                            SettingsSection("Superset Server") {
-                                HStack {
-                                    Text("Default Server URL")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                }
-
-                                TextField("Enter Superset server URL", text: $defaultSupersetURL)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.body, design: .monospaced))
-
-                                Text("Default Apache Superset server to connect to for dashboard visualizations")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                // Quick preset buttons
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quick Options:")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                        ForEach(["http://localhost:8088", "https://your-superset-instance.com"], id: \.self) { url in
-                                            Button(url) {
-                                                defaultSupersetURL = url
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .font(.caption)
-                                            .fontDesign(.monospaced)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // General
-                            SettingsSection("General") {
-                                Toggle("Enable Notifications", isOn: .constant(true))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                HStack {
-                                    Text("Maximum Recent Projects")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                    Text("10")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .padding()
-                    }
-
-                    Spacer()
-                }
-                .navigationTitle("Settings")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") {
-                            sheetManager.dismissSheet()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .frame(width: 700, height: 600)
-        }
-    }
-
     // MARK: - Helper Methods
 
     private func checkFirstLaunch() {
@@ -1498,7 +1291,38 @@ struct EnvironmentView: View {
 
     @MainActor
     private func clearAllWindowsWithConfirmation() {
-        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+        let allWindows = windowManager.getAllWindows()
+        let openWindows = windowManager.getAllWindows(onlyOpen: true)
+        
+        // First, dismiss all actual SwiftUI windows
+        for window in openWindows {
+            // Dismiss the appropriate window based on window type
+            switch window.windowType {
+            case .pointcloud:
+                dismissWindow(id: "volumetric-pointcloud", value: window.id)
+                dismissWindow(id: "volumetric-pointclouddemo", value: window.id)
+            case .model3d:
+                dismissWindow(id: "volumetric-model3d", value: window.id)
+            case .charts:
+                dismissWindow(id: "volumetric-chart3d", value: window.id)
+            case .column, .spatial, .volume:
+                // These use the regular window group
+                dismissWindow(value: NewWindowID.ID(window.id))
+            }
+            
+            // Mark as closed in the manager
+            windowManager.markWindowAsClosed(window.id)
+        }
+        
+        // Clean up entities
+        Task { @MainActor in
+            EntityLifecycleManager.shared.cleanupAll()
+        }
+        
+        // Remove all windows from the manager
+        windowManager.clearAllWindows()
+        
+        print("🗑️ Closed and cleaned up \(allWindows.count) windows")
     }
 
     // MARK: - Window Action Handler
@@ -2430,132 +2254,6 @@ struct ProTip: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding()
-        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-// MARK: - Welcome Content View
-struct WelcomeContentView: View {
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Header with dismiss button
-            HStack {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Image(systemName: "sparkles")
-                            .font(.largeTitle)
-                            .foregroundStyle(.blue)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Welcome to Pulto")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-
-                            Text("Your spatial data visualization workspace")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Text("Get started with spatial computing and data visualization in visionOS")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Divider()
-
-            // Getting Started Steps
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Getting Started")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    WelcomeStep(
-                        icon: "1.circle.fill",
-                        title: "Create Your First Project",
-                        description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
-                    )
-
-                    WelcomeStep(
-                        icon: "2.circle.fill",
-                        title: "Import Your Data",
-                        description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
-                    )
-
-                    WelcomeStep(
-                        icon: "3.circle.fill",
-                        title: "Build Visualizations",
-                        description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
-                    )
-                }
-            }
-
-            Divider()
-
-            // Pro Tips
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundStyle(.yellow)
-                    Text("Pro Tips")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    ProTip(
-                        icon: "person.circle.fill",
-                        color: .green,
-                        title: "Sign in to sync your projects",
-                        description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
-                    )
-
-                    ProTip(
-                        icon: "gearshape.fill",
-                        color: .orange,
-                        title: "Configure your workspace",
-                        description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
-                    )
-
-                    ProTip(
-                        icon: "cube.fill",
-                        color: .purple,
-                        title: "Explore volumetric 3D models",
-                        description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
-                    )
-                }
-            }
-
-            // Action buttons
-            HStack {
-                Spacer()
-
-                Button("Get Started") {
-                    // Mark welcome as dismissed when user clicks Get Started
-                    UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
-                    onDismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            }
-            .padding(.top)
-        }
-        .padding(24)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
     }
 }
 
