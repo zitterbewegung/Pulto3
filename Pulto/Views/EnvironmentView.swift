@@ -286,6 +286,7 @@ struct EnhancedActiveWindowsView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
+                                .padding(.horizontal, 12)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding()
@@ -2184,6 +2185,7 @@ struct ProTip: View {
             Text(text)
                 .font(.subheadline)
         }
+
         .padding()
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -2417,6 +2419,7 @@ struct SettingsSheetWrapper: View {
             }
         }
         .frame(width: 700, height: 600)
+
     }
 }
 
