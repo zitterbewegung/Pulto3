@@ -78,6 +78,21 @@ enum StandardWindowType: String, CaseIterable {
     }
 }
 
+// MARK: - Extensions
+
+extension WindowType {
+    var inspectorIconColor: Color {
+        switch self {
+        case .column: return .green
+        case .charts: return .blue
+        case .spatial: return .purple
+        case .volume: return .orange
+        case .pointcloud: return .cyan
+        case .model3d: return .red
+        }
+    }
+}
+
 // MARK: - Window info row component
 struct WindowInfoRow: View {
     let label: String
@@ -240,42 +255,63 @@ struct EnhancedActiveWindowsView: View {
                                     Spacer()
                                 }
                                 
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(workspaceManager.getCustomWorkspaces().prefix(10)) { workspace in
-                                            RecentProjectCard(
-                                                workspace: workspace,
-                                                onTap: { workspace in
-                                                    // Handle loading the workspace
-                                                    // This would need to be passed in as a parameter
-                                                }
-                                            )
-                                        }
+                                LazyVGrid(columns: [
+                                    GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
+                                ], spacing: 16) {
+                                    ForEach(workspaceManager.getCustomWorkspaces().prefix(12)) { workspace in
+                                        RecentProjectCard(
+                                            workspace: workspace,
+                                            onTap: { workspace in
+                                                // Handle loading the workspace
+                                                // This would need to be passed in as a parameter
+                                            }
+                                        )
                                     }
-                                    .padding(.horizontal, 12)
+                                }
+                                .padding(.horizontal, 12)
+                            }
+                        } else {
+                            // Show placeholder when no recent projects exist
+                            VStack(spacing: 16) {
+                                Image(systemName: "folder.badge.questionmark")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    Text("No Recent Projects")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Create a new project to get started")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                         }
                         
-                        // Show simple empty state when no windows and no recent projects
-                        VStack(spacing: 16) {
-                            Image(systemName: "rectangle.dashed")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            
-                            VStack(spacing: 8) {
-                                Text("No Active Views")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                
-                                Text("Create a new view using the options above")
-                                    .font(.subheadline)
+                        if workspaceManager.getCustomWorkspaces().isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "rectangle.dashed")
+                                    .font(.system(size: 48))
                                     .foregroundStyle(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    Text("No Active Views")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Create a new view using the options above")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding()
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     } else {
                         VStack(alignment: .leading, spacing: 20) {
                             // Quick Actions Section
@@ -750,7 +786,7 @@ struct WindowInspectorView: View {
     }
 }
 
-// MARK: - Missing Window Components
+// MARK: - Window Components
 
 struct SelectableWindowRow: View {
     let window: NewWindowID
@@ -896,7 +932,7 @@ struct WindowRow: View {
     }
 }
 
-// MARK: - Recent Project Card for Horizontal Layout
+// MARK: - Recent Project Card for Grid Layout
 struct RecentProjectCard: View {
     let workspace: WorkspaceMetadata
     let onTap: (WorkspaceMetadata) -> Void
@@ -910,7 +946,7 @@ struct RecentProjectCard: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.blue.opacity(0.1))
-                        .frame(width: 60, height: 60)
+                        .frame(height: 60)
                     
                     Image(systemName: "folder.fill")
                         .font(.title2)
@@ -921,7 +957,8 @@ struct RecentProjectCard: View {
                 Text(workspace.name)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 
                 // Project Details
                 VStack(alignment: .leading, spacing: 4) {
@@ -938,13 +975,62 @@ struct RecentProjectCard: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(width: 140)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 140)
             .padding(12)
             .background(Color.gray.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(PlainButtonStyle())
     }
+}
+
+// MARK: - Supporting Views
+
+// StatCard component
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(.blue)
+                Spacer()
+            }
+            
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// Settings Section Helper
+@ViewBuilder
+private func SettingsSection<Content: View>(
+    _ title: String,
+    @ViewBuilder content: () -> Content
+) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+        Text(title)
+            .font(.headline)
+            .fontWeight(.semibold)
+        
+        VStack(alignment: .leading, spacing: 8) {
+            content()
+        }
+    }
+    .padding()
+    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
 }
 
 // MARK: - Main Environment View
@@ -989,150 +1075,8 @@ struct EnvironmentView: View {
                         }
                     )
                 } else {
-                    // Show the workspace - Enhanced three-column layout for visionOS
-                    if showNavigationView && showInspector {
-                        // Three-column layout: Sidebar + Content + Inspector
-                        NavigationSplitView(columnVisibility: $columnVisibility) {
-                            // Sidebar with Recent Projects navigation
-                            RecentProjectsSidebar(
-                                workspaceManager: workspaceManager,
-                                loadWorkspace: loadWorkspace
-                            )
-                            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
-                        } content: {
-                            // Main content view with NavigationStack toolbar
-                            EnhancedActiveWindowsView(
-                                windowManager: windowManager,
-                                openWindow: { openWindow(value: $0) },
-                                closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: clearAllWindowsWithConfirmation,
-                                sheetManager: sheetManager,
-                                createWindow: createStandardWindow,
-                                selectedWindow: $selectedWindow,
-                                viewModel: viewModel,
-                                navigationState: navigationState,
-                                showNavigationView: showNavigationView,
-                                showInspector: showInspector,
-                                onHomeButtonTap: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showNavigationView.toggle()
-                                    }
-                                },
-                                onInspectorToggle: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showInspector.toggle()
-                                    }
-                                }
-                            )
-                            .navigationSplitViewColumnWidth(min: 600, ideal: 800, max: 1200)
-                        } detail: {
-                            // Inspector panel
-                            WindowInspectorView(
-                                selectedWindow: selectedWindow,
-                                windowManager: windowManager,
-                                onWindowAction: { action, windowId in
-                                    handleWindowAction(action, windowId: windowId)
-                                }
-                            )
-                            .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
-                        }
-                        .navigationSplitViewStyle(.balanced)
-                    } else if showNavigationView && !showInspector {
-                        // Two-column layout: Sidebar + Content (no inspector)
-                        NavigationSplitView {
-                            RecentProjectsSidebar(
-                                workspaceManager: workspaceManager,
-                                loadWorkspace: loadWorkspace
-                            )
-                            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
-                        } detail: {
-                            EnhancedActiveWindowsView(
-                                windowManager: windowManager,
-                                openWindow: { openWindow(value: $0) },
-                                closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: clearAllWindowsWithConfirmation,
-                                sheetManager: sheetManager,
-                                createWindow: createStandardWindow,
-                                selectedWindow: $selectedWindow,
-                                viewModel: viewModel,
-                                navigationState: navigationState,
-                                showNavigationView: showNavigationView,
-                                showInspector: showInspector,
-                                onHomeButtonTap: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showNavigationView.toggle()
-                                    }
-                                },
-                                onInspectorToggle: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showInspector.toggle()
-                                    }
-                                }
-                            )
-                        }
-                    } else if !showNavigationView && showInspector {
-                        // Two-column layout: Content + Inspector (no sidebar)
-                        NavigationSplitView {
-                            EnhancedActiveWindowsView(
-                                windowManager: windowManager,
-                                openWindow: { openWindow(value: $0) },
-                                closeWindow: { windowManager.removeWindow($0) },
-                                closeAllWindows: clearAllWindowsWithConfirmation,
-                                sheetManager: sheetManager,
-                                createWindow: createStandardWindow,
-                                selectedWindow: $selectedWindow,
-                                viewModel: viewModel,
-                                navigationState: navigationState,
-                                showNavigationView: showNavigationView,
-                                showInspector: showInspector,
-                                onHomeButtonTap: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showNavigationView.toggle()
-                                    }
-                                },
-                                onInspectorToggle: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showInspector.toggle()
-                                    }
-                                }
-                            )
-                            .navigationSplitViewColumnWidth(min: 600, ideal: 900, max: 1200)
-                        } detail: {
-                            WindowInspectorView(
-                                selectedWindow: selectedWindow,
-                                windowManager: windowManager,
-                                onWindowAction: { action, windowId in
-                                    handleWindowAction(action, windowId: windowId)
-                                }
-                            )
-                            .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
-                        }
-                    } else {
-                        // Single column: Content only (no sidebar, no inspector)
-                        EnhancedActiveWindowsView(
-                            windowManager: windowManager,
-                            openWindow: { openWindow(value: $0) },
-                            closeWindow: { windowManager.removeWindow($0) },
-                            closeAllWindows: clearAllWindowsWithConfirmation,
-                            sheetManager: sheetManager,
-                            createWindow: createStandardWindow,
-                            selectedWindow: $selectedWindow,
-                            viewModel: viewModel,
-                            navigationState: navigationState,
-                            showNavigationView: showNavigationView,
-                            showInspector: showInspector,
-                            onHomeButtonTap: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showNavigationView.toggle()
-                                }
-                            },
-                            onInspectorToggle: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showInspector.toggle()
-                                }
-                            }
-                        )
-                    }
+                    // Show the workspace view
+                    workspaceView
                 }
             }
         }
@@ -1158,7 +1102,108 @@ struct EnvironmentView: View {
         }
     }
 
-    // MARK: - Single Sheet Content Builder
+    // MARK: - Workspace View (broken out to reduce complexity)
+    @ViewBuilder
+    private var workspaceView: some View {
+        if showNavigationView && showInspector {
+            threeColumnLayout
+        } else if showNavigationView && !showInspector {
+            twoColumnLayoutWithSidebar
+        } else if !showNavigationView && showInspector {
+            twoColumnLayoutWithInspector
+        } else {
+            singleColumnLayout
+        }
+    }
+
+    // MARK: - Layout Variations
+    @ViewBuilder
+    private var threeColumnLayout: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            RecentProjectsSidebar(
+                workspaceManager: workspaceManager,
+                loadWorkspace: loadWorkspace
+            )
+            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+        } content: {
+            enhancedActiveWindowsView
+                .navigationSplitViewColumnWidth(min: 600, ideal: 800, max: 1200)
+        } detail: {
+            inspectorView
+                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    @ViewBuilder
+    private var twoColumnLayoutWithSidebar: some View {
+        NavigationSplitView {
+            RecentProjectsSidebar(
+                workspaceManager: workspaceManager,
+                loadWorkspace: loadWorkspace
+            )
+            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+        } detail: {
+            enhancedActiveWindowsView
+        }
+    }
+
+    @ViewBuilder
+    private var twoColumnLayoutWithInspector: some View {
+        NavigationSplitView {
+            enhancedActiveWindowsView
+                .navigationSplitViewColumnWidth(min: 600, ideal: 900, max: 1200)
+        } detail: {
+            inspectorView
+                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+        }
+    }
+
+    @ViewBuilder
+    private var singleColumnLayout: some View {
+        enhancedActiveWindowsView
+    }
+
+    // MARK: - Reusable View Components
+    @ViewBuilder
+    private var enhancedActiveWindowsView: some View {
+        EnhancedActiveWindowsView(
+            windowManager: windowManager,
+            openWindow: { openWindow(value: $0) },
+            closeWindow: { windowManager.removeWindow($0) },
+            closeAllWindows: clearAllWindowsWithConfirmation,
+            sheetManager: sheetManager,
+            createWindow: createStandardWindow,
+            selectedWindow: $selectedWindow,
+            viewModel: viewModel,
+            navigationState: navigationState,
+            showNavigationView: showNavigationView,
+            showInspector: showInspector,
+            onHomeButtonTap: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showNavigationView.toggle()
+                }
+            },
+            onInspectorToggle: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showInspector.toggle()
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var inspectorView: some View {
+        WindowInspectorView(
+            selectedWindow: selectedWindow,
+            windowManager: windowManager,
+            onWindowAction: { action, windowId in
+                handleWindowAction(action, windowId: windowId)
+            }
+        )
+    }
+
+    // MARK: - Sheet Content Builder
     @ViewBuilder
     private func sheetContent(for type: SheetType, data: AnyHashable?) -> some View {
         switch type {
@@ -1201,236 +1246,6 @@ struct EnvironmentView: View {
         default:
             EmptyView()
                 .environmentObject(sheetManager)
-        }
-    }
-
-    // MARK: - Sheet Wrapper Views (these handle their own dismissal)
-
-    struct WorkspaceDialogWrapper: View {
-        let windowManager: WindowTypeManager
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            WorkspaceDialog(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                ),
-                windowManager: windowManager
-            )
-        }
-    }
-
-    struct NotebookImportDialogWrapper: View {
-        let windowManager: WindowTypeManager
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            NotebookImportDialog(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                ),
-                windowManager: windowManager
-            )
-        }
-    }
-
-    struct WelcomeSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            WelcomeSheet(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in
-                        // Mark welcome as dismissed when the sheet is closed
-                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
-                        sheetManager.dismissSheet()
-                    }
-                )
-            )
-        }
-    }
-
-    struct AppleSignInWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-
-        var body: some View {
-            AppleSignInView(
-                isPresented: Binding(
-                    get: { true },
-                    set: { _ in sheetManager.dismissSheet() }
-                )
-            )
-        }
-    }
-
-    struct ActiveWindowsSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-        @StateObject private var windowManager = WindowTypeManager.shared
-        @Environment(\.openWindow) private var openWindow
-
-        var body: some View {
-            NavigationStack {
-                ActiveWindowsView(
-                    windowManager: windowManager,
-                    openWindow: { openWindow(value: $0) },
-                    closeWindow: { windowManager.removeWindow($0) },
-                    closeAllWindows: {
-                        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
-                    },
-                    sheetManager: sheetManager,
-                    createWindow: { _ in }
-                )
-                .navigationTitle("Active Windows")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") {
-                            sheetManager.dismissSheet()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .frame(width: 1000, height: 700)
-        }
-    }
-
-    struct SettingsSheetWrapper: View {
-        @EnvironmentObject var sheetManager: SheetManager
-        @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
-        @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
-
-        var body: some View {
-            NavigationStack {
-                VStack(spacing: 20) {
-                    // Settings Content
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // Auto-Save
-                            SettingsSection("Workspace") {
-                                Toggle("Auto-save after every window action", isOn: .constant(true))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 4)
-                            }
-
-                            // Jupyter
-                            SettingsSection("Jupyter Server") {
-                                HStack {
-                                    Text("Default Server URL")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                }
-
-                                TextField("Enter Jupyter server URL", text: $defaultJupyterURL)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.body, design: .monospaced))
-
-                                Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                // Quick preset buttons for Jupyter
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quick Options:")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                        ForEach(["http://localhost:8888", "http://localhost:8889", "http://127.0.0.1:8888"], id: \.self) { url in
-                                            Button(url) {
-                                                defaultJupyterURL = url
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .font(.caption)
-                                            .fontDesign(.monospaced)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Superset
-                            SettingsSection("Superset Server") {
-                                HStack {
-                                    Text("Default Server URL")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                }
-
-                                TextField("Enter Superset server URL", text: $defaultSupersetURL)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.body, design: .monospaced))
-
-                                Text("Default Apache Superset server to connect to for dashboard visualizations")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                // Quick preset buttons
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quick Options:")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.secondary)
-
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                        ForEach(["http://localhost:8088", "https://your-superset-instance.com"], id: \.self) { url in
-                                            Button(url) {
-                                                defaultSupersetURL = url
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .font(.caption)
-                                            .fontDesign(.monospaced)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // General
-                            SettingsSection("General") {
-                                Toggle("Enable Notifications", isOn: .constant(true))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                HStack {
-                                    Text("Maximum Recent Projects")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                    Text("10")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .padding()
-                    }
-
-                    Spacer()
-                }
-                .navigationTitle("Settings")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") {
-                            sheetManager.dismissSheet()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .frame(width: 700, height: 600)
         }
     }
 
@@ -1498,7 +1313,38 @@ struct EnvironmentView: View {
 
     @MainActor
     private func clearAllWindowsWithConfirmation() {
-        windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+        let allWindows = windowManager.getAllWindows()
+        let openWindows = windowManager.getAllWindows(onlyOpen: true)
+        
+        // First, dismiss all actual SwiftUI windows
+        for window in openWindows {
+            // Dismiss the appropriate window based on window type
+            switch window.windowType {
+            case .pointcloud:
+                dismissWindow(id: "volumetric-pointcloud", value: window.id)
+                dismissWindow(id: "volumetric-pointclouddemo", value: window.id)
+            case .model3d:
+                dismissWindow(id: "volumetric-model3d", value: window.id)
+            case .charts:
+                dismissWindow(id: "volumetric-chart3d", value: window.id)
+            case .column, .spatial, .volume:
+                // These use the regular window group
+                dismissWindow(value: NewWindowID.ID(window.id))
+            }
+            
+            // Mark as closed in the manager
+            windowManager.markWindowAsClosed(window.id)
+        }
+        
+        // Clean up entities
+        Task { @MainActor in
+            EntityLifecycleManager.shared.cleanupAll()
+        }
+        
+        // Remove all windows from the manager
+        windowManager.clearAllWindows()
+        
+        print("🗑️ Closed and cleaned up \(allWindows.count) windows")
     }
 
     // MARK: - Window Action Handler
@@ -1565,7 +1411,6 @@ struct PultoHomeContentView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(24)
-                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                 } else if !viewModel.recentProjects.isEmpty {
                     RecentProjectsSection(
                         projects: viewModel.recentProjects,
@@ -1602,7 +1447,7 @@ struct PultoHomeContentView: View {
 
                 // Create the project with automatic notebook generation
                 if let notebookURL = windowManager.createNewProjectWithNotebook(projectName: projectName) {
-                    print(" Created new project with notebook: \(notebookURL.lastPathComponent)")
+                    print("✅ Created new project with notebook: \(notebookURL.lastPathComponent)")
 
                     // Create a new project object
                     let newProject = Project(
@@ -1623,9 +1468,9 @@ struct PultoHomeContentView: View {
                     // Set as selected project
                     windowManager.setSelectedProject(newProject)
 
-                    print(" New project '\(newProject.name)' created successfully")
+                    print("✅ New project '\(newProject.name)' created successfully")
                 } else {
-                    print(" Failed to create notebook for new project")
+                    print("❌ Failed to create notebook for new project")
                     // Still continue to open the workspace even if notebook creation failed
                 }
 
@@ -1635,7 +1480,7 @@ struct PultoHomeContentView: View {
                 }
 
             } catch {
-                print(" Error creating new project: \(error)")
+                print("❌ Error creating new project: \(error)")
                 // Still try to open the workspace
                 await MainActor.run {
                     onOpenWorkspace()
@@ -1687,11 +1532,11 @@ struct PultoHomeContentView: View {
         openWindow(value: newWindowID)
         windowManager.markWindowAsOpened(newWindowID)
         
-        print(" Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
+        print("📁 Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
     }
 }
 
-// MARK: - Original ActiveWindowsView (maintained for compatibility)
+// MARK: - Active Windows View
 struct ActiveWindowsView: View {
     let windowManager: WindowTypeManager
     let openWindow: (Int) -> Void
@@ -1781,9 +1626,7 @@ struct ActiveWindowsView: View {
                                 .font(.title2)
                                 .fontWeight(.semibold)
 
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()), GridItem(.flexible())
-                            ], spacing: 8) {
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(WindowType.allCases, id: \.self) { type in
                                     let count = windowManager.getAllWindows()
                                         .filter { $0.windowType == type }.count
@@ -2127,12 +1970,26 @@ struct ProjectDetailView: View {
 
                         // Project Stats
                         HStack(spacing: 20) {
-                            Label("\(workspace.totalWindows) views", systemImage: "rectangle.stack")
-                            Label(workspace.displaySize, systemImage: "doc")
-                            Label(workspace.formattedModifiedDate, systemImage: "clock")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(workspace.totalWindows)")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                Text("Windows")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(workspace.tags.count)")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                Text("Tags")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
                         }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                     }
                     .padding()
                     .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
@@ -2143,13 +2000,16 @@ struct ProjectDetailView: View {
                             Text("Tags")
                                 .font(.headline)
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            LazyVGrid(columns: [
+                                GridItem(.adaptive(minimum: 80), spacing: 8)
+                            ], spacing: 8) {
                                 ForEach(workspace.tags, id: \.self) { tag in
                                     Text(tag)
                                         .font(.caption)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
-                                        .background(Color.blue.opacity(0.2))
+                                        .background(Color.blue.opacity(0.15))
+                                        .foregroundStyle(.blue)
                                         .clipShape(Capsule())
                                 }
                             }
@@ -2158,17 +2018,34 @@ struct ProjectDetailView: View {
                         .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     }
 
-                    // Category Info
+                    // Project Info
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Category")
+                        Text("Project Information")
                             .font(.headline)
 
-                        HStack {
-                            Image(systemName: workspace.category.iconName)
-                                .foregroundStyle(workspace.category.color)
-                            Text(workspace.category.displayName)
-                                .font(.subheadline)
-                            Spacer()
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("Created")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(workspace.createdDate, style: .date)
+                            }
+
+                            HStack {
+                                Text("Last Modified")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(workspace.modifiedDate, style: .relative)
+                            }
+
+                            if workspace.totalWindows > 0 {
+                                HStack {
+                                    Text("Windows")
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text("\(workspace.totalWindows)")
+                                }
+                            }
                         }
                     }
                     .padding()
@@ -2180,197 +2057,86 @@ struct ProjectDetailView: View {
     }
 }
 
-// MARK: - Helper Views
+// MARK: - Welcome Sheet Components
 
-struct StatCard: View {
-    let title: String
-    let value: String
-    let icon:  String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.title2)
-                .fontWeight(.semibold)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-// MARK: - Helper Views for Settings
-private func SettingsSection<Content: View>(
-    _ title: String,
-    @ViewBuilder content: () -> Content
-) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-        Text(title)
-            .font(.headline)
-            .fontWeight(.semibold)
-
-        VStack(alignment: .leading, spacing: 8) { content() }
-            .padding()
-            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-// MARK: - WindowType Extensions
-extension WindowType {
-    var icon: String {
-        switch self {
-        case .charts:     return "chart.line.uptrend.xyaxis"
-        case .spatial:    return "rectangle.3.group"
-        case .column:     return "tablecells"
-        case .volume:     return "gauge"
-        case .pointcloud: return "circle.grid.3x3"
-        case .model3d:    return "cube"
-        }
-    }
-
-    var inspectorDescription: String {
-        switch self {
-        case .charts: return "Interactive data visualization charts"
-        case .spatial: return "3D spatial data representation"
-        case .column: return "Tabular data display with sorting and filtering"
-        case .volume: return "Volumetric data visualization"
-        case .pointcloud: return "3D point cloud visualization"
-        case .model3d: return "3D model viewer and manipulation"
-        }
-    }
-
-    var inspectorIconColor: Color {
-        switch self {
-        case .charts: return .blue
-        case .spatial: return .purple
-        case .column: return .green
-        case .volume: return .orange
-        case .pointcloud: return .cyan
-        case .model3d: return .red
-        }
-    }
-
-    func toStandardWindowType() -> StandardWindowType {
-        switch self {
-        case .column: return .dataFrame
-        case .pointcloud: return .pointCloud
-        case .model3d: return .model3d
-        case .volume: return .iotDashboard
-        default: return .dataFrame
-        }
-    }
-}
-
-// MARK: - Welcome Components
 struct WelcomeSheet: View {
     @Binding var isPresented: Bool
-
+    
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(spacing: 24) {
                     // Header
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Image(systemName: "sparkles")
-                                .font(.largeTitle)
-                                .foregroundStyle(.blue)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Welcome to Pulto")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-
-                                Text("Your spatial data visualization workspace")
-                                    .font(.title3)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-                        }
-
-                        Text("Get started with spatial computing and data visualization in visionOS")
-                            .font(.body)
+                    VStack(spacing: 16) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.blue)
+                        
+                        Text("Welcome to Pulto")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        Text("Your spatial data visualization platform")
+                            .font(.title3)
                             .foregroundStyle(.secondary)
                     }
-
-                    Divider()
-
-                    // Getting Started Steps
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("Getting Started")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-
-                        VStack(alignment: .leading, spacing: 16) {
-                            WelcomeStep(
-                                icon: "1.circle.fill",
-                                title: "Create Your First Project",
-                                description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
+                    .padding()
+                    
+                    // Features
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                        WelcomeStep(
+                            icon: "plus.square.on.square",
+                            title: "Create Projects",
+                            description: "Start new data visualization projects"
+                        )
+                        
+                        WelcomeStep(
+                            icon: "cube",
+                            title: "3D Models",
+                            description: "Visualize 3D models and point clouds"
+                        )
+                        
+                        WelcomeStep(
+                            icon: "chart.bar",
+                            title: "Charts & Graphs",
+                            description: "Create interactive visualizations"
+                        )
+                        
+                        WelcomeStep(
+                            icon: "doc.text",
+                            title: "Import Notebooks",
+                            description: "Import Jupyter notebooks seamlessly"
+                        )
+                    }
+                    .padding()
+                    
+                    // Tips
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Pro Tips")
+                            .font(.headline)
+                        
+                        VStack(spacing: 8) {
+                            ProTip(
+                                icon: "command",
+                                text: "Use keyboard shortcuts for faster navigation",
+                                color: .blue
                             )
-
-                            WelcomeStep(
-                                icon: "2.circle.fill",
-                                title: "Import Your Data",
-                                description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
-                            )
-
-                            WelcomeStep(
-                                icon: "3.circle.fill",
-                                title: "Build Visualizations",
-                                description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
+                            
+                            ProTip(
+                                icon: "hand.tap",
+                                text: "Tap and hold for context menus",
+                                color: .green
                             )
                         }
                     }
-
-                    Divider()
-
-                    // Pro Tips
-                    VStack(alignment: .leading, spacing: 20) {
-                        HStack {
-                            Image(systemName: "lightbulb.fill")
-                                .foregroundStyle(.yellow)
-                            Text("Pro Tips")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-
-                        VStack(alignment: .leading, spacing: 16) {
-                            ProTip(
-                                icon: "person.circle.fill",
-                                color: .green,
-                                title: "Sign in to sync your projects",
-                                description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
-                            )
-
-                            ProTip(
-                                icon: "gearshape.fill",
-                                color: .orange,
-                                title: "Configure your workspace",
-                                description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
-                            )
-
-                            ProTip(
-                                icon: "cube.fill",
-                                color: .purple,
-                                title: "Explore volumetric 3D models",
-                                description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
-                            )
-                        }
-                    }
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
-                        // Mark welcome as dismissed when the sheet is closed
-                        UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                    Button("Get Started") {
                         isPresented = false
                     }
                     .buttonStyle(.borderedProminent)
@@ -2378,7 +2144,6 @@ struct WelcomeSheet: View {
             }
         }
         .frame(width: 600, height: 700)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
     }
 }
 
@@ -2386,180 +2151,276 @@ struct WelcomeStep: View {
     let icon: String
     let title: String
     let description: String
-
+    
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.title)
                 .foregroundStyle(.blue)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            
+            Text(title)
+                .font(.headline)
+            
+            Text(description)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .padding()
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
 struct ProTip: View {
-    let icon:  String
+    let icon: String
+    let text: String
     let color: Color
-    let title: String
-    let description: String
-
+    
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(spacing: 12) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .font(.title2)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.medium)
-
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            
+            Text(text)
+                .font(.subheadline)
         }
         .padding()
-        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        .background(color.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
-// MARK: - Welcome Content View
-struct WelcomeContentView: View {
-    let onDismiss: () -> Void
+// MARK: - Sheet Wrapper Views (these handle their own dismissal)
+
+struct WorkspaceDialogWrapper: View {
+    let windowManager: WindowTypeManager
+    @EnvironmentObject var sheetManager: SheetManager
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Header with dismiss button
-            HStack {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Image(systemName: "sparkles")
-                            .font(.largeTitle)
-                            .foregroundStyle(.blue)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Welcome to Pulto")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-
-                            Text("Your spatial data visualization workspace")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Text("Get started with spatial computing and data visualization in visionOS")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Divider()
-
-            // Getting Started Steps
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Getting Started")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    WelcomeStep(
-                        icon: "1.circle.fill",
-                        title: "Create Your First Project",
-                        description: "Start with a new project, explore templates, or import Jupyter notebooks from the Workspace tab"
-                    )
-
-                    WelcomeStep(
-                        icon: "2.circle.fill",
-                        title: "Import Your Data",
-                        description: "Use the Data tab to import CSV, JSON, images, or 3D models and automatically create visualizations"
-                    )
-
-                    WelcomeStep(
-                        icon: "3.circle.fill",
-                        title: "Build Visualizations",
-                        description: "Create charts, data tables, and 3D spatial views from the Create tab to explore your data"
-                    )
-                }
-            }
-
-            Divider()
-
-            // Pro Tips
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundStyle(.yellow)
-                    Text("Pro Tips")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    ProTip(
-                        icon: "person.circle.fill",
-                        color: .green,
-                        title: "Sign in to sync your projects",
-                        description: "Tap the profile button in the header to sign in with Apple ID and keep your work synced across devices"
-                    )
-
-                    ProTip(
-                        icon: "gearshape.fill",
-                        color: .orange,
-                        title: "Configure your workspace",
-                        description: "Access settings from the gear icon to customize auto-save, Jupyter server connections, and more"
-                    )
-
-                    ProTip(
-                        icon: "cube.fill",
-                        color: .purple,
-                        title: "Explore volumetric 3D models",
-                        description: "Import 3D models and view them in immersive space for the ultimate spatial computing experience"
-                    )
-                }
-            }
-
-            // Action buttons
-            HStack {
-                Spacer()
-
-                Button("Get Started") {
-                    // Mark welcome as dismissed when user clicks Get Started
-                    UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
-                    onDismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            }
-            .padding(.top)
-        }
-        .padding(24)
-        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 24))
+        WorkspaceDialog(
+            isPresented: Binding(
+                get: { true },
+                set: { _ in sheetManager.dismissSheet() }
+            ),
+            windowManager: windowManager
+        )
     }
 }
 
-// MARK: - Previews
+struct NotebookImportDialogWrapper: View {
+    let windowManager: WindowTypeManager
+    @EnvironmentObject var sheetManager: SheetManager
+
+    var body: some View {
+        NotebookImportDialog(
+            isPresented: Binding(
+                get: { true },
+                set: { _ in sheetManager.dismissSheet() }
+            ),
+            windowManager: windowManager
+        )
+    }
+}
+
+struct WelcomeSheetWrapper: View {
+    @EnvironmentObject var sheetManager: SheetManager
+
+    var body: some View {
+        WelcomeSheet(
+            isPresented: Binding(
+                get: { true },
+                set: { _ in
+                    // Mark welcome as dismissed when the sheet is closed
+                    UserDefaults.standard.set(true, forKey: "WelcomeSheetDismissed")
+                    sheetManager.dismissSheet()
+                }
+            )
+        )
+    }
+}
+
+struct AppleSignInWrapper: View {
+    @EnvironmentObject var sheetManager: SheetManager
+
+    var body: some View {
+        AppleSignInView(
+            isPresented: Binding(
+                get: { true },
+                set: { _ in sheetManager.dismissSheet() }
+            )
+        )
+    }
+}
+
+struct ActiveWindowsSheetWrapper: View {
+    @EnvironmentObject var sheetManager: SheetManager
+    @StateObject private var windowManager = WindowTypeManager.shared
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        NavigationStack {
+            ActiveWindowsView(
+                windowManager: windowManager,
+                openWindow: { openWindow(value: $0) },
+                closeWindow: { windowManager.removeWindow($0) },
+                closeAllWindows: {
+                    windowManager.getAllWindows().forEach { windowManager.removeWindow($0.id) }
+                },
+                sheetManager: sheetManager,
+                createWindow: { _ in }
+            )
+            .navigationTitle("Active Windows")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        sheetManager.dismissSheet()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .frame(width: 1000, height: 700)
+    }
+}
+
+struct SettingsSheetWrapper: View {
+    @EnvironmentObject var sheetManager: SheetManager
+    @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
+    @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                // Settings Content
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Auto-Save
+                        SettingsSection("Workspace") {
+                            Toggle("Auto-save after every window action", isOn: .constant(true))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+
+                            Text("Automatically saves your workspace configuration after any window is created, moved, or modified")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 4)
+                        }
+
+                        // Jupyter
+                        SettingsSection("Jupyter Server") {
+                            HStack {
+                                Text("Default Server URL")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+
+                            TextField("Enter Jupyter server URL", text: $defaultJupyterURL)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.body, design: .monospaced))
+
+                            Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            // Quick preset buttons for Jupyter
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Quick Options:")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.secondary)
+
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                    ForEach(["http://localhost:8888", "http://localhost:8889", "http://127.0.0.1:8888"], id: \.self) { url in
+                                        Button(url) {
+                                            defaultJupyterURL = url
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .font(.caption)
+                                        .fontDesign(.monospaced)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Superset
+                        SettingsSection("Superset Server") {
+                            HStack {
+                                Text("Default Server URL")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+
+                            TextField("Enter Superset server URL", text: $defaultSupersetURL)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.body, design: .monospaced))
+
+                            Text("Default Apache Superset server to connect to for dashboard visualizations")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            // Quick preset buttons
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Quick Options:")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.secondary)
+
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                    ForEach(["http://localhost:8088", "https://your-superset-instance.com"], id: \.self) { url in
+                                        Button(url) {
+                                            defaultSupersetURL = url
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .font(.caption)
+                                        .fontDesign(.monospaced)
+                                    }
+                                }
+                            }
+                        }
+
+                        // General
+                        SettingsSection("General") {
+                            Toggle("Enable Notifications", isOn: .constant(true))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+
+                            HStack {
+                                Text("Maximum Recent Projects")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("10")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+
+                Spacer()
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        sheetManager.dismissSheet()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .frame(width: 700, height: 600)
+    }
+}
+
+// MARK: - Preview
 struct EnvironmentView_Previews: PreviewProvider {
     static var previews: some View { EnvironmentView() }
 }

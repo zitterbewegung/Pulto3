@@ -24,6 +24,39 @@ enum WindowType: String, CaseIterable, Codable, Hashable {
 
     var displayName: String { rawValue }
 
+    var icon: String {
+        switch self {
+        case .charts: return "chart.bar.fill"
+        case .spatial: return "cube.transparent.fill"
+        case .column: return "tablecells.fill"
+        case .volume: return "gauge.high"
+        case .pointcloud: return "circle.grid.3x3.fill"
+        case .model3d: return "cube.fill"
+        }
+    }
+
+    var inspectorDescription: String {
+        switch self {
+        case .charts: return "Interactive charts and data visualizations"
+        case .spatial: return "Spatial data editor and processor"
+        case .column: return "Tabular data viewer and editor"
+        case .volume: return "Model metrics and performance monitoring"
+        case .pointcloud: return "3D point cloud visualization and analysis"
+        case .model3d: return "3D models and mesh visualization"
+        }
+    }
+
+    func toStandardWindowType() -> StandardWindowType {
+        switch self {
+        case .charts: return .dataFrame  // Maps to closest equivalent
+        case .spatial: return .dataFrame  // Maps to closest equivalent
+        case .column: return .dataFrame
+        case .volume: return .iotDashboard
+        case .pointcloud: return .pointCloud
+        case .model3d: return .model3d
+        }
+    }
+
     var jupyterCellType: String {
         switch self {
         case .charts, .column, .volume, .pointcloud, .model3d: "code"
