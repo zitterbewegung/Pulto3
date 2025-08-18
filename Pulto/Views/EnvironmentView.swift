@@ -267,6 +267,7 @@ struct EnhancedActiveWindowsView: View {
                                             }
                                         )
                                     }
+<<<<<<< HEAD
                                 }
                                 .padding(.horizontal, 12)
                             }
@@ -285,9 +286,31 @@ struct EnhancedActiveWindowsView: View {
                                     Text("Create a new project to get started")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
+=======
+>>>>>>> version_0
                                 }
                                 .padding(.horizontal, 12)
                             }
+<<<<<<< HEAD
+=======
+                        } else {
+                            // Show placeholder when no recent projects exist
+                            VStack(spacing: 16) {
+                                Image(systemName: "folder.badge.questionmark")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    Text("No Recent Projects")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                    
+                                    Text("Create a new project to get started")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+>>>>>>> version_0
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding()
                             .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
@@ -2185,7 +2208,7 @@ struct ProTip: View {
             Text(text)
                 .font(.subheadline)
         }
-
+<<<<<<< HEAD
         .padding()
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -2419,7 +2442,8 @@ struct SettingsSheetWrapper: View {
             }
         }
         .frame(width: 700, height: 600)
-
+=======
+>>>>>>> version_0
     }
 }
 
