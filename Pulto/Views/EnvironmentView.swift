@@ -245,97 +245,26 @@ struct EnhancedActiveWindowsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     if windowManager.getAllWindows().isEmpty {
-                        // Show recent projects when no windows are active
-                        if !workspaceManager.getCustomWorkspaces().isEmpty {
-                            VStack(alignment: .leading, spacing: 20) {
-                                HStack {
-                                    Text("Recent Projects")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                    Spacer()
-                                }
+                        // Show placeholder when no active windows exist (removed recent projects section)
+                        VStack(spacing: 16) {
+                            Image(systemName: "rectangle.dashed")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+                            
+                            VStack(spacing: 8) {
+                                Text("No Active Views")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
                                 
-                                LazyVGrid(columns: [
-                                    GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
-                                ], spacing: 16) {
-                                    ForEach(workspaceManager.getCustomWorkspaces().prefix(12)) { workspace in
-                                        RecentProjectCard(
-                                            workspace: workspace,
-                                            onTap: { workspace in
-                                                // Handle loading the workspace
-                                                // This would need to be passed in as a parameter
-                                            }
-                                        )
-                                    }
-<<<<<<< HEAD
-                                }
-                                .padding(.horizontal, 12)
-                            }
-                        } else {
-                            // Show placeholder when no recent projects exist
-                            VStack(spacing: 16) {
-                                Image(systemName: "folder.badge.questionmark")
-                                    .font(.system(size: 48))
+                                Text("Create a new view using the options above")
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
-                                
-                                VStack(spacing: 8) {
-                                    Text("No Recent Projects")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                    
-                                    Text("Create a new project to get started")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-=======
->>>>>>> version_0
-                                }
-                                .padding(.horizontal, 12)
                             }
-<<<<<<< HEAD
-=======
-                        } else {
-                            // Show placeholder when no recent projects exist
-                            VStack(spacing: 16) {
-                                Image(systemName: "folder.badge.questionmark")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.secondary)
-                                
-                                VStack(spacing: 8) {
-                                    Text("No Recent Projects")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                    
-                                    Text("Create a new project to get started")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
->>>>>>> version_0
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding()
-                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                            .padding(.horizontal, 12)
                         }
-                        
-                        if workspaceManager.getCustomWorkspaces().isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "rectangle.dashed")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.secondary)
-                                
-                                VStack(spacing: 8) {
-                                    Text("No Active Views")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                    
-                                    Text("Create a new view using the options above")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding()
-                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
-                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding()
+                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     } else {
                         VStack(alignment: .leading, spacing: 20) {
                             // Quick Actions Section
@@ -1368,7 +1297,7 @@ struct EnvironmentView: View {
         // Remove all windows from the manager
         windowManager.clearAllWindows()
         
-        print("🗑️ Closed and cleaned up \(allWindows.count) windows")
+        print(" Closed and cleaned up \(allWindows.count) windows")
     }
 
     // MARK: - Window Action Handler
@@ -1471,7 +1400,7 @@ struct PultoHomeContentView: View {
 
                 // Create the project with automatic notebook generation
                 if let notebookURL = windowManager.createNewProjectWithNotebook(projectName: projectName) {
-                    print("✅ Created new project with notebook: \(notebookURL.lastPathComponent)")
+                    print(" Created new project with notebook: \(notebookURL.lastPathComponent)")
 
                     // Create a new project object
                     let newProject = Project(
@@ -1492,9 +1421,9 @@ struct PultoHomeContentView: View {
                     // Set as selected project
                     windowManager.setSelectedProject(newProject)
 
-                    print("✅ New project '\(newProject.name)' created successfully")
+                    print(" Created new project '\(newProject.name)' successfully")
                 } else {
-                    print("❌ Failed to create notebook for new project")
+                    print(" Failed to create notebook for new project")
                     // Still continue to open the workspace even if notebook creation failed
                 }
 
@@ -1504,7 +1433,7 @@ struct PultoHomeContentView: View {
                 }
 
             } catch {
-                print("❌ Error creating new project: \(error)")
+                print(" Error creating new project: \(error)")
                 // Still try to open the workspace
                 await MainActor.run {
                     onOpenWorkspace()
@@ -1556,7 +1485,7 @@ struct PultoHomeContentView: View {
         openWindow(value: newWindowID)
         windowManager.markWindowAsOpened(newWindowID)
         
-        print("📁 Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
+        print(" Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
     }
 }
 
@@ -2208,7 +2137,7 @@ struct ProTip: View {
             Text(text)
                 .font(.subheadline)
         }
-<<<<<<< HEAD
+
         .padding()
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -2442,8 +2371,6 @@ struct SettingsSheetWrapper: View {
             }
         }
         .frame(width: 700, height: 600)
-=======
->>>>>>> version_0
     }
 }
 

@@ -6,6 +6,7 @@ class AudioManager: ObservableObject {
     
     private var audioEngine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
+    private var audioFile: AVAudioFile?
     
     private init() {
         setupAudioSession()
@@ -21,11 +22,58 @@ class AudioManager: ObservableObject {
     }
     
     func playStartupSound() {
-        // Create a pleasant startup sound using a simple tone
-        let frequency: Float = 800.0
-        let duration: TimeInterval = 0.5
+        // Try to play a sound file first, fallback to generated tone
+        if !playSoundFile(named: "startup_sound", type: "mp3") {
+            // Fallback to generated tone if sound file not found
+            playTone(frequency: 800.0, duration: 0.5)
+        }
+    }
+    
+    /// Plays a sound file from the app bundle
+    /// - Parameters:
+    ///   - name: The name of the sound file (without extension)
+    ///   - type: The file extension (e.g., "mp3", "wav", "m4a", "aiff", "aac")
+    /// - Returns: true if the file was found and playback started, false otherwise
+    func playSoundFile(named name: String, type: String) -> Bool {
+        guard let url = Bundle.main.url(forResource: name, withExtension: type) else {
+            print("Audio file not found: \(name).\(type)")
+            return false
+        }
         
-        playTone(frequency: frequency, duration: duration)
+        do {
+            // Clean up any existing audio engine
+            cleanupAudioEngine()
+            
+            // Create new audio engine and player node
+            audioEngine = AVAudioEngine()
+            playerNode = AVAudioPlayerNode()
+            
+            guard let engine = audioEngine, let player = playerNode else { return false }
+            
+            // Load audio file
+            audioFile = try AVAudioFile(forReading: url)
+            
+            // Attach nodes and connect them
+            engine.attach(player)
+            engine.connect(player, to: engine.mainMixerNode, format: audioFile?.processingFormat)
+            
+            // Schedule the file for playback
+            player.scheduleFile(audioFile!, at: nil, completionHandler: {
+                DispatchQueue.main.async {
+                    self.cleanupAudioEngine()
+                }
+            })
+            
+            // Start the engine and play
+            try engine.start()
+            player.play()
+            
+            return true
+        } catch {
+            print("Failed to play audio file: \(error)")
+            cleanupAudioEngine()
+            return false
+        }
     }
     
     private func playTone(frequency: Float, duration: TimeInterval) {
@@ -98,5 +146,6 @@ class AudioManager: ObservableObject {
         audioEngine?.stop()
         playerNode = nil
         audioEngine = nil
+        audioFile = nil
     }
 }
