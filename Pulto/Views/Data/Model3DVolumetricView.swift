@@ -13,6 +13,15 @@ struct Model3DVolumetricView: View {
     @State private var showWireframe = false
     @State private var modelScale: Float = 1.0
 
+    @StateObject private var exportManager = Model3DExportManager()
+    @State private var posX: Float = 0
+    @State private var posY: Float = 0
+    @State private var posZ: Float = 0
+    @State private var rotPitch: Float = 0
+    @State private var rotYaw: Float = 0
+    @State private var rotRoll: Float = 0
+    @State private var originalUSDZURL: URL?
+
     var body: some View {
         RealityView { content in
             content.add(rootEntity)
@@ -57,15 +66,28 @@ struct Model3DVolumetricView: View {
         .ornament(attachmentAnchor: .scene(.bottom), contentAlignment: .center) {
             controlsView
         }
+        .ornament(attachmentAnchor: .scene(.trailing), contentAlignment: .trailing) {
+            if modelData.modelType == "usdz" {
+                inspectorPanel
+            }
+        }
         .task {
             await loadModel()
         }
         .onChange(of: modelScale) { _, newScale in
             updateModelScale(newScale)
+            applyInspectorTransform()
         }
         .onChange(of: autoRotate) { _, shouldRotate in
             toggleAutoRotation(shouldRotate)
         }
+        .onChange(of: posX) { _, _ in applyInspectorTransform() }
+        .onChange(of: posY) { _, _ in applyInspectorTransform() }
+        .onChange(of: posZ) { _, _ in applyInspectorTransform() }
+        .onChange(of: rotPitch) { _, _ in applyInspectorTransform() }
+        .onChange(of: rotYaw) { _, _ in applyInspectorTransform() }
+        .onChange(of: rotRoll) { _, _ in applyInspectorTransform() }
+        .withModel3DExportUI(exportManager)
     }
 
     private var controlsView: some View {
@@ -116,6 +138,90 @@ struct Model3DVolumetricView: View {
         .padding(30)
         .frame(maxWidth: .infinity)
         .glassBackgroundEffect()
+    }
+
+    private var inspectorPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Inspector")
+                .font(.headline)
+
+            Group {
+                Text("Position")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("X")
+                    Slider(value: $posX, in: -5...5, step: 0.1)
+                    Text(String(format: "%.1f", posX))
+                        .frame(width: 44, alignment: .trailing)
+                }
+                HStack {
+                    Text("Y")
+                    Slider(value: $posY, in: -5...5, step: 0.1)
+                    Text(String(format: "%.1f", posY))
+                        .frame(width: 44, alignment: .trailing)
+                }
+                HStack {
+                    Text("Z")
+                    Slider(value: $posZ, in: -5...5, step: 0.1)
+                    Text(String(format: "%.1f", posZ))
+                        .frame(width: 44, alignment: .trailing)
+                }
+            }
+
+            Divider()
+
+            Group {
+                Text("Rotation (deg)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Pitch")
+                    Slider(value: $rotPitch, in: -180...180, step: 1)
+                    Text(String(format: "%.0f", rotPitch))
+                        .frame(width: 44, alignment: .trailing)
+                }
+                HStack {
+                    Text("Yaw")
+                    Slider(value: $rotYaw, in: -180...180, step: 1)
+                    Text(String(format: "%.0f", rotYaw))
+                        .frame(width: 44, alignment: .trailing)
+                }
+                HStack {
+                    Text("Roll")
+                    Slider(value: $rotRoll, in: -180...180, step: 1)
+                    Text(String(format: "%.0f", rotRoll))
+                        .frame(width: 44, alignment: .trailing)
+                }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Export")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Only Geometry + UV")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    if let url = originalUSDZURL, let model = modelEntity {
+                        exportManager.exportUSDZGeometryUVOnly(
+                            originalURL: url,
+                            nodeTransform: model.transform.matrix
+                        )
+                    }
+                } label: {
+                    Label("Export USDZ (Geo + UV)", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(originalUSDZURL == nil)
+            }
+        }
+        .padding(12)
+        .frame(width: 280)
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        .padding()
     }
 
     @MainActor
@@ -203,6 +309,8 @@ struct Model3DVolumetricView: View {
 
                 rootEntity.addChild(container)
                 modelEntity = container
+
+                originalUSDZURL = url
 
                 print("Successfully loaded USDZ model: \(url.lastPathComponent)")
             }
@@ -354,8 +462,8 @@ struct Model3DVolumetricView: View {
     }
 
     private func updateModelScale(_ scale: Float) {
-        guard let model = modelEntity else { return }
-        model.scale = SIMD3<Float>(repeating: scale)
+        guard let _ = modelEntity else { return }
+        applyInspectorTransform()
     }
 
     private func toggleAutoRotation(_ enabled: Bool) {
@@ -377,5 +485,22 @@ struct Model3DVolumetricView: View {
         } else {
             model.stopAllAnimations()
         }
+    }
+
+    private func applyInspectorTransform() {
+        guard let model = modelEntity else { return }
+
+        model.position = SIMD3<Float>(posX, posY, posZ)
+
+        let pitch = rotPitch * .pi / 180
+        let yaw   = rotYaw   * .pi / 180
+        let roll  = rotRoll  * .pi / 180
+
+        let qx = simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
+        let qy = simd_quatf(angle: yaw,   axis: SIMD3<Float>(0, 1, 0))
+        let qz = simd_quatf(angle: roll,  axis: SIMD3<Float>(0, 0, 1))
+        model.orientation = qy * qx * qz
+
+        model.scale = SIMD3<Float>(repeating: modelScale)
     }
 }

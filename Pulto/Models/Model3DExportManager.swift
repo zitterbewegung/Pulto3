@@ -18,6 +18,86 @@ class Model3DExportManager: ObservableObject {
     @Published var showScreenshotExporter: Bool = false
     @Published var screenshotDocument: PNGDocument?
 
+    func exportUSDZGeometryUVOnly(originalURL: URL, nodeTransform: simd_float4x4? = nil) {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+
+            var didStart = false
+            if originalURL.isFileURL {
+                didStart = originalURL.startAccessingSecurityScopedResource()
+            }
+            defer {
+                if didStart { originalURL.stopAccessingSecurityScopedResource() }
+            }
+
+            let asset = MDLAsset(url: originalURL)
+
+            for i in 0..<asset.count {
+                if let obj = asset.object(at: i) as? MDLObject {
+                    self.stripMaterialsKeepUV(obj)
+                }
+            }
+
+            if let m = nodeTransform {
+                for i in 0..<asset.count {
+                    if let obj = asset.object(at: i) as? MDLObject {
+                        self.applyTransform(obj, matrix: m)
+                    }
+                }
+            }
+
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Pulto_GeoUV_\(UUID().uuidString).usdz")
+            try? FileManager.default.removeItem(at: tempURL)
+
+            do {
+                try asset.export(to: tempURL)
+                if let data = try? Data(contentsOf: tempURL) {
+                    await MainActor.run {
+                        self.usdzDocument = USDZDocument(data: data)
+                        self.showUSDZExporter = true
+                    }
+                } else {
+                    print("Failed to read exported USDZ data")
+                }
+            } catch {
+                print("Failed to export Geo+UV USDZ: \(error)")
+            }
+
+        }
+    }
+
+    private func stripMaterialsKeepUV(_ object: MDLObject) {
+        if let mesh = object as? MDLMesh {
+            if let submeshes = mesh.submeshes as? [MDLSubmesh] {
+                for sub in submeshes {
+                    sub.material = nil
+                }
+            }
+        }
+        if let children = object.children.objects as? [MDLObject] {
+            for child in children {
+                stripMaterialsKeepUV(child)
+            }
+        }
+    }
+
+    private func applyTransform(_ object: MDLObject, matrix: simd_float4x4) {
+        if let existing = object.transform as? MDLTransform {
+            let current = existing.matrix
+            existing.matrix = matrix_multiply(matrix, current)
+            object.transform = existing
+        } else {
+            let t = MDLTransform()
+            t.matrix = matrix
+            object.transform = t
+        }
+        if let children = object.children.objects as? [MDLObject] {
+            for child in children {
+                applyTransform(child, matrix: matrix)
+            }
+        }
+    }
+
     func takeScreenshot(root: Entity?) async {
         guard let root = root else { return }
 
@@ -90,7 +170,6 @@ class Model3DExportManager: ObservableObject {
                     throw NSError(domain: "Access denied", code: 1)
                 }
             } else {
-                // Convert to SceneKit and export
                 let scnScene = SCNScene()
                 if let scnNode = convertToSCNNode(entity: modelEntity) {
                     scnScene.rootNode.addChildNode(scnNode)
@@ -173,9 +252,6 @@ class Model3DExportManager: ObservableObject {
         } else if let pbr = material as? PhysicallyBasedMaterial {
             scnMaterial.lightingModel = .physicallyBased
             scnMaterial.diffuse.contents = pbr.baseColor.tint
-            //scnMaterial.metalness.contents = pbr.metallic.constant
-            //scnMaterial.roughness.contents = pbr.roughness.constant
-            // Add more properties as needed
         }
         return scnMaterial
     }
