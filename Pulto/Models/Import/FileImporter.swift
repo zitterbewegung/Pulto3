@@ -34,7 +34,6 @@ struct FileClassifier {
 
         switch fileExtension {
         case "ply":
-            // Basic check to confirm it's a PLY file (point cloud)
             guard url.startAccessingSecurityScopedResource() else {
                 print("Error: Could not access security-scoped resource for PLY.")
                 return (.unknown, nil, nil)
@@ -53,9 +52,53 @@ struct FileClassifier {
                 return (.unknown, nil, nil)
             }
 
+        case "pcd":
+            guard url.startAccessingSecurityScopedResource() else {
+                print("Error: Could not access security-scoped resource for PCD.")
+                return (.unknown, nil, nil)
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+
+            do {
+                let data = try Data(contentsOf: url)
+                if let header = String(data: data.prefix(100), encoding: .ascii), header.lowercased().hasPrefix("version") || header.lowercased().hasPrefix("# .pcd") {
+                    return (.pointCloudPLY, nil, nil) // Reuse PLY handler for PCD since both are point clouds
+                } else {
+                    return (.unknown, nil, nil)
+                }
+            } catch {
+                print("Error reading PCD file: \(error)")
+                return (.unknown, nil, nil)
+            }
+
+        case "xyz", "pts":
+            guard url.startAccessingSecurityScopedResource() else {
+                print("Error: Could not access security-scoped resource for XYZ/PTS.")
+                return (.unknown, nil, nil)
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+
+            do {
+                let content = try String(contentsOf: url, encoding: .utf8)
+                let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+                if !lines.isEmpty {
+                    // Basic validation: check if first line has 3+ space-separated numbers
+                    let firstLineComponents = lines[0].components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+                    if firstLineComponents.count >= 3 {
+                        if let _ = Double(firstLineComponents[0]), 
+                           let _ = Double(firstLineComponents[1]), 
+                           let _ = Double(firstLineComponents[2]) {
+                            return (.pointCloudPLY, nil, nil) // Reuse PLY handler for XYZ/PTS
+                        }
+                    }
+                }
+                return (.unknown, nil, nil)
+            } catch {
+                print("Error reading XYZ/PTS file: \(error)")
+                return (.unknown, nil, nil)
+            }
+
         case "usdz":
-            // USDZ is a zip archive, but for simplicity, assume extension is sufficient
-            // No need to access content, so no startAccessing
             return (.usdz, nil, nil)
 
         case "csv", "tsv", "tab":

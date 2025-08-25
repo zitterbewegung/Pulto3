@@ -13,6 +13,8 @@ struct Model3DVolumetricView: View {
     @State private var showWireframe = false
     @State private var modelScale: Float = 1.0
 
+    @State private var baseScale: Float = 1.0
+
     @StateObject private var exportManager = Model3DExportManager()
     @State private var posX: Float = 0
     @State private var posY: Float = 0
@@ -23,177 +25,92 @@ struct Model3DVolumetricView: View {
     @State private var originalUSDZURL: URL?
 
     var body: some View {
-        RealityView { content in
-            content.add(rootEntity)
-        }
-        .overlay(alignment: .center) {
-            if isLoading {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Loading 3D Model...")
-                        .font(.headline)
-                        .padding(.top)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(12)
-            } else if let error = errorMessage {
-                VStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.orange)
-                    Text("Error:")
-                        .font(.headline)
-                    Text(error)
-                        .font(.caption)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(12)
+        HStack(spacing: 0) {
+            RealityView { content in
+                content.add(rootEntity)
             }
-        }
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    guard let model = modelEntity else { return }
-                    let rotationY = Float(value.translation.width * 0.01)
-                    let rotationX = Float(value.translation.height * 0.01)
-                    model.transform.rotation = simd_quatf(angle: rotationY, axis: [0, 1, 0]) * simd_quatf(angle: rotationX, axis: [1, 0, 0])
+            .overlay(alignment: .center) {
+                if isLoading {
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading 3D Model...")
+                            .font(.headline)
+                            .padding(.top)
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                } else if let error = errorMessage {
+                    VStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+                        Text("Error:")
+                            .font(.headline)
+                        Text(error)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
                 }
-        )
-        .ornament(attachmentAnchor: .scene(.bottom), contentAlignment: .center) {
-            controlsView
-        }
-        .ornament(attachmentAnchor: .scene(.trailing), contentAlignment: .trailing) {
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        guard let model = modelEntity else { return }
+                        let rotationY = Float(value.translation.width * 0.01)
+                        let rotationX = Float(value.translation.height * 0.01)
+                        model.transform.rotation = simd_quatf(angle: rotationY, axis: [0, 1, 0]) * simd_quatf(angle: rotationX, axis: [1, 0, 0])
+                    }
+            )
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { mag in
+                        let newScale = max(0.1, min(3.0, baseScale * Float(mag)))
+                        modelScale = newScale
+                        updateModelScale(newScale)
+                    }
+                    .onEnded { _ in
+                        baseScale = modelScale
+                    }
+            )
+            .simultaneousGesture(
+                TapGesture(count: 2)
+                    .onEnded {
+                        autoRotate.toggle()
+                    }
+            )
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .onEnded { _ in
+                        showWireframe.toggle()
+                    }
+            )
+            .task {
+                await loadModel()
+            }
+            .onChange(of: modelScale) { _, newScale in
+                updateModelScale(newScale)
+            }
+            .onChange(of: autoRotate) { _, shouldRotate in
+                toggleAutoRotation(shouldRotate)
+            }
+
             if modelData.modelType == "usdz" {
                 inspectorPanel
             }
         }
-        .task {
-            await loadModel()
-        }
-        .onChange(of: modelScale) { _, newScale in
-            updateModelScale(newScale)
-            applyInspectorTransform()
-        }
-        .onChange(of: autoRotate) { _, shouldRotate in
-            toggleAutoRotation(shouldRotate)
-        }
-        .onChange(of: posX) { _, _ in applyInspectorTransform() }
-        .onChange(of: posY) { _, _ in applyInspectorTransform() }
-        .onChange(of: posZ) { _, _ in applyInspectorTransform() }
-        .onChange(of: rotPitch) { _, _ in applyInspectorTransform() }
-        .onChange(of: rotYaw) { _, _ in applyInspectorTransform() }
-        .onChange(of: rotRoll) { _, _ in applyInspectorTransform() }
         .withModel3DExportUI(exportManager)
     }
 
-    private var controlsView: some View {
-        VStack(spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(modelData.title)
-                        .font(.extraLargeTitle)
-                        .fontWeight(.bold)
-
-                    HStack(spacing: 20) {
-                        Label("\(modelData.vertices.count)", systemImage: "point.3.connected.trianglepath.dotted")
-                        Label("\(modelData.faces.count)", systemImage: "square.grid.3x3")
-                        Label(modelData.modelType.uppercased(), systemImage: "cube.fill")
-                    }
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 10) {
-                        Button(action: { autoRotate.toggle() }) {
-                            Image(systemName: autoRotate ? "pause.circle" : "play.circle")
-                                .foregroundColor(autoRotate ? .orange : .blue)
-                                .font(.system(size: 40))
-                        }
-                        .help("Toggle auto-rotation")
-
-                        Button(action: { showWireframe.toggle() }) {
-                            Image(systemName: showWireframe ? "square.grid.3x3" : "cube.fill")
-                                .foregroundColor(showWireframe ? .purple : .blue)
-                                .font(.system(size: 40))
-                        }
-                        .help("Toggle wireframe")
-                    }
-
-                    HStack(spacing: 10) {
-                        Label("Scale", systemImage: "plus.magnifyingglass")
-                            .font(.title2)
-                        Slider(value: $modelScale, in: 0.1...3.0, step: 0.1)
-                            .frame(width: 200)
-                    }
-                }
-            }
-        }
-        .padding(30)
-        .frame(maxWidth: .infinity)
-        .glassBackgroundEffect()
-    }
 
     private var inspectorPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Inspector")
                 .font(.headline)
-
-            Group {
-                Text("Position")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Text("X")
-                    Slider(value: $posX, in: -5...5, step: 0.1)
-                    Text(String(format: "%.1f", posX))
-                        .frame(width: 44, alignment: .trailing)
-                }
-                HStack {
-                    Text("Y")
-                    Slider(value: $posY, in: -5...5, step: 0.1)
-                    Text(String(format: "%.1f", posY))
-                        .frame(width: 44, alignment: .trailing)
-                }
-                HStack {
-                    Text("Z")
-                    Slider(value: $posZ, in: -5...5, step: 0.1)
-                    Text(String(format: "%.1f", posZ))
-                        .frame(width: 44, alignment: .trailing)
-                }
-            }
-
-            Divider()
-
-            Group {
-                Text("Rotation (deg)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Text("Pitch")
-                    Slider(value: $rotPitch, in: -180...180, step: 1)
-                    Text(String(format: "%.0f", rotPitch))
-                        .frame(width: 44, alignment: .trailing)
-                }
-                HStack {
-                    Text("Yaw")
-                    Slider(value: $rotYaw, in: -180...180, step: 1)
-                    Text(String(format: "%.0f", rotYaw))
-                        .frame(width: 44, alignment: .trailing)
-                }
-                HStack {
-                    Text("Roll")
-                    Slider(value: $rotRoll, in: -180...180, step: 1)
-                    Text(String(format: "%.0f", rotRoll))
-                        .frame(width: 44, alignment: .trailing)
-                }
-            }
 
             Divider()
 
@@ -462,8 +379,8 @@ struct Model3DVolumetricView: View {
     }
 
     private func updateModelScale(_ scale: Float) {
-        guard let _ = modelEntity else { return }
-        applyInspectorTransform()
+        guard let model = modelEntity else { return }
+        model.scale = SIMD3<Float>(repeating: scale)
     }
 
     private func toggleAutoRotation(_ enabled: Bool) {
@@ -485,22 +402,5 @@ struct Model3DVolumetricView: View {
         } else {
             model.stopAllAnimations()
         }
-    }
-
-    private func applyInspectorTransform() {
-        guard let model = modelEntity else { return }
-
-        model.position = SIMD3<Float>(posX, posY, posZ)
-
-        let pitch = rotPitch * .pi / 180
-        let yaw   = rotYaw   * .pi / 180
-        let roll  = rotRoll  * .pi / 180
-
-        let qx = simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
-        let qy = simd_quatf(angle: yaw,   axis: SIMD3<Float>(0, 1, 0))
-        let qz = simd_quatf(angle: roll,  axis: SIMD3<Float>(0, 0, 1))
-        model.orientation = qy * qx * qz
-
-        model.scale = SIMD3<Float>(repeating: modelScale)
     }
 }
