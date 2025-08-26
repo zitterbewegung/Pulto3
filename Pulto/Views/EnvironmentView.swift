@@ -357,7 +357,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         if showNavigationView {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1174,7 +1174,7 @@ struct EnvironmentView: View {
                 .environmentObject(sheetManager)
 
         case .classifierSheet:
-            FileClassifierAndRecommenderView()
+            UnifiedImportSheet()
                 .environmentObject(windowManager)
                 .environmentObject(sheetManager)
 
