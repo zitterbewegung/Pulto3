@@ -14,7 +14,8 @@ class AudioManager: ObservableObject {
     
     private func setupAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, options: [.allowBluetooth])
+            // Changed from .playback to .ambient to allow mixing with other audio
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Failed to setup audio session: \(error)")
@@ -68,6 +69,7 @@ class AudioManager: ObservableObject {
             try engine.start()
             player.play()
             
+            print("Successfully playing startup sound: \(name).\(type)")
             return true
         } catch {
             print("Failed to play audio file: \(error)")
@@ -97,6 +99,7 @@ class AudioManager: ObservableObject {
         do {
             try engine.start()
             player.play()
+            print("Playing fallback tone")
         } catch {
             print("Failed to start audio engine: \(error)")
             cleanupAudioEngine()

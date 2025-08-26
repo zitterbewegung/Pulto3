@@ -326,7 +326,7 @@ struct EnhancedActiveWindowsView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Pulto")
+            //.navigationTitle("Pulto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // Leading toolbar items (left side)
@@ -400,7 +400,7 @@ struct EnhancedActiveWindowsView: View {
                         .buttonStyle(.plain)
                         .help("Import")
 
-                        if navigationState == .workspace {
+                        /*if navigationState == .workspace {
                             Menu {
                                 ForEach(StandardWindowType.allCases, id: \.self) { type in
                                     Button {
@@ -417,7 +417,7 @@ struct EnhancedActiveWindowsView: View {
                             }
                             .buttonStyle(.plain)
                             .help("Add Window")
-                        }
+                        }*/
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)

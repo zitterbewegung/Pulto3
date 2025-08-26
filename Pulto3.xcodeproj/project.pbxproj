@@ -21,6 +21,8 @@
 		DC5839732E2EC42800B8CD7E /* GoodVibes.txt in Resources */ = {isa = PBXBuildFile; fileRef = DC5839722E2EC42800B8CD7E /* GoodVibes.txt */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
+		DC64375A2E5E2E8F00032551 /* startup_sound.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DC6437592E5E2E8F00032551 /* startup_sound.mp3 */; };
+		DC6437622E5E2F9E00032551 /* a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DC6437612E5E2F9E00032551 /* a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3 */; };
 		DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B342E04A126005454FE /* SpatialEditorView.swift */; };
 		DC6A50A52E0B607600C4FEAF /* EnvironmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */; };
 		DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC70C5812DE7672800DADEAE /* Lorenz.ipynb */; };
@@ -74,6 +76,9 @@
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
+		DC6437592E5E2E8F00032551 /* startup_sound.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = startup_sound.mp3; sourceTree = "<group>"; };
+		DC6437612E5E2F9E00032551 /* a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3"; sourceTree = "<group>"; };
+		DC6437932E5E35DA00032551 /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
@@ -194,6 +199,14 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		DC6437942E5E35DA00032551 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				DC6437932E5E35DA00032551 /* RealityKitContent */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
@@ -223,6 +236,7 @@
 		DF58AE1D2BCD826D00C8F737 /* Pulto */ = {
 			isa = PBXGroup;
 			children = (
+				DC6437942E5E35DA00032551 /* Packages */,
 				DC7094552E206D110000CC3A /* Extensions */,
 				DCF810432E030A1900258CAE /* Models */,
 				DC28CF682E02695000F3705E /* Tests */,
@@ -236,6 +250,8 @@
 		DF58AE3D2BCD8D8200C8F737 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				DC6437612E5E2F9E00032551 /* a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3 */,
+				DC6437592E5E2E8F00032551 /* startup_sound.mp3 */,
 				DC28CF6B2E026B4300F3705E /* template.ipynb */,
 				DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */,
 				DC70C5812DE7672800DADEAE /* Lorenz.ipynb */,
@@ -391,10 +407,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC6437622E5E2F9E00032551 /* a-blissful-ambient-sound-featuring-natural-sounds-a-meditative-drone-and-spacey-reverberating-piano.-the-mood-is-ethereal-and-dreamy-and-it-is-for-opening-an-application_082625.mp3 in Resources */,
 				DC2408592E2EC6CC0062838C /* Composer.icon in Resources */,
 				DC5839732E2EC42800B8CD7E /* GoodVibes.txt in Resources */,
 				DC28CF6C2E026B4300F3705E /* template.ipynb in Resources */,
 				DC70C5822DE7672800DADEAE /* Lorenz.ipynb in Resources */,
+				DC64375A2E5E2E8F00032551 /* startup_sound.mp3 in Resources */,
 				DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */,
 				DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */,
 				DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */,
