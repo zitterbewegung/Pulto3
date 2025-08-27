@@ -11,7 +11,7 @@
 //  SharedNotebookTypes.swift
 //  All shared types for notebook import and environment restoration
 //
-
+/*
 import Foundation
 
 // MARK: - Notebook File Type
@@ -144,3 +144,4 @@ struct EnvironmentRestoreResult {
         }
     }
 }
+*/

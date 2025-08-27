@@ -3,7 +3,7 @@
 //  Pulto3
 //
 //  Created by Joshua Herman on 7/13/25.
-//  Copyright 22025 Apple. All rights reserved.
+//  Copyright 2025 Apple. All rights reserved.
 //
 
 import SwiftUI
@@ -37,7 +37,7 @@ class WindowTypeManager: ObservableObject {
 
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
-        
+
         Task { @MainActor in
             await WorkspaceManager.shared.ensureProjectWorkspaceExists(for: project)
         }
@@ -59,21 +59,21 @@ class WindowTypeManager: ObservableObject {
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
         objectWillChange.send()
-        
+
         WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         print("🪟 Window #\(id) marked as opened, triggering auto-save")
     }
 
     func markWindowAsClosed(_ id: Int) {
         openWindowIDs.remove(id)
-        
+
         // NEW: Clean up entities when window closes
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupWindow(id)
         }
-        
+
         objectWillChange.send()
-        
+
         WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         print("🪟 Window #\(id) marked as closed, triggering auto-save")
     }
@@ -534,7 +534,7 @@ class WindowTypeManager: ObservableObject {
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupAll()
         }
-        
+
         windows.removeAll()
         openWindowIDs.removeAll()
         objectWillChange.send()
@@ -873,7 +873,7 @@ class WindowTypeManager: ObservableObject {
         let window = NewWindowID(id: id, windowType: type, position: position)
         windows[id] = window
         // Don't automatically mark as open here - let the caller do it when the window actually opens
-        
+
         // Notify that windows have changed, which will trigger auto-save
         objectWillChange.send()
         WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
@@ -951,7 +951,7 @@ class WindowTypeManager: ObservableObject {
         Task { @MainActor in
             EntityLifecycleManager.shared.cleanupWindow(id)
         }
-        
+
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
         objectWillChange.send()
@@ -1197,27 +1197,27 @@ class WindowTypeManager: ObservableObject {
     }
 
     // MARK: - Project Creation with Notebook Generation
-    
+
     func createNewProjectWithNotebook(projectName: String) -> URL? {
         print("🚀 Creating new project: \(projectName)")
-        
+
         // Create a basic project structure with template windows
         createTemplateWindows()
-        
+
         // Generate and save the notebook
         let sanitizedName = projectName.replacingOccurrences(of: " ", with: "_")
         let notebookURL = saveNotebookToFile(filename: sanitizedName)
-        
+
         if let url = notebookURL {
             print("📓 Notebook created at: \(url.path)")
             print("📊 Project contains \(getAllWindows().count) template windows")
         } else {
             print("❌ Failed to create notebook file")
         }
-        
+
         return notebookURL
     }
-    
+
     private func createTemplateWindows() {
         // Create a welcome markdown window
         let welcomeWindowID = getNextWindowID()
@@ -1244,7 +1244,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(welcomeWindowID, tag: "welcome")
         addWindowTag(welcomeWindowID, tag: "getting-started")
-        
+
         // Create a sample chart window
         let chartWindowID = getNextWindowID()
         let chartWindow = createWindow(.charts, id: chartWindowID)
@@ -1274,7 +1274,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(chartWindowID, tag: "sample");
         addWindowTag(chartWindowID, tag: "chart");
-        
+
         // Create a data table template
         let dataWindowID = getNextWindowID()
         let dataWindow = createWindow(.column, id: dataWindowID)
@@ -1303,7 +1303,7 @@ class WindowTypeManager: ObservableObject {
         """)
         addWindowTag(dataWindowID, tag: "sample");
         addWindowTag(dataWindowID, tag: "data");
-        
+
         print("✅ Created template windows for new project")
     }
 
@@ -1346,7 +1346,7 @@ class WindowTypeManager: ObservableObject {
             WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         }
     }
-    
+
     // Add this method to your existing WindowTypeManager class
     func removeWindowTag(_ windowID: Int, tag: String) {
         guard var window = windows[windowID] else { return }
@@ -1354,212 +1354,5 @@ class WindowTypeManager: ObservableObject {
         window.state.lastModified = Date()
         windows[windowID] = window
         WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
-    }
-
-    // Add these methods to WindowTypeManager class for streaming support
-
-    // MARK: - Streaming Chart Support
-
-    func updateWindowStreamingData(_ id: Int, streamingData: StreamingChartData) {
-        windows[id]?.state.streamingChartData = streamingData
-        windows[id]?.state.lastModified = Date()
-        
-        // Auto-set template to custom for streaming data
-        if let window = windows[id], window.windowType == .spatial && window.state.exportTemplate == .plain {
-            windows[id]?.state.exportTemplate = .custom
-        }
-    }
-
-    func getWindowStreamingData(for id: Int) -> StreamingChartData? {
-        return windows[id]?.state.streamingChartData
-    }
-
-    // Enhanced window creation for streaming
-    func createStreamingWindow(_ type: WindowType, streamConfig: StreamingWindowConfig) -> NewWindowID {
-        let id = getNextWindowID()
-        let position = WindowPosition(
-            x: streamConfig.position.x,
-            y: streamConfig.position.y,
-            z: streamConfig.position.z,
-            width: streamConfig.size.width,
-            height: streamConfig.size.height
-        )
-        
-        let window = createWindow(type, id: id, position: position)
-        
-        // Add streaming-specific configuration
-        addWindowTag(id, tag: "Real-Time-Streaming")
-        addWindowTag(id, tag: streamConfig.streamingMode.rawValue)
-        
-        // Set up streaming content
-        let content = generateStreamingContent(for: streamConfig)
-        updateWindowContent(id, content: content)
-        
-        return window
-    }
-
-    private func generateStreamingContent(for config: StreamingWindowConfig) -> String {
-        return """
-        # Real-Time Streaming Window
-        # Mode: \(config.streamingMode.rawValue)
-        # Update Frequency: \(config.updateFrequency) Hz
-        # Streams: \(config.numberOfStreams)
-        # Created: \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))
-        
-        # This window displays live streaming data using RealTimeStreamingManager
-        # Visualization Mode: \(config.visualizationMode.rawValue)
-        # Spatial Enabled: \(config.enableSpatialVisualization)
-        
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from matplotlib.animation import FuncAnimation
-        
-        # Real-time streaming visualization setup
-        # This would be the Python equivalent of the Swift streaming implementation
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.set_title('\(config.streamingMode.rawValue) - Real-Time Data')
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Value')
-        
-        # Animation function would update the plot with new streaming data
-        def animate(frame):
-            # Update plot with latest data from streaming source
-            pass
-        
-        # Set up animation with \(config.updateFrequency) Hz update rate
-        ani = FuncAnimation(fig, animate, interval=\(Int(1000/config.updateFrequency)), blit=True)
-        plt.show()
-        
-        print("Real-time streaming visualization active")
-        print("Streams: \(config.numberOfStreams)")
-        print("Update rate: \(config.updateFrequency) Hz")
-        """
-    }
-
-    // Supporting data structures for streaming
-
-    struct StreamingWindowConfig {
-        let streamingMode: StreamingMode
-        let updateFrequency: Double
-        let numberOfStreams: Int
-        let enableSpatialVisualization: Bool
-        let visualizationMode: VisualizationMode
-        let position: CGPoint
-        let size: CGSize
-        
-        enum StreamingMode: String, CaseIterable {
-            case realTimeData = "Real-Time Data Stream"
-            case sensorSimulation = "Sensor Data Simulation"
-            case financialData = "Financial Data Stream"
-            case scientificData = "Scientific Data Stream"
-        }
-        
-        enum VisualizationMode: String, CaseIterable {
-            case realTimeFlow = "Real-Time Flow"
-            case spatialCloud = "Spatial Cloud"
-            case dataTrails = "Data Trails"
-            case networkGraph = "Network Graph"
-        }
-    }
-
-    struct StreamingChartData: Codable {
-        let streamingMode: String
-        let updateFrequency: Double
-        let numberOfStreams: Int
-        let enableSpatialVisualization: Bool
-        let timeWindow: TimeInterval
-        let createdDate: Date
-        let isActive: Bool
-        
-        func toPythonCode() -> String {
-            return """
-            # Real-Time Streaming Chart Data
-            # Mode: \(streamingMode)
-            # Created: \(DateFormatter.localizedString(from: createdDate, dateStyle: .short, timeStyle: .short))
-            
-            import matplotlib.pyplot as plt
-            import numpy as np
-            import asyncio
-            from matplotlib.animation import FuncAnimation
-            
-            # Streaming configuration
-            STREAMING_MODE = '\(streamingMode)'
-            UPDATE_FREQUENCY = \(updateFrequency)  # Hz
-            NUMBER_OF_STREAMS = \(numberOfStreams)
-            TIME_WINDOW = \(timeWindow)  # seconds
-            SPATIAL_ENABLED = \(enableSpatialVisualization)
-            
-            class RealTimeStreamer:
-                def __init__(self):
-                    self.data_buffer = []
-                    self.is_streaming = \(isActive ? "True" : "False")
-                    
-                def start_streaming(self):
-                    # Initialize streaming data collection
-                    print(f"Starting {STREAMING_MODE} with {NUMBER_OF_STREAMS} streams")
-                    print(f"Update frequency: {UPDATE_FREQUENCY} Hz")
-                    
-                def update_data(self):
-                    # Generate or collect new data points
-                    timestamp = time.time()
-                    for stream_id in range(NUMBER_OF_STREAMS):
-                        value = np.random.randn()  # Simulated data
-                        self.data_buffer.append({
-                            'timestamp': timestamp,
-                            'value': value,
-                            'stream_id': stream_id
-                        })
-                    
-                    # Keep only recent data within time window
-                    cutoff_time = timestamp - TIME_WINDOW
-                    self.data_buffer = [p for p in self.data_buffer if p['timestamp'] > cutoff_time]
-            
-            # Create and start streaming visualization
-            streamer = RealTimeStreamer()
-            streamer.start_streaming()
-            
-            print("Real-time streaming visualization initialized")
-            """
-        }
-    }
-    
-    struct WindowState: Codable {
-        var isMinimized = false
-        var isMaximized = false
-        var opacity: Double = 1.0
-        var lastModified = Date()
-        var content: String = ""
-        var exportTemplate: ExportTemplate = .plain
-        var customImports: [String] = []
-        var tags: [String] = []
-
-        // Data payloads
-        var dataFrameData: DataFrameData?
-        var chartData: ChartData?
-        var chart3DData: Chart3DData?
-        var pointCloudData: PointCloudData?
-        var model3DData: Model3DData?
-        var volumeData: VolumeData?
-        var streamingChartData: StreamingChartData?
-
-        // File bookmarks for security-scoped resources
-        var usdzBookmark: Data?
-        var pointCloudBookmark: Data?
-    }
-}
-
-struct NewWindowID: Identifiable, Codable {
-    let id: Int
-    var windowType: WindowType
-    var position: WindowPosition
-    var state: WindowState
-    let createdAt = Date()
-    
-    init(id: Int, windowType: WindowType, position: WindowPosition = WindowPosition(), state: WindowState = WindowState()) {
-        self.id = id
-        self.windowType = windowType
-        self.position = position
-        self.state = state
     }
 }
