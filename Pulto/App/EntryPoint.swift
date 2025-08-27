@@ -391,11 +391,12 @@ struct EntryPoint: App {
     @MainActor
     private func createDemo3DWindowForProject() {
         // Only create 3D demo windows if there's an active project
-        guard windowManager.selectedProject != nil else {
+        guard let selectedProject = windowManager.selectedProject else {
             print("No project selected - skipping 3D demo window creation")
             return
         }
 
+        print("🎯 Creating demo 3D windows for project: \(selectedProject.name)")
         createDemo3DWindow()
     }
 
@@ -442,18 +443,23 @@ struct EntryPoint: App {
         windowManager.updateWindowContent(pointCloudDemoWindowID, content: "Demo Point Cloud - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(pointCloudDemoWindowID, tag: "Demo-PointCloud")
 
+        print("📊 Created demo windows: Model(#\(modelWindowID)), Chart(#\(chartWindowID)), PointCloud(#\(pointCloudDemoWindowID))")
+
         // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
+        print("🪟 Opened volumetric-model3d with ID: \(modelWindowID)")
 
         // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
+            print("🪟 Opened volumetric-chart3d with ID: \(chartWindowID)")
         }
 
         // Delay the point cloud demo window a bit more
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
+            print("🪟 Opened volumetric-pointclouddemo with ID: \(pointCloudDemoWindowID)")
         }
         #endif
     }

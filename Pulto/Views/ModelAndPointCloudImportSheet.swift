@@ -12,6 +12,7 @@ import RealityKit
 // MARK: - Point-Cloud Import Sheet
 struct PointCloudImportSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     @State private var openImporter = false
     @State private var busy = false
     @State private var importError: FileImportError?
@@ -91,6 +92,11 @@ struct PointCloudImportSheet: View {
         _ = wm.createWindow(.pointcloud, id: newID)
         wm.updateWindowPointCloud(newID, pointCloud: pc)   // extension below
         wm.markWindowAsOpened(newID)
+        
+        // Open the volumetric point cloud window instead of the regular one
+        #if os(visionOS)
+        openWindow(id: "volumetric-pointclouddemo", value: newID)
+        #endif
     }
 }
 

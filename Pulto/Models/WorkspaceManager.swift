@@ -135,6 +135,11 @@ class WorkspaceManager: ObservableObject {
     @Published var isLoading = false
     @Published var error: WorkspaceError?
     
+    // Add auto-save properties
+    @AppStorage("autoSaveEnabled") private var autoSaveEnabled: Bool = true
+    private var saveTask: Task<Void, Never>? = nil
+    private var pendingWindowChanges = false
+    
     private let metadataFileName = "workspace_metadata.json"
     private let workspacesFolder = "Workspaces"
     
@@ -307,19 +312,25 @@ class WorkspaceManager: ObservableObject {
         let importResult = try windowManager.importFromGenericNotebook(fileURL: fileURL)
         print("📥 WorkspaceManager: Imported \(importResult.restoredWindows.count) windows from notebook")
         
-        // Open windows with visual feedback
+        // Open windows with visual feedback and proper window type handling
         var openedWindows: [NewWindowID] = []
         
         for window in importResult.restoredWindows {
             await MainActor.run {
-                print("🪟 WorkspaceManager: Opening window #\(window.id) (\(window.windowType.displayName))")
-                openWindow(window.id)
+                print("🪟 WorkspaceManager: Processing window #\(window.id) (\(window.windowType.displayName))")
+                
+                // Store window data in manager before opening
+                // (This ensures the window data is available when openWindow is called)
+                
+                openWindow(window.id) // This will call the closure that handles window type detection
                 windowManager.markWindowAsOpened(window.id)
                 openedWindows.append(window)
+                
+                print("✅ WorkspaceManager: Opened and marked window #\(window.id)")
             }
             
             // Small delay for smooth animation
-            try? await Task.sleep(nanoseconds: 200_000_000)
+            try? await Task.sleep(nanoseconds: 300_000_000) // Increased delay for volumetric windows
         }
         
         print("✅ WorkspaceManager: Successfully opened \(openedWindows.count) windows")
@@ -661,7 +672,7 @@ class WorkspaceManager: ObservableObject {
                !FileManager.default.fileExists(atPath: currentURL.path) {
                 
                 // Try to find the file by name
-                let fileName = currentURL.lastPathComponent
+                let fileName = currentURL.deletingPathExtension().lastPathComponent
                 let newURL = workspacesDir.appendingPathComponent(fileName)
                 
                 if FileManager.default.fileExists(atPath: newURL.path) {
@@ -790,6 +801,102 @@ class WorkspaceManager: ObservableObject {
         } catch {
             print("Error creating metadata from file \(fileURL): \(error)")
             return nil
+        }
+    }
+    
+    // Add method to ensure project workspace exists for auto-save
+    func ensureProjectWorkspaceExists(for project: ProjectModel) async {
+        // Check if workspace already exists
+        if workspaces.contains(where: { $0.name == project.name }) {
+            print("📁 Workspace already exists for project: \(project.name)")
+            return
+        }
+        
+        // Create a workspace metadata entry for the project
+        let workspace = WorkspaceMetadata(
+            name: project.name,
+            description: "Auto-created workspace for project: \(project.name)",
+            category: .custom,
+            isTemplate: false,
+            totalWindows: 0,
+            windowTypes: [],
+            tags: ["auto-created", "project"]
+        )
+        
+        workspaces.append(workspace)
+        saveWorkspacesMetadata()
+        print("📁 Created workspace metadata for project: \(project.name)")
+    }
+
+    // Add method to handle auto-saving when windows change
+    func scheduleAutoSave(windowManager: WindowTypeManager) {
+        guard autoSaveEnabled else {
+            print("⏸️ Auto-save disabled, skipping")
+            return
+        }
+        
+        guard let selectedProject = windowManager.selectedProject else {
+            print("⚠️ No selected project for auto-save")
+            return
+        }
+        
+        // Find or create workspace for the project
+        var projectWorkspace = workspaces.first { $0.name == selectedProject.name }
+        
+        if projectWorkspace == nil {
+            // Create workspace metadata if it doesn't exist
+            let newWorkspace = WorkspaceMetadata(
+                name: selectedProject.name,
+                description: "Auto-created workspace for project: \(selectedProject.name)",
+                category: .custom,
+                isTemplate: false,
+                totalWindows: windowManager.getAllWindows().count,
+                windowTypes: Array(Set(windowManager.getAllWindows().map { $0.windowType.rawValue })),
+                tags: ["auto-created", "project"]
+            )
+            workspaces.append(newWorkspace)
+            projectWorkspace = newWorkspace
+            print("📁 Created new workspace for auto-save: \(selectedProject.name)")
+        }
+        
+        guard let workspace = projectWorkspace else {
+            print("❌ Failed to find or create workspace for auto-save")
+            return
+        }
+        
+        // Cancel any existing save task
+        saveTask?.cancel()
+        
+        // Mark that we have pending changes
+        pendingWindowChanges = true
+        
+        // Schedule a new save task with debounce (1 second delay)
+        saveTask = Task {
+            do {
+                // Wait for 1 second to debounce
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                
+                // Check if task was cancelled
+                try Task.checkCancellation()
+                
+                // Perform the save on main actor
+                await MainActor.run {
+                    if pendingWindowChanges {
+                        Task {
+                            do {
+                                try await saveCurrentWorkspace(with: workspace, windowManager: windowManager)
+                                pendingWindowChanges = false
+                                print("✅ Auto-saved workspace: \(workspace.name) with \(windowManager.getAllWindows().count) windows")
+                            } catch {
+                                print("❌ Failed to auto-save workspace: \(error)")
+                            }
+                        }
+                    }
+                }
+            } catch {
+                // Task was cancelled, do nothing
+                print("⏸️ Auto-save task cancelled")
+            }
         }
     }
 }

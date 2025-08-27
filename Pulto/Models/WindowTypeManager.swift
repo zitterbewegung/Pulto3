@@ -37,6 +37,10 @@ class WindowTypeManager: ObservableObject {
 
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
+        
+        Task { @MainActor in
+            await WorkspaceManager.shared.ensureProjectWorkspaceExists(for: project)
+        }
     }
 
     func clearSelectedProject() {
@@ -55,6 +59,9 @@ class WindowTypeManager: ObservableObject {
     func markWindowAsOpened(_ id: Int) {
         openWindowIDs.insert(id)
         objectWillChange.send()
+        
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        print("🪟 Window #\(id) marked as opened, triggering auto-save")
     }
 
     func markWindowAsClosed(_ id: Int) {
@@ -66,6 +73,9 @@ class WindowTypeManager: ObservableObject {
         }
         
         objectWillChange.send()
+        
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        print("🪟 Window #\(id) marked as closed, triggering auto-save")
     }
 
     func isWindowActuallyOpen(_ id: Int) -> Bool {
@@ -518,6 +528,7 @@ class WindowTypeManager: ObservableObject {
         return false
     }
 
+    /// Removes all windows from the manager and cleans up associated resources
     func clearAllWindows() {
         // Clean up all entities before clearing windows
         Task { @MainActor in
@@ -795,7 +806,7 @@ class WindowTypeManager: ObservableObject {
     private func extractUnit(from content: String) -> String? {
         let unitPatterns = [
             #"unit[s]?['""]:\s*['""]([^'""]+)['""]"#,
-            #"([a-zA-Z]+)\s*per\s*([a-zA-Z]+)"#
+            #"([a-zA-Z]+)\s*per\s*([p-zA-Z]+)"#
         ]
 
         for pattern in unitPatterns {
@@ -862,6 +873,10 @@ class WindowTypeManager: ObservableObject {
         let window = NewWindowID(id: id, windowType: type, position: position)
         windows[id] = window
         // Don't automatically mark as open here - let the caller do it when the window actually opens
+        
+        // Notify that windows have changed, which will trigger auto-save
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         return window
     }
 
@@ -875,31 +890,43 @@ class WindowTypeManager: ObservableObject {
 
     func updateWindowPosition(_ id: Int, position: WindowPosition) {
         windows[id]?.position = position
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func updateWindowState(_ id: Int, state: WindowState) {
         windows[id]?.state = state
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func updateWindowContent(_ id: Int, content: String) {
         windows[id]?.state.content = content
         windows[id]?.state.lastModified = Date()
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func updateWindowTemplate(_ id: Int, template: ExportTemplate) {
         windows[id]?.state.exportTemplate = template
         windows[id]?.state.lastModified = Date()
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func updateWindowImports(_ id: Int, imports: [String]) {
         windows[id]?.state.customImports = imports
         windows[id]?.state.lastModified = Date()
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func addWindowTag(_ id: Int, tag: String) {
         if windows[id]?.state.tags.contains(tag) == false {
             windows[id]?.state.tags.append(tag)
             windows[id]?.state.lastModified = Date()
+            objectWillChange.send()
+            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         }
     }
 
@@ -911,6 +938,8 @@ class WindowTypeManager: ObservableObject {
         if let window = windows[id], window.windowType == .column && window.state.exportTemplate == .plain {
             windows[id]?.state.exportTemplate = .pandas
         }
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     func getWindowDataFrame(for id: Int) -> DataFrameData? {
@@ -925,6 +954,8 @@ class WindowTypeManager: ObservableObject {
         
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     // MARK: - Jupyter Export Functions
@@ -1231,18 +1262,18 @@ class WindowTypeManager: ObservableObject {
         
         # Create the plot
         plt.figure(figsize=(10, 6))
-        plt.plot(x, y, 'b-', linewidth=2, label='sin(x)')
-        plt.title('Welcome Chart - Getting Started')
-        plt.xlabel('X values')
-        plt.ylabel('Y values')
-        plt.grid(True, alpha=0.3)
-        plt.legend()
-        plt.show()
+        plt.plot(x, y, 'b-', linewidth=2, label='sin(x)');
+        plt.title('Welcome Chart - Getting Started');
+        plt.xlabel('X values');
+        plt.ylabel('Y values');
+        plt.grid(True, alpha=0.3);
+        plt.legend();
+        plt.show();
         
-        print("Welcome to your new project!")
+        print("Welcome to your new project!");
         """)
-        addWindowTag(chartWindowID, tag: "sample")
-        addWindowTag(chartWindowID, tag: "chart")
+        addWindowTag(chartWindowID, tag: "sample");
+        addWindowTag(chartWindowID, tag: "chart");
         
         // Create a data table template
         let dataWindowID = getNextWindowID()
@@ -1270,8 +1301,8 @@ class WindowTypeManager: ObservableObject {
         print("\\nDataFrame Info:")
         print(df.info())
         """)
-        addWindowTag(dataWindowID, tag: "sample")
-        addWindowTag(dataWindowID, tag: "data")
+        addWindowTag(dataWindowID, tag: "sample");
+        addWindowTag(dataWindowID, tag: "data");
         
         print("✅ Created template windows for new project")
     }
@@ -1295,6 +1326,8 @@ class WindowTypeManager: ObservableObject {
 
         // 4. Write the mutated value back into the dictionary.
         windows[id] = win
+        objectWillChange.send()
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 
     // Updated updateUSDZBookmark function in WindowTypeManager
@@ -1302,6 +1335,7 @@ class WindowTypeManager: ObservableObject {
         if var window = windows[id] {
             window.state.usdzBookmark = bookmark
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
+            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         }
     }
 
@@ -1309,6 +1343,7 @@ class WindowTypeManager: ObservableObject {
         if var window = windows[id] {
             window.state.pointCloudBookmark = bookmark
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
+            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         }
     }
     
@@ -1318,5 +1353,6 @@ class WindowTypeManager: ObservableObject {
         window.state.tags.removeAll { $0 == tag }
         window.state.lastModified = Date()
         windows[windowID] = window
+        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
     }
 }

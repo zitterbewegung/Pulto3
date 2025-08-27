@@ -357,7 +357,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         if showNavigationView {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -400,7 +400,7 @@ struct EnhancedActiveWindowsView: View {
                         .buttonStyle(.plain)
                         .help("Import")
 
-                        /*if navigationState == .workspace {
+                        if navigationState == .workspace {
                             Menu {
                                 ForEach(StandardWindowType.allCases, id: \.self) { type in
                                     Button {
@@ -417,11 +417,11 @@ struct EnhancedActiveWindowsView: View {
                             }
                             .buttonStyle(.plain)
                             .help("Add Window")
-                        }*/
+                        }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                 }
 
                 // Principal toolbar item (center)
@@ -478,7 +478,7 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                     .overlay {
                         if showInspector {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1012,8 +1012,9 @@ struct EnvironmentView: View {
     @State private var welcomeTask: Task<Void, Never>?
 
     var body: some View {
+        // Main content area
         VStack(spacing: 0) {
-            // Main content area
+            // Main content without toolbar (since it's now in the navigation bar)
             Group {
                 if navigationState == .home {
                     // Show the home view
@@ -1075,7 +1076,7 @@ struct EnvironmentView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             RecentProjectsSidebar(
                 workspaceManager: workspaceManager,
-                loadWorkspace: loadWorkspace
+                loadWorkspace: loadWorkspaceFromSidebar
             )
             .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
         } content: {
@@ -1093,7 +1094,7 @@ struct EnvironmentView: View {
         NavigationSplitView {
             RecentProjectsSidebar(
                 workspaceManager: workspaceManager,
-                loadWorkspace: loadWorkspace
+                loadWorkspace: loadWorkspaceFromSidebar
             )
             .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
         } detail: {
@@ -1124,7 +1125,7 @@ struct EnvironmentView: View {
             windowManager: windowManager,
             openWindow: { openWindow(value: $0) },
             closeWindow: { windowManager.removeWindow($0) },
-            closeAllWindows: clearAllWindowsWithConfirmation,
+            closeAllWindows: closeAllWindowsWithConfirmation,
             sheetManager: sheetManager,
             createWindow: createStandardWindow,
             selectedWindow: $selectedWindow,
@@ -1243,29 +1244,156 @@ struct EnvironmentView: View {
         _ = windowManager.createWindow(windowType,
                                        id:       nextWindowID,
                                        position: position)
-        openWindow(value: nextWindowID)
+        
+        switch type {
+        case .model3d:
+            windowManager.addWindowTag(nextWindowID, tag: "User-Created")
+            windowManager.addWindowTag(nextWindowID, tag: "3D-Model")
+        case .pointCloud:
+            windowManager.addWindowTag(nextWindowID, tag: "User-Created")
+            windowManager.addWindowTag(nextWindowID, tag: "Point-Cloud")
+        case .dataFrame:
+            windowManager.addWindowTag(nextWindowID, tag: "User-Created")
+            windowManager.addWindowTag(nextWindowID, tag: "Data-Table")
+        case .iotDashboard:
+            windowManager.addWindowTag(nextWindowID, tag: "User-Created")
+            windowManager.addWindowTag(nextWindowID, tag: "IoT-Dashboard")
+        }
+        
+        #if os(visionOS)
+        switch type {
+        case .model3d:
+            openWindow(id: "volumetric-model3d", value: nextWindowID)
+            print(" Created and opened volumetric-model3d #\(nextWindowID)")
+        case .pointCloud:
+            openWindow(id: "volumetric-pointcloud", value: nextWindowID)
+            print(" Created and opened volumetric-pointcloud #\(nextWindowID)")
+        case .dataFrame, .iotDashboard:
+            openWindow(value: NewWindowID.ID(nextWindowID))
+            print(" Created and opened regular window #\(nextWindowID)")
+        }
+        #else
+        openWindow(value: NewWindowID.ID(nextWindowID))
+        print(" Created and opened regular window #\(nextWindowID) (non-visionOS)")
+        #endif
+        
         windowManager.markWindowAsOpened(nextWindowID)
         nextWindowID += 1
     }
 
-    @MainActor
-    private func loadWorkspace(_ workspace: WorkspaceMetadata) {
-        Task {
-            // Load the workspace into the window manager
-            try await workspaceManager.loadWorkspace(
-                workspace,
-                into: windowManager,
-                clearExisting: true
-            ) { id in
-                openWindow(value: id)
-                windowManager.markWindowAsOpened(id)
+    private func handleWindowAction(_ action: WindowAction, windowId: Int) {
+        switch action {
+        case .open:
+            if let window = windowManager.getWindow(for: windowId) {
+                openCorrectWindowType(for: window)
+            } else {
+                openWindow(value: windowId)
             }
-            print(" Loaded workspace: \(workspace.name)")
+            windowManager.markWindowAsOpened(windowId)
+        case .close:
+            windowManager.removeWindow(windowId)
+        case .focus:
+            if let window = windowManager.getWindow(for: windowId) {
+                openCorrectWindowType(for: window)
+            } else {
+                openWindow(value: windowId)
+            }
+        case .duplicate:
+            // Create duplicate window
+            let originalWindow = windowManager.getAllWindows().first { $0.id == windowId }
+            if let original = originalWindow {
+                let duplicateType = original.windowType.toStandardWindowType()
+                createStandardWindow(duplicateType)
+            }
         }
     }
 
     @MainActor
-    private func clearAllWindowsWithConfirmation() {
+    private func loadWorkspaceFromSidebar(_ workspace: WorkspaceMetadata) {
+        Task {
+            do {
+                // Load the workspace into the window manager
+                let result = try await workspaceManager.loadWorkspace(
+                    workspace,
+                    into: windowManager,
+                    clearExisting: true
+                ) { id in
+                    // FIXED: Open the correct window type based on the window's type
+                    if let window = windowManager.getWindow(for: id) {
+                        openCorrectWindowType(for: window)
+                    } else {
+                        // Fallback to regular window if window not found
+                        openWindow(value: id)
+                    }
+                    windowManager.markWindowAsOpened(id)
+                }
+                print(" Loaded workspace: \(workspace.name) with \(result.openedWindows.count) windows")
+                
+                if windowManager.selectedProject == nil {
+                    let project = Project(
+                        name: workspace.name,
+                        type: workspace.category.displayName,
+                        icon: workspace.category.iconName,
+                        color: workspace.category.color,
+                        lastModified: workspace.modifiedDate,
+                        visualizations: workspace.totalWindows,
+                        dataPoints: 0,
+                        collaborators: 1,
+                        filename: workspace.fileURL?.lastPathComponent ?? ""
+                    )
+                    windowManager.setSelectedProject(project)
+                }
+            } catch {
+                print(" Failed to load workspace: \(error)")
+            }
+        }
+    }
+
+    @MainActor
+    private func openCorrectWindowType(for window: NewWindowID) {
+        print(" Opening window #\(window.id) of type: \(window.windowType)")
+        
+        #if os(visionOS)
+        // Handle volumetric windows on visionOS
+        switch window.windowType {
+        case .pointcloud:
+            // Check if it's a demo point cloud or regular point cloud
+            if window.state.tags.contains("Demo-PointCloud") {
+                openWindow(id: "volumetric-pointclouddemo", value: window.id)
+                print(" Opened volumetric-pointclouddemo for window #\(window.id)")
+            } else {
+                openWindow(id: "volumetric-pointcloud", value: window.id)
+                print(" Opened volumetric-pointcloud for window #\(window.id)")
+            }
+            
+        case .model3d:
+            openWindow(id: "volumetric-model3d", value: window.id)
+            print(" Opened volumetric-model3d for window #\(window.id)")
+            
+        case .charts:
+            // Check if it has 3D chart data
+            if window.state.chart3DData != nil {
+                openWindow(id: "volumetric-chart3d", value: window.id)
+                print(" Opened volumetric-chart3d for window #\(window.id)")
+            } else {
+                // Regular 2D window
+                openWindow(value: NewWindowID.ID(window.id))
+                print(" Opened regular window for 2D chart #\(window.id)")
+            }
+            
+        case .column, .spatial, .volume:
+            // Regular 2D windows
+            openWindow(value: NewWindowID.ID(window.id))
+            print(" Opened regular window #\(window.id)")
+        }
+        #else
+        // On non-visionOS platforms, open as regular windows
+        openWindow(value: NewWindowID.ID(window.id))
+        print(" Opened regular window #\(window.id) (non-visionOS)")
+        #endif
+    }
+
+    private func closeAllWindowsWithConfirmation() {
         let allWindows = windowManager.getAllWindows()
         let openWindows = windowManager.getAllWindows(onlyOpen: true)
         
@@ -1298,26 +1426,6 @@ struct EnvironmentView: View {
         windowManager.clearAllWindows()
         
         print(" Closed and cleaned up \(allWindows.count) windows")
-    }
-
-    // MARK: - Window Action Handler
-    private func handleWindowAction(_ action: WindowAction, windowId: Int) {
-        switch action {
-        case .open:
-            openWindow(value: windowId)
-            windowManager.markWindowAsOpened(windowId)
-        case .close:
-            windowManager.removeWindow(windowId)
-        case .focus:
-            openWindow(value: windowId)
-        case .duplicate:
-            // Create duplicate window
-            let originalWindow = windowManager.getAllWindows().first { $0.id == windowId }
-            if let original = originalWindow {
-                let duplicateType = original.windowType.toStandardWindowType()
-                createStandardWindow(duplicateType)
-            }
-        }
     }
 
     private var supportedFileTypes: [UTType] {
@@ -1383,6 +1491,8 @@ struct PultoHomeContentView: View {
 
             // Store the selected project in the window manager
             windowManager.setSelectedProject(project)
+            
+            await WorkspaceManager.shared.ensureProjectWorkspaceExists(for: project)
 
             // Switch to workspace view
             onOpenWorkspace()
@@ -1418,8 +1528,10 @@ struct PultoHomeContentView: View {
                     // Add to recent projects
                     await viewModel.addRecentProject(newProject)
 
-                    // Set as selected project
+                    // Set as selected project AND ensure workspace exists
                     windowManager.setSelectedProject(newProject)
+                    
+                    await WorkspaceManager.shared.ensureProjectWorkspaceExists(for: newProject)
 
                     print(" Created new project '\(newProject.name)' successfully")
                 } else {
