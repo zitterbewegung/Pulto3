@@ -233,6 +233,28 @@ struct EntryPoint: App {
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+
+        // Real-Time Streaming volume
+        WindowGroup(id: "volumetric-streaming", for: Int.self) { $id in
+            if let id = id, let win = windowManager.getWindow(for: id) {
+                RealTimeStreaming3DVolumetricView(
+                    windowID: id,
+                    windowData: win
+                )
+                .environmentObject(windowManager)
+                .environmentObject(entityManager)
+                .onAppear {
+                    windowManager.markWindowAsOpened(id)
+                }
+                .onDisappear {
+                    windowManager.markWindowAsClosed(id)
+                }
+            } else {
+                EmptyView()
+            }
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
     }
 
     private var immersiveWorkspace: some SwiftUI.Scene {

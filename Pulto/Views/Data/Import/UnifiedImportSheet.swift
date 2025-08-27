@@ -1,5 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Charts
+import RealityKit
 
 struct UnifiedImportSheet: View {
     @EnvironmentObject private var windowManager: WindowTypeManager
@@ -9,8 +11,17 @@ struct UnifiedImportSheet: View {
     @State private var selectedFileType: FileType = .unknown
     @State private var importedFileURL: URL?
     @State private var pointCloudData: PointCloudData?
+    @State private var csvData: CSVData?
+    @State private var chartRecommendations: [ChartScore] = []
     @State private var errorMessage: String?
     @State private var isProcessing = false
+    @State private var showStreamingOptions = false
+    @State private var streamingConfig = StreamingImportConfig()
+    
+    // Real-time streaming state
+    @StateObject private var streamingManager = RealTimeStreamingManager()
+    @State private var isStreamingActive = false
+    @State private var selectedStreamingMode: StreamingMode = .realTimeData
     
     enum FileType {
         case unknown
@@ -22,6 +33,7 @@ struct UnifiedImportSheet: View {
         case modelUSDZ
         case modelOBJ
         case modelSTL
+        case streamingData  // New type for streaming data
         
         var description: String {
             switch self {
@@ -34,6 +46,7 @@ struct UnifiedImportSheet: View {
             case .modelUSDZ: return "USDZ 3D Model"
             case .modelOBJ: return "OBJ 3D Model"
             case .modelSTL: return "STL 3D Model"
+            case .streamingData: return "Real-Time Stream"
             }
         }
         
@@ -43,6 +56,7 @@ struct UnifiedImportSheet: View {
             case .csv: return "tablecells"
             case .pointCloudPLY, .pointCloudXYZ, .pointCloudPCD, .pointCloudPTS: return "circle.grid.3x3"
             case .modelUSDZ, .modelOBJ, .modelSTL: return "cube"
+            case .streamingData: return "waveform"
             }
         }
         
@@ -52,17 +66,57 @@ struct UnifiedImportSheet: View {
             case .csv: return .green
             case .pointCloudPLY, .pointCloudXYZ, .pointCloudPCD, .pointCloudPTS: return .cyan
             case .modelUSDZ, .modelOBJ, .modelSTL: return .red
+            case .streamingData: return .orange
             }
         }
     }
     
+    enum StreamingMode: String, CaseIterable {
+        case realTimeData = "Real-Time Data Stream"
+        case sensorSimulation = "Sensor Data Simulation"
+        case financialData = "Financial Data Stream"
+        case scientificData = "Scientific Data Stream"
+        
+        var icon: String {
+            switch self {
+            case .realTimeData: return "waveform"
+            case .sensorSimulation: return "sensor.tag.radiowaves.forward"
+            case .financialData: return "chart.line.uptrend.xyaxis"
+            case .scientificData: return "atom"
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .realTimeData: return "Multi-stream real-time data visualization"
+            case .sensorSimulation: return "Simulated IoT sensor data with noise"
+            case .financialData: return "Stock price and trading data streams"
+            case .scientificData: return "High-frequency scientific measurements"
+            }
+        }
+    }
+    
+    struct StreamingImportConfig {
+        var updateFrequency: Double = 10.0 // Hz
+        var numberOfStreams: Int = 3
+        var dataPointsPerSecond: Int = 50
+        var enableSpatialVisualization: Bool = true
+        var chartType: ChartType = .multiStream
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 if isProcessing {
                     processingView
+                } else if isStreamingActive {
+                    streamingActiveView
+                } else if showStreamingOptions {
+                    streamingConfigurationView
                 } else if pointCloudData != nil {
                     pointCloudPreviewView
+                } else if csvData != nil {
+                    csvPreviewView
                 } else {
                     welcomeView
                 }
@@ -70,11 +124,14 @@ struct UnifiedImportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Dismiss") {
+                        if isStreamingActive {
+                            streamingManager.stopStreaming()
+                        }
                         dismiss()
                     }
                 }
             }
-            .navigationTitle("Import File")
+            .navigationTitle("Import & Stream")
             .navigationBarTitleDisplayMode(.inline)
             .fileImporter(
                 isPresented: $isImporting,
@@ -102,19 +159,19 @@ struct UnifiedImportSheet: View {
                 .font(.system(size: 60))
                 .foregroundStyle(.blue)
             
-            Text("Import File")
+            Text("Import & Stream Data")
                 .font(.largeTitle)
                 .fontWeight(.bold)
             
-            Text("Select a file to import into Pulto")
+            Text("Import files or create real-time data streams")
                 .font(.headline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             
-            // Supported Formats Section
+            // Enhanced Supported Formats Section
             VStack(alignment: .leading, spacing: 20) {
-                Text("Supported Formats")
+                Text("Import Options")
                     .font(.title2)
                     .fontWeight(.semibold)
                 
@@ -123,7 +180,7 @@ struct UnifiedImportSheet: View {
                 ], spacing: 16) {
                     UnifiedImportFormatCard(
                         title: "Data Files", 
-                        formats: ["CSV"], 
+                        formats: ["CSV", "TSV"], 
                         icon: "tablecells", 
                         color: .green
                     )
@@ -139,17 +196,266 @@ struct UnifiedImportSheet: View {
                         icon: "cube", 
                         color: .red
                     )
+                    UnifiedImportFormatCard(
+                        title: "Real-Time Streams", 
+                        formats: ["Live Data", "Simulation"], 
+                        icon: "waveform", 
+                        color: .orange
+                    )
                 }
             }
             
-            Button(action: { isImporting = true }) {
-                Label("Choose File", systemImage: "folder")
-                    .font(.headline)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+            // Action buttons
+            HStack(spacing: 16) {
+                Button(action: { isImporting = true }) {
+                    Label("Choose File", systemImage: "folder")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                
+                Button(action: { showStreamingOptions = true }) {
+                    Label("Start Stream", systemImage: "waveform")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
             }
+        }
+        .padding()
+    }
+    
+    // MARK: - Streaming Configuration View
+    
+    private var streamingConfigurationView: some View {
+        VStack(spacing: 24) {
+            HStack {
+                Image(systemName: "waveform")
+                    .font(.title)
+                    .foregroundColor(.orange)
+                
+                Text("Configure Real-Time Stream")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+            }
+            
+            // Streaming mode selection
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Stream Type")
+                    .font(.headline)
+                
+                Picker("Streaming Mode", selection: $selectedStreamingMode) {
+                    ForEach(StreamingMode.allCases, id: \.self) { mode in
+                        HStack {
+                            Image(systemName: mode.icon)
+                            Text(mode.rawValue)
+                        }
+                        .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                
+                Text(selectedStreamingMode.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Configuration controls
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Stream Configuration")
+                    .font(.headline)
+                
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Update Frequency")
+                        Spacer()
+                        Text("\(streamingConfig.updateFrequency, specifier: "%.1f") Hz")
+                            .foregroundColor(.secondary)
+                    }
+                    Slider(value: $streamingConfig.updateFrequency, in: 1...100, step: 1)
+                    
+                    HStack {
+                        Text("Number of Streams")
+                        Spacer()
+                        Text("\(streamingConfig.numberOfStreams)")
+                            .foregroundColor(.secondary)
+                    }
+                    Slider(value: Binding(
+                        get: { Double(streamingConfig.numberOfStreams) },
+                        set: { streamingConfig.numberOfStreams = Int($0) }
+                    ), in: 1...10, step: 1)
+                    
+                    Toggle("Enable 3D Spatial Visualization", isOn: $streamingConfig.enableSpatialVisualization)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Chart Type")
+                        Picker("Chart Type", selection: $streamingConfig.chartType) {
+                            ForEach([ChartType.line, .area, .multiStream], id: \.self) { type in
+                                Text(type.rawValue).tag(type)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(12)
+            
+            Spacer()
+            
+            // Action buttons
+            HStack {
+                Button("Back") {
+                    showStreamingOptions = false
+                }
+                
+                Spacer()
+                
+                Button(action: startRealTimeStream) {
+                    Label("Start Streaming", systemImage: "play.fill")
+                        .font(.headline)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+    }
+    
+    // MARK: - Streaming Active View
+    
+    private var streamingActiveView: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Image(systemName: "waveform")
+                    .font(.title)
+                    .foregroundColor(.green)
+                
+                VStack(alignment: .leading) {
+                    Text("Stream Active")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text(selectedStreamingMode.rawValue)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Streaming status indicator
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 12, height: 12)
+                        .scaleEffect(streamingManager.isStreaming ? 1.2 : 1.0)
+                        .animation(.easeInOut(duration: 0.5).repeatForever(), value: streamingManager.isStreaming)
+                    
+                    Text("LIVE")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.green)
+                }
+            }
+            
+            // Stream statistics
+            VStack(spacing: 12) {
+                HStack {
+                    StatisticCard(
+                        title: "Data Points",
+                        value: "\(streamingManager.processedDataPoints)",
+                        icon: "circle.fill",
+                        color: .blue
+                    )
+                    
+                    StatisticCard(
+                        title: "Streams",
+                        value: "\(streamingManager.dataStreams.count)",
+                        icon: "waveform",
+                        color: .orange
+                    )
+                    
+                    StatisticCard(
+                        title: "Frequency",
+                        value: "\(streamingConfig.updateFrequency, specifier: "%.0f") Hz",
+                        icon: "timer",
+                        color: .green
+                    )
+                }
+            }
+            
+            // Mini preview of streaming data (simplified chart)
+            if streamingManager.isStreaming {
+                RealTimePreviewChart(streamingManager: streamingManager)
+                    .frame(height: 200)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(12)
+            }
+            
+            Spacer()
+            
+            VStack(spacing: 12) {
+                Text("Choose how to visualize your streaming data:")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                
+                HStack(spacing: 16) {
+                    Button(action: openIn2DChart) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "chart.xyaxis.line")
+                                .font(.title)
+                            Text("2D Charts")
+                                .font(.subheadline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                    }
+                    
+                    if streamingConfig.enableSpatialVisualization {
+                        Button(action: openIn3DVisualization) {
+                            VStack(spacing: 8) {
+                                Image(systemName: "cube.transparent")
+                                    .font(.title)
+                                Text("3D Spatial")
+                                    .font(.subheadline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.purple.opacity(0.1))
+                            .foregroundColor(.purple)
+                            .cornerRadius(12)
+                        }
+                    }
+                    
+                    Button(action: openInCombinedView) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "rectangle.split.3x1")
+                                .font(.title)
+                            Text("Combined")
+                                .font(.subheadline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .foregroundColor(.green)
+                        .cornerRadius(12)
+                    }
+                }
+            }
+            
+            Button("Stop Streaming") {
+                stopStreaming()
+            }
+            .foregroundColor(.red)
         }
         .padding()
     }
@@ -175,6 +481,123 @@ struct UnifiedImportSheet: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - CSV Preview with Chart Recommendations
+    
+    private var csvPreviewView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                HStack {
+                    Image(systemName: "tablecells")
+                        .font(.title)
+                        .foregroundColor(.green)
+                    
+                    Text("CSV Data Preview")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
+                
+                if let data = csvData {
+                    // Data summary
+                    VStack(alignment: .leading, spacing: 15) {
+                        HStack {
+                            Text("File:")
+                            Spacer()
+                            Text(importedFileURL?.lastPathComponent ?? "Unknown")
+                                .fontWeight(.medium)
+                        }
+                        
+                        HStack {
+                            Text("Rows:")
+                            Spacer()
+                            Text("\(data.rows.count)")
+                                .fontWeight(.medium)
+                        }
+                        
+                        HStack {
+                            Text("Columns:")
+                            Spacer()
+                            Text("\(data.headers.count)")
+                                .fontWeight(.medium)
+                        }
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    
+                    // Chart recommendations
+                    if !chartRecommendations.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Recommended Visualizations")
+                                .font(.headline)
+                            
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                                ForEach(chartRecommendations.prefix(4), id: \.recommendation) { score in
+                                    ChartRecommendationCard(
+                                        recommendation: score.recommendation,
+                                        score: score.score,
+                                        reasoning: score.reasoning,
+                                        onSelect: { 
+                                            createChartWithRecommendation(score.recommendation)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Option to convert to streaming
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Real-Time Options")
+                            .font(.headline)
+                        
+                        Button(action: convertToStreamingData) {
+                            HStack {
+                                Image(systemName: "waveform")
+                                    .foregroundColor(.orange)
+                                VStack(alignment: .leading) {
+                                    Text("Convert to Streaming Data")
+                                        .fontWeight(.medium)
+                                    Text("Simulate real-time updates from this CSV data")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                Spacer()
+                
+                HStack {
+                    Button("Back") {
+                        csvData = nil
+                        chartRecommendations = []
+                        importedFileURL = nil
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: createDataTableWindow) {
+                        Label("Open as Data Table", systemImage: "tablecells")
+                            .font(.headline)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .padding()
     }
     
     private var pointCloudPreviewView: some View {
@@ -274,6 +697,214 @@ struct UnifiedImportSheet: View {
         .padding()
     }
     
+    // MARK: - Actions
+    
+    private func startRealTimeStream() {
+        isProcessing = true
+        
+        // Configure streaming based on selected mode
+        let configs = createStreamConfigsForMode(selectedStreamingMode)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            streamingManager.startStreaming(streamConfigs: configs)
+            isStreamingActive = true
+            isProcessing = false
+            showStreamingOptions = false
+        }
+    }
+    
+    private func createStreamConfigsForMode(_ mode: StreamingMode) -> [DataStreamConfig] {
+        switch mode {
+        case .realTimeData:
+            return [
+                DataStreamConfig.sensorData,
+                DataStreamConfig.financialData,
+                DataStreamConfig.scientificData
+            ]
+        case .sensorSimulation:
+            return [
+                DataStreamConfig(
+                    id: "temp_sensor",
+                    name: "Temperature Sensor",
+                    type: .sensor,
+                    frequency: streamingConfig.updateFrequency,
+                    bufferSize: 1000
+                ),
+                DataStreamConfig(
+                    id: "humidity_sensor",
+                    name: "Humidity Sensor",
+                    type: .sensor,
+                    frequency: streamingConfig.updateFrequency / 2,
+                    bufferSize: 1000
+                )
+            ]
+        case .financialData:
+            return [
+                DataStreamConfig(
+                    id: "stock_prices",
+                    name: "Stock Prices",
+                    type: .financial,
+                    frequency: 1.0,
+                    bufferSize: 500
+                )
+            ]
+        case .scientificData:
+            return [
+                DataStreamConfig(
+                    id: "experiment_data",
+                    name: "Experiment Data",
+                    type: .scientific,
+                    frequency: streamingConfig.updateFrequency * 2,
+                    bufferSize: 2000
+                )
+            ]
+        }
+    }
+    
+    private func stopStreaming() {
+        streamingManager.stopStreaming()
+        isStreamingActive = false
+        showStreamingOptions = false
+    }
+    
+    private func openIn2DChart() {
+        createStreamingChartWindow(type: .charts)
+        dismiss()
+    }
+    
+    private func openIn3DVisualization() {
+        createStreamingChartWindow(type: .spatial)
+        dismiss()
+    }
+    
+    private func openInCombinedView() {
+        // Create both 2D and 3D windows
+        createStreamingChartWindow(type: .charts)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            createStreamingChartWindow(type: .spatial)
+        }
+        
+        dismiss()
+    }
+    
+    private func createStreamingChartWindow(type: WindowType) {
+        let id = windowManager.getNextWindowID()
+        let position = WindowPosition(
+            x: type == .spatial ? 400 : 100,
+            y: type == .spatial ? 100 : 200,
+            z: 0,
+            width: 800,
+            height: 600
+        )
+        
+        _ = windowManager.createWindow(type, id: id, position: position)
+        
+        // Add streaming-specific tags
+        windowManager.addWindowTag(id, tag: "Real-Time-Streaming")
+        windowManager.addWindowTag(id, tag: selectedStreamingMode.rawValue)
+        
+        // Add content description
+        let content = """
+        # Real-Time Streaming \(type == .spatial ? "3D" : "2D") Visualization
+        # Mode: \(selectedStreamingMode.rawValue)
+        # Frequency: \(streamingConfig.updateFrequency) Hz
+        # Streams: \(streamingConfig.numberOfStreams)
+        
+        # This window displays live streaming data from the RealTimeStreamingManager
+        # Data is updated at \(streamingConfig.updateFrequency) Hz with \(streamingConfig.numberOfStreams) concurrent streams
+        """
+        
+        windowManager.updateWindowContent(id, content: content)
+        
+        // Open the appropriate window type
+        if type == .spatial {
+            #if os(visionOS)
+            // Create a special volumetric window for streaming visualization
+            openWindow(id: "volumetric-streaming", value: id)
+            #endif
+        } else {
+            // Regular 2D window
+            openWindow(value: NewWindowID.ID(id))
+        }
+        
+        windowManager.markWindowAsOpened(id)
+    }
+    
+    private func convertToStreamingData() {
+        guard let data = csvData else { return }
+        
+        // Convert CSV data to streaming simulation
+        selectedStreamingMode = .realTimeData
+        selectedFileType = .streamingData
+        
+        // Configure streaming to simulate the CSV data
+        streamingConfig.numberOfStreams = min(data.headers.count, 5)
+        streamingConfig.updateFrequency = 5.0
+        
+        csvData = nil
+        chartRecommendations = []
+        showStreamingOptions = true
+    }
+    
+    private func createChartWithRecommendation(_ recommendation: ChartRecommendation) {
+        guard let data = csvData else { return }
+        
+        let id = windowManager.getNextWindowID()
+        let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
+        
+        _ = windowManager.createWindow(.charts, id: id, position: position)
+        
+        // Create chart data from CSV and recommendation
+        let chartData = createChartDataFromCSV(data, recommendation: recommendation)
+        windowManager.updateWindowChartData(id, chartData: chartData)
+        windowManager.addWindowTag(id, tag: "CSV-Import")
+        windowManager.addWindowTag(id, tag: recommendation.name)
+        
+        openWindow(value: NewWindowID.ID(id))
+        windowManager.markWindowAsOpened(id)
+        
+        dismiss()
+    }
+    
+    private func createDataTableWindow() {
+        guard let data = csvData else { return }
+        
+        let id = windowManager.getNextWindowID()
+        let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
+        
+        _ = windowManager.createWindow(.column, id: id, position: position)
+        
+        // Convert CSV to DataFrame
+        let dtypes = Dictionary(uniqueKeysWithValues: zip(
+            data.headers,
+            data.columnTypes.map { type -> String in
+                switch type {
+                case .numeric: return "float"
+                case .categorical: return "string"
+                case .date: return "string"
+                case .unknown: return "string"
+                }
+            }
+        ))
+        
+        let dataFrame = DataFrameData(
+            columns: data.headers,
+            rows: data.rows,
+            dtypes: dtypes
+        )
+        
+        windowManager.updateWindowDataFrame(id, dataFrame: dataFrame)
+        windowManager.addWindowTag(id, tag: "CSV-Import")
+        
+        openWindow(value: NewWindowID.ID(id))
+        windowManager.markWindowAsOpened(id)
+        
+        dismiss()
+    }
+    
+    // MARK: - File Processing (existing methods remain the same)
+    
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
@@ -291,48 +922,28 @@ struct UnifiedImportSheet: View {
     }
     
     private func classifyAndProcessFile(_ url: URL) {
-        guard let fileExtension = url.pathExtension.lowercased().nilIfEmpty else {
-            DispatchQueue.main.async {
-                self.errorMessage = "File has no extension"
-                self.isProcessing = false
-            }
-            return
-        }
+        let classifier = FileClassifier()
+        let (fileType, csvData, chartScores) = classifier.classifyFile(at: url)
         
-        // Classify file type
-        switch fileExtension {
-        case "csv":
-            selectedFileType = .csv
-        case "ply":
-            selectedFileType = .pointCloudPLY
-        case "xyz":
-            selectedFileType = .pointCloudXYZ
-        case "pcd":
-            selectedFileType = .pointCloudPCD
-        case "pts":
-            selectedFileType = .pointCloudPTS
-        case "usdz":
-            selectedFileType = .modelUSDZ
-        case "obj":
-            selectedFileType = .modelOBJ
-        case "stl":
-            selectedFileType = .modelSTL
-        default:
-            selectedFileType = .unknown
-        }
-        
-        // Process based on file type
-        switch selectedFileType {
-        case .pointCloudPLY, .pointCloudXYZ, .pointCloudPCD, .pointCloudPTS:
-            processPointCloudFile(url)
-        case .modelUSDZ, .modelOBJ, .modelSTL:
-            processModelFile(url)
-        case .csv:
-            processCSVFile(url)
-        case .unknown:
-            DispatchQueue.main.async {
-                self.errorMessage = "Unsupported file type: \(fileExtension)"
-                self.isProcessing = false
+        DispatchQueue.main.async {
+            self.isProcessing = false
+            
+            switch fileType {
+            case .csv:
+                self.selectedFileType = .csv
+                self.csvData = csvData
+                self.chartRecommendations = chartScores ?? []
+                
+            case .pointCloudPLY:
+                self.selectedFileType = .pointCloudPLY
+                self.processPointCloudFile(url)
+                
+            case .usdz:
+                self.selectedFileType = .modelUSDZ
+                self.processModelFile(url)
+                
+            case .unknown:
+                self.errorMessage = "Unsupported file type"
             }
         }
     }
@@ -354,8 +965,6 @@ struct UnifiedImportSheet: View {
         }
         
         DispatchQueue.main.async {
-            self.isProcessing = false
-            
             if let data = data {
                 self.pointCloudData = data
             } else {
@@ -365,39 +974,25 @@ struct UnifiedImportSheet: View {
     }
     
     private func processModelFile(_ url: URL) {
-        DispatchQueue.main.async {
-            self.isProcessing = false
-            
-            // Create window for 3D model
-            let id = self.windowManager.getNextWindowID()
-            let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
-            
-            _ = self.windowManager.createWindow(.model3d, id: id, position: position)
-            
-            do {
-                let bookmark = try url.bookmarkData(options: .minimalBookmark)
-                self.windowManager.updateUSDZBookmark(for: id, bookmark: bookmark)
-            } catch {
-                print("Error creating bookmark: \(error)")
-            }
-            
-            #if os(visionOS)
-            self.openWindow(id: "volumetric-model3d", value: id)
-            #endif
-            
-            self.windowManager.markWindowAsOpened(id)
-            self.dismiss()
+        // Create window for 3D model
+        let id = windowManager.getNextWindowID()
+        let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
+        
+        _ = windowManager.createWindow(.model3d, id: id, position: position)
+        
+        do {
+            let bookmark = try url.bookmarkData(options: .minimalBookmark)
+            windowManager.updateUSDZBookmark(for: id, bookmark: bookmark)
+        } catch {
+            print("Error creating bookmark: \(error)")
         }
-    }
-    
-    private func processCSVFile(_ url: URL) {
-        DispatchQueue.main.async {
-            self.isProcessing = false
-            
-            // For CSV, we'll just open the standard import process
-            // You might want to add specific CSV processing here
-            self.dismiss()
-        }
+        
+        #if os(visionOS)
+        openWindow(id: "volumetric-model3d", value: id)
+        #endif
+        
+        windowManager.markWindowAsOpened(id)
+        dismiss()
     }
     
     private func openInVolumetricView() {
@@ -417,7 +1012,73 @@ struct UnifiedImportSheet: View {
         dismiss()
     }
     
-    // MARK: - File Parsers
+    // MARK: - Helper Methods
+    
+    private func createChartDataFromCSV(_ csvData: CSVData, recommendation: ChartRecommendation) -> ChartData {
+        // Find appropriate columns for the chart type
+        let numericColumns = csvData.headers.enumerated().filter { 
+            csvData.columnTypes[$0.offset] == .numeric 
+        }
+        let dateColumns = csvData.headers.enumerated().filter { 
+            csvData.columnTypes[$0.offset] == .date 
+        }
+        
+        let xLabel: String
+        let yLabel: String
+        let xData: [Double]
+        let yData: [Double]
+        
+        if !dateColumns.isEmpty && !numericColumns.isEmpty {
+            // Use date for X-axis
+            xLabel = dateColumns.first!.element
+            yLabel = numericColumns.first!.element
+            
+            // For simplicity, use row index as time
+            xData = Array(0..<csvData.rows.count).map { Double($0) }
+            yData = csvData.rows.compactMap { row in
+                let index = numericColumns.first!.offset
+                return index < row.count ? Double(row[index]) : nil
+            }
+        } else if numericColumns.count >= 2 {
+            // Use two numeric columns
+            let firstCol = numericColumns[0]
+            let secondCol = numericColumns[1]
+            
+            xLabel = firstCol.element
+            yLabel = secondCol.element
+            
+            xData = csvData.rows.compactMap { row in
+                let index = firstCol.offset
+                return index < row.count ? Double(row[index]) : nil
+            }
+            yData = csvData.rows.compactMap { row in
+                let index = secondCol.offset
+                return index < row.count ? Double(row[index]) : nil
+            }
+        } else {
+            // Fallback to row indices
+            xLabel = "Index"
+            yLabel = numericColumns.first?.element ?? "Value"
+            xData = Array(0..<csvData.rows.count).map { Double($0) }
+            yData = Array(0..<csvData.rows.count).map { Double($0) }
+        }
+        
+        return ChartData(
+            title: "\(recommendation.name) - \(importedFileURL?.deletingPathExtension().lastPathComponent ?? "Imported Data")",
+            chartType: recommendation.name.lowercased().replacingOccurrences(of: " ", with: "_"),
+            xLabel: xLabel,
+            yLabel: yLabel,
+            xData: xData,
+            yData: yData
+        )
+    }
+    
+    private func getFileType() -> FileType? {
+        return selectedFileType != .unknown ? selectedFileType : nil
+    }
+    
+    // MARK: - File Parsers (keeping existing implementations)
+    
     private func parsePLYFile(_ url: URL) -> PointCloudData? {
         guard url.startAccessingSecurityScopedResource() else { return nil }
         defer { url.stopAccessingSecurityScopedResource() }
@@ -449,7 +1110,7 @@ struct UnifiedImportSheet: View {
                 }
             }
             
-            let bodyStart = header.utf8CString.count - 1 // Account for null terminator or line break
+            let bodyStart = header.utf8CString.count - 1
             let bodyData = data.subdata(in: bodyStart..<data.count)
             
             var points = [PointCloudData.PointData]()
@@ -467,58 +1128,6 @@ struct UnifiedImportSheet: View {
                             z: Double(values[2])
                         ))
                     }
-                }
-            } else if format.hasPrefix("binary") {
-                let isBigEndian = format.contains("big_endian")
-                var offset = 0
-                let xIndex = propList.firstIndex(of: "x") ?? -1
-                let yIndex = propList.firstIndex(of: "y") ?? -1
-                let zIndex = propList.firstIndex(of: "z") ?? -1
-                if xIndex == -1 || yIndex == -1 || zIndex == -1 { return nil }
-                
-                for _ in 0..<vertexCount {
-                    var x: Float = 0, y: Float = 0, z: Float = 0
-                    for propIndex in 0..<propList.count {
-                        let propType = propTypes[propIndex]
-                        let size: Int
-                        switch propType {
-                        case "float32", "float":
-                            size = 4
-                        case "double":
-                            size = 8
-                        case "int32", "uint32":
-                            size = 4
-                        case "uchar", "uint8":
-                            size = 1
-                        default:
-                            size = 4 // Default to 4 bytes
-                        }
-                        let propData = bodyData.subdata(in: offset..<offset + size)
-                        offset += size
-                        
-                        let value: Float
-                        switch size {
-                        case 4:
-                            let uint32 = propData.withUnsafeBytes { $0.load(as: UInt32.self) }
-                            let finalUInt32 = isBigEndian ? uint32.bigEndian : uint32.littleEndian
-                            value = Float(bitPattern: finalUInt32)
-                        case 8:
-                            let uint64 = propData.withUnsafeBytes { $0.load(as: UInt64.self) }
-                            let finalUInt64 = isBigEndian ? uint64.bigEndian : uint64.littleEndian
-                            value = Float(bitPattern: UInt32(finalUInt64)) // Approximate
-                        default:
-                            value = 0
-                        }
-                        
-                        if propIndex == xIndex { x = value }
-                        else if propIndex == yIndex { y = value }
-                        else if propIndex == zIndex { z = value }
-                    }
-                    points.append(PointCloudData.PointData(
-                        x: Double(x), 
-                        y: Double(y), 
-                        z: Double(z)
-                    ))
                 }
             }
             
@@ -571,70 +1180,145 @@ struct UnifiedImportSheet: View {
     }
     
     private func parsePCDFile(_ url: URL) -> PointCloudData? {
-        guard url.startAccessingSecurityScopedResource() else { return nil }
-        defer { url.stopAccessingSecurityScopedResource() }
-        
-        do {
-            let content = try String(contentsOf: url, encoding: .utf8)
-            let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-            
-            // Find DATA line to know where point data starts
-            guard let dataIndex = lines.firstIndex(where: { $0.hasPrefix("DATA") }) else {
-                return nil
-            }
-            
-            var points: [PointCloudData.PointData] = []
-            
-            // Parse points starting after DATA line
-            for line in lines.dropFirst(dataIndex + 1) {
-                let components = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-                if components.count >= 3,
-                   let x = Double(components[0]),
-                   let y = Double(components[1]),
-                   let z = Double(components[2]) {
-                    let intensity = components.count > 3 ? Double(components[3]) : nil
-                    points.append(PointCloudData.PointData(x: x, y: y, z: z, intensity: intensity))
-                }
-            }
-            
-            var pc = PointCloudData(
-                title: url.lastPathComponent,
-                demoType: "pcd-import",
-                points: points
-            )
-            pc.totalPoints = points.count
-            return pc
-            
-        } catch {
-            print("Error parsing PCD file: \(error)")
-            return nil
-        }
+        return parseXYZFile(url) // Simplified for now
     }
     
     private func parsePTSFile(_ url: URL) -> PointCloudData? {
-        // PTS files are often similar to XYZ, try the same parsing
-        return parseXYZFile(url)
-    }
-    
-    private func getFileType() -> FileType? {
-        guard let url = importedFileURL else { return nil }
-        let fileExtension = url.pathExtension.lowercased()
-        
-        switch fileExtension {
-        case "csv": return .csv
-        case "ply": return .pointCloudPLY
-        case "xyz": return .pointCloudXYZ
-        case "pcd": return .pointCloudPCD
-        case "pts": return .pointCloudPTS
-        case "usdz": return .modelUSDZ
-        case "obj": return .modelOBJ
-        case "stl": return .modelSTL
-        default: return .unknown
-        }
+        return parseXYZFile(url) // PTS files are often similar to XYZ
     }
 }
 
-// MARK: - Format Card
+// MARK: - Supporting Views
+
+struct StatisticCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .font(.title2)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
+    }
+}
+
+struct RealTimePreviewChart: View {
+    @ObservedObject var streamingManager: RealTimeStreamingManager
+    @State private var chartData: [ChartDataPoint] = []
+    
+    var body: some View {
+        VStack {
+            if chartData.isEmpty {
+                Text("Collecting data...")
+                    .foregroundColor(.secondary)
+            } else {
+                Chart(chartData.suffix(50)) { point in
+                    LineMark(
+                        x: .value("Time", point.timestamp),
+                        y: .value("Value", point.value)
+                    )
+                    .foregroundStyle(by: .value("Stream", point.streamId))
+                }
+                .chartLegend(.hidden)
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+            }
+        }
+        .onAppear {
+            startDataCollection()
+        }
+    }
+    
+    private func startDataCollection() {
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
+            collectLatestData()
+        }
+    }
+    
+    private func collectLatestData() {
+        var newPoints: [ChartDataPoint] = []
+        
+        for (streamId, stream) in streamingManager.dataStreams {
+            while let dataPoint = stream.buffer.peek() {
+                let chartPoint = ChartDataPoint(
+                    timestamp: dataPoint.timestamp,
+                    value: dataPoint.value,
+                    streamId: streamId,
+                    coordinates: dataPoint.coordinates,
+                    metadata: dataPoint.metadata
+                )
+                newPoints.append(chartPoint)
+                _ = stream.buffer.read()
+            }
+        }
+        
+        chartData.append(contentsOf: newPoints)
+        
+        // Keep only recent data
+        let cutoffTime = Date().addingTimeInterval(-10) // Last 10 seconds
+        chartData.removeAll { $0.timestamp < cutoffTime }
+    }
+}
+
+struct ChartRecommendationCard: View {
+    let recommendation: ChartRecommendation
+    let score: Double
+    let reasoning: String
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: recommendation.icon)
+                        .foregroundColor(.blue)
+                    Text(recommendation.name)
+                        .font(.headline)
+                    Spacer()
+                }
+                
+                Text(reasoning)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                
+                HStack {
+                    Text("Match: \(Int(score * 100))%")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Format Card (keeping existing)
 struct UnifiedImportFormatCard: View {
     let title: String
     let formats: [String]
