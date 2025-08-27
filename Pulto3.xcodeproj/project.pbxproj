@@ -28,6 +28,7 @@
 		DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */; };
 		DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */; };
 		DC9BB5BF2E39D7E10043F42B /* NotebookCellViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */; };
+		DCAEF7CB2E5F6EFF009551A3 /* PultoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */; };
 		DCBB4FAC2E4D79A90094B0BC /* FileImportRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */; };
 		DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */; };
 		DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */; };
@@ -85,6 +86,7 @@
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
 		DC9BB5BE2E39D7E10043F42B /* NotebookCellViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookCellViewer.swift; sourceTree = "<group>"; };
 		DCA833952E0E21E200D32258 /* MARKETING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MARKETING.md; sourceTree = "<group>"; };
+		DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
 		DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileImportRowView.swift; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -435,6 +438,7 @@
 				DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */,
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
+				DCAEF7CB2E5F6EFF009551A3 /* PultoHomeView.swift in Sources */,
 				DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */,
 				DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */,
 				DC9BB5BF2E39D7E10043F42B /* NotebookCellViewer.swift in Sources */,

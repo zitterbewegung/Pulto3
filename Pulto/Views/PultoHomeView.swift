@@ -779,13 +779,8 @@ struct RecentProjectsSection: View {
                 ForEach(Array(projects.prefix(5))) { project in
                     Button(action: { onProjectTap(project) }) {
                         HStack {
-                            // Icon
-                            Image(systemName: project.icon)
-                                .foregroundColor(project.color)
-                                .frame(width: 20)
-                            
-                            // Filename
-                            Text(project.filename)
+                            // Project name (removed folder icon)
+                            Text(project.name)
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -808,7 +803,8 @@ struct RecentProjectsSection: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 10) // Standardized padding for consistent height
+                        .frame(height: 44) // Fixed height for all rows
                     }
                     .buttonStyle(.plain)
                     .background(

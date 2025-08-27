@@ -1865,7 +1865,7 @@ struct RecentProjectsSidebar: View {
                         .padding()
                     } else {
                         ScrollView {
-                            // Simple data table style list
+                            // Simple data table style list with consistent row heights
                             VStack(spacing: 1) {
                                 ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
                                     Button(action: {
@@ -1875,12 +1875,7 @@ struct RecentProjectsSidebar: View {
                                         }
                                     }) {
                                         HStack {
-                                            // Icon
-                                            Image(systemName: "folder")
-                                                .foregroundColor(.blue)
-                                                .frame(width: 20)
-                                            
-                                            // Project name
+                                            // Project name (removed folder icon)
                                             Text(workspace.name)
                                                 .font(.subheadline)
                                                 .foregroundColor(.primary)
@@ -1904,7 +1899,8 @@ struct RecentProjectsSidebar: View {
                                                 .foregroundColor(.secondary)
                                         }
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical, 10)
+                                        .padding(.vertical, 10) // Standardized padding for consistent height
+                                        .frame(height: 44) // Fixed height for all rows
                                     }
                                     .buttonStyle(.plain)
                                     .background(
