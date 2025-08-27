@@ -1443,7 +1443,7 @@ struct PultoHomeContentView: View {
     @StateObject private var windowManager = WindowTypeManager.shared
 
     var body: some View {
-        // Main content without toolbar (since it's now in the navigation bar)
+        // Main content without toolba r (since it's now in the navigation bar)
         ScrollView {
             VStack(spacing: 24) {
                 SimpleHeaderView(viewModel: viewModel, onLoginTap: {
@@ -1833,7 +1833,7 @@ struct RecentProjectsSidebar: View {
                     onLoad: { loadWorkspace(selectedWorkspace) }
                 )
             } else {
-                // Show main projects list
+                // Show main projects list as data table rows
                 VStack(spacing: 0) {
                     // Header
                     HStack {
@@ -1842,7 +1842,9 @@ struct RecentProjectsSidebar: View {
                             .fontWeight(.semibold)
                         Spacer()
                     }
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .padding(.bottom, 12)
 
                     if workspaceManager.getCustomWorkspaces().isEmpty {
                         VStack(spacing: 16) {
@@ -1863,21 +1865,57 @@ struct RecentProjectsSidebar: View {
                         .padding()
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 12) {
+                            // Simple data table style list
+                            VStack(spacing: 1) {
                                 ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
-                                    ProjectSummaryCard(
-                                        workspace: workspace,
-                                        onSelect: {
-                                            selectedWorkspace = workspace
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                showingProjectDetail = true
-                                            }
-                                        },
-                                        onLoad: { loadWorkspace(workspace) }
+                                    Button(action: {
+                                        selectedWorkspace = workspace
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showingProjectDetail = true
+                                        }
+                                    }) {
+                                        HStack {
+                                            // Icon
+                                            Image(systemName: "folder")
+                                                .foregroundColor(.blue)
+                                                .frame(width: 20)
+                                            
+                                            // Project name
+                                            Text(workspace.name)
+                                                .font(.subheadline)
+                                                .foregroundColor(.primary)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            
+                                            // Windows count
+                                            Text("\(workspace.totalWindows) views")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .frame(width: 80, alignment: .trailing)
+                                            
+                                            // Last modified
+                                            Text(workspace.formattedModifiedDate)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .frame(width: 100, alignment: .trailing)
+                                            
+                                            // Chevron
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.gray.opacity(0.1))
                                     )
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
                                 }
                             }
-                            .padding()
+                            .padding(.vertical, 8)
                         }
                     }
                 }

@@ -764,103 +764,74 @@ struct RecentProjectsSection: View {
     let onProjectTap: (Project) -> Void 
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Recent Projects")
-                    .font(.title2)
+                    .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
 
                 Spacer()
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 16) {
-                    ForEach(Array(projects.prefix(6))) { project in
-                        SpatialProjectCard(
-                            project: project,
-                            onTap: { onProjectTap(project) } 
-                        )
+            // Simple data table style list
+            VStack(spacing: 1) {
+                ForEach(Array(projects.prefix(5))) { project in
+                    Button(action: { onProjectTap(project) }) {
+                        HStack {
+                            // Icon
+                            Image(systemName: project.icon)
+                                .foregroundColor(project.color)
+                                .frame(width: 20)
+                            
+                            // Filename
+                            Text(project.filename)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            // Type
+                            Text(project.type)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 120, alignment: .leading)
+                            
+                            // Last modified
+                            Text(project.lastModified, style: .relative)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 80, alignment: .trailing)
+                            
+                            // Chevron
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                     }
+                    .buttonStyle(.plain)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.gray.opacity(0.1))
+                    )
+                    .padding(.vertical, 1)
                 }
-                .padding(.horizontal, 12)
             }
+            .padding(8)
         }
-        .padding(24)
+        .padding(16)
         .background {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.regularMaterial)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
                 }
-                .shadow(color: .black.opacity(0.15), radius: 25, x: 0, y: 15)
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+                .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-    }
-}
-
-// MARK: - Spatial Project Card
-struct SpatialProjectCard: View {
-    let project: Project
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
-                // Project icon area with color
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [project.color.opacity(0.4), project.color.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 200, height: 100)
-                    .overlay {
-                        Image(systemName: project.icon)
-                            .font(.system(size: 32))
-                            .foregroundStyle(project.color)
-                            .symbolEffect(.bounce, value: isHovered)
-                    }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(project.filename)  
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
-
-                    Text(project.type)
-                        .font(.caption)
-                        .foregroundStyle(project.color)
-
-                    Text(project.lastModified, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
-            }
-            .frame(width: 200)
-        }
-        .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.regularMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(.white.opacity(isHovered ? 0.3 : 0.1), lineWidth: isHovered ? 2 : 1)
-                }
-                .shadow(color: .black.opacity(isHovered ? 0.15 : 0.08), radius: isHovered ? 12 : 6, x: 0, y: isHovered ? 6 : 3)
-        }
-        .scaleEffect(isHovered ? 1.03 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { hovering in
-            isHovered = hovering
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 
