@@ -13,20 +13,6 @@ import RealityKit
 
 // MARK: - Real-Time Chart Data Models
 
-struct ChartDataPoint: Identifiable {
-    let id = UUID()
-    let timestamp: Date
-    let value: Double
-    let streamId: String
-    let coordinates: SIMD3<Float>?
-    let metadata: [String: Any]
-    
-    // For Chart compatibility
-    var timeInterval: TimeInterval {
-        timestamp.timeIntervalSinceReferenceDate
-    }
-}
-
 enum ChartType: String, CaseIterable {
     case line = "Line Chart"
     case area = "Area Chart"
@@ -51,7 +37,7 @@ struct RealTimeStreamingChartView: View {
     @StateObject private var streamingManager = RealTimeStreamingManager()
     @State private var selectedChartType: ChartType = .line
     @State private var isStreaming = false
-    @State private var chartData: [ChartDataPoint] = []
+    @State private var chartData: [RealTimeChartDataPoint] = []
     @State private var selectedStreams: Set<String> = []
     @State private var timeWindow: TimeInterval = 60.0 // Show last 60 seconds
     @State private var maxDataPoints: Int = 1000
@@ -395,14 +381,14 @@ struct RealTimeStreamingChartView: View {
         let cutoffTime = now.addingTimeInterval(-timeWindow)
         
         // Collect data from selected streams
-        var newPoints: [ChartDataPoint] = []
+        var newPoints: [RealTimeChartDataPoint] = []
         
         for streamId in selectedStreams {
             guard let stream = streamingManager.dataStreams[streamId] else { continue }
             
             // Read available data points from the circular buffer
             while let dataPoint = stream.buffer.peek() {
-                let chartPoint = ChartDataPoint(
+                let chartPoint = RealTimeChartDataPoint(
                     timestamp: dataPoint.timestamp,
                     value: dataPoint.value,
                     streamId: streamId,
@@ -437,7 +423,7 @@ struct RealTimeStreamingChartView: View {
         }
     }
     
-    private func getFilteredData() -> [ChartDataPoint] {
+    private func getFilteredData() -> [RealTimeChartDataPoint] {
         let now = Date()
         let cutoffTime = now.addingTimeInterval(-timeWindow)
         

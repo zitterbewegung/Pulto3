@@ -97,7 +97,7 @@ protocol StreamingDataSource: AnyObject, Identifiable {
     var frequency: Double { get }
     var isActive: Bool { get set }
     
-    weak var delegate: StreamingDataSourceDelegate? { get set }
+    var delegate: StreamingDataSourceDelegate? { get set }
     
     func start()
     func stop()
@@ -116,15 +116,34 @@ struct StreamingDataPoint {
     let coordinates: SIMD3<Float>?
     let metadata: [String: Any]
     
-    // Convert to chart-compatible format
-    var asChartDataPoint: ChartDataPoint {
-        ChartDataPoint(
+    // Convert to RealTime chart-compatible format
+    var asRealTimeChartDataPoint: RealTimeChartDataPoint {
+        RealTimeChartDataPoint(
             timestamp: timestamp,
             value: value,
             streamId: sourceId,
             coordinates: coordinates,
             metadata: metadata
         )
+    }
+}
+
+// MARK: - RealTime Chart Data Point (to avoid ambiguity)
+struct RealTimeChartDataPoint: Identifiable, Equatable {
+    let id = UUID()
+    let timestamp: Date
+    let value: Double
+    let streamId: String
+    let coordinates: SIMD3<Float>?
+    let metadata: [String: Any]
+    
+    // For Chart compatibility
+    var timeInterval: TimeInterval {
+        timestamp.timeIntervalSinceReferenceDate
+    }
+    
+    static func == (lhs: RealTimeChartDataPoint, rhs: RealTimeChartDataPoint) -> Bool {
+        lhs.id == rhs.id
     }
 }
 
@@ -292,7 +311,7 @@ class MockFinancialDataSource: StreamingDataSource, ObservableObject {
 
 struct StreamingChartView: View {
     let configuration: ChartConfiguration
-    let dataPoints: [ChartDataPoint]
+    let dataPoints: [RealTimeChartDataPoint]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -368,7 +387,7 @@ struct StreamingChartView: View {
             }
         }
         .chartXScale(domain: timeRange)
-        .chartYScale(domain: configuration.autoScale ? .automatic : (configuration.yAxisRange ?? -1...1))
+        .chartYScale(domain: (configuration.autoScale ? nil : configuration.yAxisRange)!)
         .animation(.easeInOut(duration: 0.2), value: dataPoints)
     }
 }
@@ -387,7 +406,7 @@ extension StreamingChartIntegrationManager: StreamingDataSourceDelegate {
 
 struct IntegratedStreamingChartsView: View {
     @StateObject private var integrationManager = StreamingChartIntegrationManager()
-    @State private var chartData: [String: [ChartDataPoint]] = [:]
+    @State private var chartData: [String: [RealTimeChartDataPoint]] = [:]
     
     var body: some View {
         VStack {

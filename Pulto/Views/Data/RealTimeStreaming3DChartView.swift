@@ -18,7 +18,7 @@ struct RealTimeStreaming3DChartView: View {
     @State private var isStreaming = false
     @State private var show2DChart = true
     @State private var show3DVisualization = true
-    @State private var chartData: [ChartDataPoint] = []
+    @State private var chartData: [RealTimeChartDataPoint] = []
     @State private var spatialEntities: [Entity] = []
     @State private var timeWindow: TimeInterval = 30.0
     @State private var maxSpatialPoints: Int = 500
@@ -359,11 +359,11 @@ struct RealTimeStreaming3DChartView: View {
         let cutoffTime = now.addingTimeInterval(-timeWindow)
         
         // Collect new data points
-        var newPoints: [ChartDataPoint] = []
+        var newPoints: [RealTimeChartDataPoint] = []
         
         for (streamId, stream) in streamingManager.dataStreams {
             while let dataPoint = stream.buffer.peek() {
-                let chartPoint = ChartDataPoint(
+                let chartPoint = RealTimeChartDataPoint(
                     timestamp: dataPoint.timestamp,
                     value: dataPoint.value,
                     streamId: streamId,
@@ -385,7 +385,7 @@ struct RealTimeStreaming3DChartView: View {
         }
     }
     
-    private func getFilteredData() -> [ChartDataPoint] {
+    private func getFilteredData() -> [RealTimeChartDataPoint] {
         let now = Date()
         let cutoffTime = now.addingTimeInterval(-timeWindow)
         

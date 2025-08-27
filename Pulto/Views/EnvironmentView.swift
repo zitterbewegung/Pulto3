@@ -91,16 +91,6 @@ extension WindowType {
         case .model3d: return .red
         }
     }
-
-    func toStandardWindowType() -> StandardWindowType {
-        switch self {
-        case .column: return .dataFrame
-        case .pointcloud: return .pointCloud
-        case .model3d: return .model3d
-        case .volume: return .iotDashboard
-        case .charts, .spatial: return .dataFrame // Default fallback
-        }
-    }
 }
 
 // MARK: - Window info row component

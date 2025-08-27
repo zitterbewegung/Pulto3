@@ -1114,7 +1114,7 @@ struct TemplateView: View {
             windowType = .spatial
         }
         
-        var state = WindowState()
+        var state = WindowTypeManager.WindowState()
         if let exportTemplate = ExportTemplate(rawValue: window.exportTemplate) {
             state.exportTemplate = exportTemplate
         }

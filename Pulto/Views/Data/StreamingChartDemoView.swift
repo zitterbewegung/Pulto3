@@ -34,8 +34,21 @@ struct StreamingChartDemoView: View {
     var body: some View {
         NavigationSplitView {
             // Sidebar with demo options
-            List(DemoType.allCases, id: \.self, selection: $selectedDemo) { demo in
-                Label(demo.rawValue, systemImage: demo.icon)
+            List {
+                ForEach(DemoType.allCases, id: \.self) { demo in
+                    HStack {
+                        Label(demo.rawValue, systemImage: demo.icon)
+                        Spacer()
+                        if selectedDemo == demo {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedDemo = demo
+                    }
+                }
             }
             .navigationTitle("Streaming Charts")
         } detail: {
@@ -65,7 +78,7 @@ struct StreamingChartDemoView: View {
 
 struct PerformanceTestView: View {
     @StateObject private var streamingManager = RealTimeStreamingManager()
-    @State private var chartData: [ChartDataPoint] = []
+    @State private var chartData: [RealTimeChartDataPoint] = []
     @State private var isStreaming = false
     @State private var dataPointsPerSecond = 0.0
     @State private var totalDataPoints = 0
@@ -74,9 +87,9 @@ struct PerformanceTestView: View {
     @State private var numberOfStreams = 3
     @State private var pointsPerStream = 1000
     @State private var updateFrequency = 10.0
+    @State private var lastDataPointCount = 0
     
     private var performanceTimer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
-    private var lastDataPointCount = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -257,11 +270,11 @@ struct PerformanceTestView: View {
     }
     
     private func updateChartData() {
-        var newPoints: [ChartDataPoint] = []
+        var newPoints: [RealTimeChartDataPoint] = []
         
         for (streamId, stream) in streamingManager.dataStreams {
             while let dataPoint = stream.buffer.peek() {
-                let chartPoint = ChartDataPoint(
+                let chartPoint = RealTimeChartDataPoint(
                     timestamp: dataPoint.timestamp,
                     value: dataPoint.value,
                     streamId: streamId,
@@ -335,4 +348,82 @@ struct CodeExampleView: View {
             Text("Basic Usage")
                 .font(.headline)
             
-            Text("""
+            Text(
+"""
+// Create a streaming manager
+let streamingManager = RealTimeStreamingManager()
+
+// Configure data streams
+let streamConfig = DataStreamConfig(
+    id: "temperature",
+    name: "Temperature Sensor",
+    type: .scientific,
+    frequency: 10.0,
+    bufferSize: 1000
+)
+
+// Start streaming
+streamingManager.startStreaming(streamConfigs: [streamConfig])
+
+// Create a chart view
+struct RealTimeChartView: View {
+    @ObservedObject var streamingManager: RealTimeStreamingManager
+    
+    var body: some View {
+        Chart(streamingManager.dataStreams["temperature"]?.buffer.suffix(100) ?? []) { dataPoint in
+            LineMark(
+                x: .value("Time", dataPoint.timestamp),
+                y: .value("Temperature (°C)", dataPoint.value)
+            )
+            .foregroundStyle(.blue)
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic)
+        }
+        .chartYAxis {
+            AxisMarks(values: .automatic)
+        }
+        .frame(height: 300)
+    }
+}
+
+// Use the chart view
+RealTimeChartView(streamingManager: streamingManager)
+""")
+        }
+    }
+}
+
+struct FeaturesListView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Key Features")
+                .font(.headline)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("• Real-time multi-stream charting with Swift Charts")
+                Text("• 3D visualization via RealityKit")
+                Text("• Configurable stream frequency and buffer sizes")
+                Text("• Basic performance dashboard")
+            }
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct PerformanceNotesView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Performance Notes")
+                .font(.headline)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("• Limit total points per chart to maintain smooth FPS")
+                Text("• Prefer downsampling for high-frequency streams")
+                Text("• Use lightweight marks (LineMark/PointMark) where possible")
+                Text("• Avoid heavy per-point work in the render/update loops")
+            }
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+        }
+    }
+}

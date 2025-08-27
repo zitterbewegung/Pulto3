@@ -1548,3 +1548,18 @@ class WindowTypeManager: ObservableObject {
         var pointCloudBookmark: Data?
     }
 }
+
+struct NewWindowID: Identifiable, Codable {
+    let id: Int
+    var windowType: WindowType
+    var position: WindowPosition
+    var state: WindowState
+    let createdAt = Date()
+    
+    init(id: Int, windowType: WindowType, position: WindowPosition = WindowPosition(), state: WindowState = WindowState()) {
+        self.id = id
+        self.windowType = windowType
+        self.position = position
+        self.state = state
+    }
+}

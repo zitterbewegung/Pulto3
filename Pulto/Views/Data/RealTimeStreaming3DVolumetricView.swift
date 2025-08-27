@@ -22,7 +22,7 @@ struct RealTimeStreaming3DVolumetricView: View {
     @StateObject private var streamingManager = RealTimeStreamingManager()
     
     @State private var isStreaming = false
-    @State private var chartData: [ChartDataPoint] = []
+    @State private var chartData: [RealTimeChartDataPoint] = []
     @State private var spatialEntities: [Entity] = []
     @State private var timeWindow: TimeInterval = 30.0
     @State private var maxSpatialPoints: Int = 1000
@@ -281,7 +281,7 @@ struct RealTimeStreaming3DVolumetricView: View {
         }
     }
     
-    private func createDataPointEntity(for point: ChartDataPoint, mode: VisualizationMode) -> ModelEntity {
+    private func createDataPointEntity(for point: RealTimeChartDataPoint, mode: VisualizationMode) -> ModelEntity {
         let size: Float = 0.03
         let position = calculateSpatialPosition(for: point, mode: mode)
         let color = getStreamColor(for: point.streamId)
@@ -313,7 +313,7 @@ struct RealTimeStreaming3DVolumetricView: View {
         return entity
     }
     
-    private func calculateSpatialPosition(for point: ChartDataPoint, mode: VisualizationMode) -> SIMD3<Float> {
+    private func calculateSpatialPosition(for point: RealTimeChartDataPoint, mode: VisualizationMode) -> SIMD3<Float> {
         guard let coordinates = point.coordinates else {
             // Generate position based on timestamp and value if no coordinates
             let timeOffset = Float(point.timestamp.timeIntervalSinceNow + timeWindow) / Float(timeWindow)
@@ -594,11 +594,11 @@ struct RealTimeStreaming3DVolumetricView: View {
         let cutoffTime = now.addingTimeInterval(-timeWindow)
         
         // Collect new data points
-        var newPoints: [ChartDataPoint] = []
+        var newPoints: [RealTimeChartDataPoint] = []
         
         for (streamId, stream) in streamingManager.dataStreams {
             while let dataPoint = stream.buffer.peek() {
-                let chartPoint = ChartDataPoint(
+                let chartPoint = RealTimeChartDataPoint(
                     timestamp: dataPoint.timestamp,
                     value: dataPoint.value,
                     streamId: streamId,

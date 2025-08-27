@@ -658,7 +658,7 @@ struct UnifiedImportSheet: View {
                             HStack {
                                 Text("Y:")
                                 Spacer()
-                                Text(String(format: "%.2f to %.2f", yValues.min()!, yValues.max()!))
+                                Text(String(format: "%.2f to %.2f", yValues.min()!, yValues.max()!));
                             }
                             
                             HStack {
@@ -1221,7 +1221,7 @@ struct StatisticCard: View {
 
 struct RealTimePreviewChart: View {
     @ObservedObject var streamingManager: RealTimeStreamingManager
-    @State private var chartData: [ChartDataPoint] = []
+    @State private var chartData: [RealTimeChartDataPoint] = []
     
     var body: some View {
         VStack {
@@ -1253,11 +1253,11 @@ struct RealTimePreviewChart: View {
     }
     
     private func collectLatestData() {
-        var newPoints: [ChartDataPoint] = []
+        var newPoints: [RealTimeChartDataPoint] = []
         
         for (streamId, stream) in streamingManager.dataStreams {
             while let dataPoint = stream.buffer.peek() {
-                let chartPoint = ChartDataPoint(
+                let chartPoint = RealTimeChartDataPoint(
                     timestamp: dataPoint.timestamp,
                     value: dataPoint.value,
                     streamId: streamId,
