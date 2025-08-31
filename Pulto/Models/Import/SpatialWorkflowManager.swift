@@ -281,7 +281,7 @@ class FileAnalyzer {
                 metadata["csvData"] = csvData
                 let recommendations = ChartRecommender.recommend(for: csvData)
                 visualizationType = recommendations.first?.recommendation != nil 
-                    ? .chart2D(recommendations.first!.recommendation)
+                    ? .chart2D(recommendations.first?.recommendation ?? Chart2DData())
                     : .dataTable
             } else {
                 visualizationType = .dataTable

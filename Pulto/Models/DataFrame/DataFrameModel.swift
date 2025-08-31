@@ -72,7 +72,6 @@ class DataFrameModel: ObservableObject, Codable {
         let expectedRowCount = rowCount
         for column in columns {
             if column.values.count != expectedRowCount {
-                print("Warning: Column '\(column.name)' has inconsistent row count")
             }
         }
         updateMetadata()

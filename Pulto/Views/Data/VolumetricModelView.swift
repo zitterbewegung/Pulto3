@@ -6,15 +6,6 @@
 //  Copyright © 2025 Apple. All rights reserved.
 //
 
-
-//
-//  VolumetricModelView.swift
-//  Pulto
-//
-//  Created by Joshua Herman on 6/18/25.
-//  Copyright 2025 Apple. All rights reserved.
-//
-
 import SwiftUI
 import RealityKit
 

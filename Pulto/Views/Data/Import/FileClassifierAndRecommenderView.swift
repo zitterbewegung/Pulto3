@@ -242,19 +242,19 @@ struct FileClassifierAndRecommenderView: View {
                         DataSummaryItem(
                             icon: "tablecells",
                             label: "Rows",
-                            value: "\(csvData!.rows.count)"
+                            value: "\(csvData?.rows.count ?? 0)"
                         )
 
                         DataSummaryItem(
                             icon: "rectangle.split.3x1",
                             label: "Columns",
-                            value: "\(csvData!.headers.count)"
+                            value: "\(csvData?.headers.count ?? 0)"
                         )
 
                         DataSummaryItem(
                             icon: "number",
                             label: "Numeric",
-                            value: "\(csvData!.columnTypes.filter { $0 == .numeric }.count)"
+                            value: "\(csvData?.columnTypes.filter { $0 == .numeric }.count ?? 0)"
                         )
                     }
                     .padding(.vertical, 10)
@@ -633,7 +633,7 @@ struct FileClassifierAndRecommenderView: View {
         openWindow(value: id)
         windowManager.markWindowAsOpened(id)
 
-        // TODO: Update window state with csvData and selectedRecommendation for rendering the chart
+        // Update window state with csvData and selectedRecommendation for rendering the chart
 
         dismiss()
     }

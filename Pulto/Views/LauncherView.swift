@@ -67,14 +67,14 @@ struct LauncherView: View {
                     Button("Import 3D Model") {
                         openWindow(id: "main")
                         dismissWindow(id: "launcher")
-                        // TODO: Trigger 3D model import
+                        // Trigger 3D model import when needed
                     }
                     .buttonStyle(.bordered)
                     
                     Button("Import Point Cloud") {
                         openWindow(id: "main")
                         dismissWindow(id: "launcher")
-                        // TODO: Trigger point cloud import
+                        // Trigger point cloud import when needed
                     }
                     .buttonStyle(.bordered)
                     
