@@ -616,125 +616,245 @@ struct WindowInspectorView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if let window = selectedWindow {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Window Header
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: window.windowType.icon)
-                                    .font(.title2)
-                                    .foregroundStyle(window.windowType.inspectorIconColor)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Window #\(window.id)")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text(window.windowType.displayName)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-                            }
-
-                            Text(window.windowType.inspectorDescription)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
+                if let project = windowManager.selectedProject {
+                    // Show project notebook JSON when a project is selected and no window is selected
+                    if selectedWindow == nil {
+                        ProjectNotebookInspectorView(project: project, windowManager: windowManager)
+                    } else {
+                        // Show regular window inspector when both project and window are selected
+                        VStack(alignment: .leading, spacing: 20) {
+                            WindowDetailsView(window: selectedWindow, windowManager: windowManager, onWindowAction: onWindowAction)
+                            
+                            Divider()
+                            
+                            ProjectNotebookPreviewView(project: project, windowManager: windowManager)
                         }
-                        .padding()
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
-
-                        // Window Properties
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Properties")
-                                .font(.headline)
-
-                            VStack(spacing: 8) {
-                                WindowInfoRow(label: "Created", value: window.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                WindowInfoRow(label: "Position", value: "(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
-                                WindowInfoRow(label: "Size", value: "\(Int(window.position.width)) × \(Int(window.position.height))")
-                                WindowInfoRow(label: "Template", value: window.state.exportTemplate.rawValue)
-
-                                if !window.state.tags.isEmpty {
-                                    WindowInfoRow(label: "Tags", value: window.state.tags.joined(separator: ", "))
-                                }
-
-                                WindowInfoRow(label: "Status", value: windowManager.isWindowActuallyOpen(window.id) ? "Open" : "Closed")
-                            }
-                        }
-                        .padding()
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
-
-                        // Window Actions
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Actions")
-                                .font(.headline)
-
-                            VStack(spacing: 8) {
-                                Button(action: { onWindowAction(.open, window.id) }) {
-                                    HStack {
-                                        Image(systemName: "play.circle.fill")
-                                        Text("Open Window")
-                                        Spacer()
-                                    }
-                                    .padding()
-                                    .background(Color.blue.opacity(0.1))
-                                    .foregroundColor(.blue)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-
-                                Button(action: { onWindowAction(.focus, window.id) }) {
-                                    HStack {
-                                        Image(systemName: "eye.circle.fill")
-                                        Text("Focus Window")
-                                        Spacer()
-                                    }
-                                    .padding()
-                                    .background(Color.green.opacity(0.1))
-                                    .foregroundColor(.green)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-
-                                Button(action: { onWindowAction(.duplicate, window.id) }) {
-                                    HStack {
-                                        Image(systemName: "doc.on.doc.fill")
-                                        Text("Duplicate Window")
-                                        Spacer()
-                                    }
-                                    .padding()
-                                    .background(Color.orange.opacity(0.1))
-                                    .foregroundColor(.orange)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-
-                                Button(action: { onWindowAction(.close, window.id) }) {
-                                    HStack {
-                                        Image(systemName: "xmark.circle.fill")
-                                        Text("Close Window")
-                                        Spacer()
-                                    }
-                                    .padding()
-                                    .background(Color.red.opacity(0.1))
-                                    .foregroundColor(.red)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                        .padding()
-                        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
                     }
+                } else if let window = selectedWindow {
+                    // Show regular window inspector when only window is selected
+                    WindowDetailsView(window: window, windowManager: windowManager, onWindowAction: onWindowAction)
                 } else {
+                    // No selection
                     ContentUnavailableView(
-                        "No Window Selected",
+                        "No Selection",
                         systemImage: "rectangle.dashed",
-                        description: Text("Select a window from the list to view its details")
+                        description: Text("Select a window or project to view details")
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .navigationTitle("Inspector")
             .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+// New view to show project notebook JSON
+struct ProjectNotebookInspectorView: View {
+    let project: Project
+    let windowManager: WindowTypeManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Project Header
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "doc.plaintext.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(project.name)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text("Project Notebook")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                Text("Jupyter Notebook JSON for the selected project")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+            // Notebook JSON Preview
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Notebook JSON")
+                    .font(.headline)
+
+                ScrollView {
+                    Text(windowManager.exportToJupyterNotebook())
+                        .font(.system(.caption, design: .monospaced))
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.gray.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .frame(height: 400)
+            }
+            .padding()
+            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+        }
+        .padding()
+    }
+}
+
+// New view to show project notebook preview alongside window details
+struct ProjectNotebookPreviewView: View {
+    let project: Project
+    let windowManager: WindowTypeManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Project Notebook Preview")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Button("Export Notebook") {
+                    if let url = windowManager.saveNotebookToFile(filename: project.name.replacingOccurrences(of: " ", with: "_")) {
+                        print("Notebook saved to: \(url)")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+
+            Text(windowManager.exportToJupyterNotebook())
+                .font(.system(.caption, design: .monospaced))
+                .lineLimit(10)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.gray.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding()
+        .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// Extracted window details view for reusability
+struct WindowDetailsView: View {
+    let window: NewWindowID?
+    let windowManager: WindowTypeManager
+    let onWindowAction: (WindowAction, Int) -> Void
+
+    var body: some View {
+        if let window = window {
+            VStack(alignment: .leading, spacing: 20) {
+                // Window Header
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: window.windowType.icon)
+                            .font(.title2)
+                            .foregroundStyle(window.windowType.inspectorIconColor)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Window #\(window.id)")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            Text(window.windowType.displayName)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+
+                    Text(window.windowType.inspectorDescription)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                // Window Properties
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Properties")
+                        .font(.headline)
+
+                    VStack(spacing: 8) {
+                        WindowInfoRow(label: "Created", value: window.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        WindowInfoRow(label: "Position", value: "(\(Int(window.position.x)), \(Int(window.position.y)), \(Int(window.position.z)))")
+                        WindowInfoRow(label: "Size", value: "\(Int(window.position.width)) × \(Int(window.position.height))")
+                        WindowInfoRow(label: "Template", value: window.state.exportTemplate.rawValue)
+
+                        if !window.state.tags.isEmpty {
+                            WindowInfoRow(label: "Tags", value: window.state.tags.joined(separator: ", "))
+                        }
+
+                        WindowInfoRow(label: "Status", value: windowManager.isWindowActuallyOpen(window.id) ? "Open" : "Closed")
+                    }
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+
+                // Window Actions
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Actions")
+                        .font(.headline)
+
+                    VStack(spacing: 8) {
+                        Button(action: { onWindowAction(.open, window.id) }) {
+                            HStack {
+                                Image(systemName: "play.circle.fill")
+                                Text("Open Window")
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
+                        Button(action: { onWindowAction(.focus, window.id) }) {
+                            HStack {
+                                Image(systemName: "eye.circle.fill")
+                                Text("Focus Window")
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
+                        Button(action: { onWindowAction(.duplicate, window.id) }) {
+                            HStack {
+                                Image(systemName: "doc.on.doc.fill")
+                                Text("Duplicate Window")
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.orange.opacity(0.1))
+                            .foregroundColor(.orange)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+
+                        Button(action: { onWindowAction(.close, window.id) }) {
+                            HStack {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("Close Window")
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .foregroundColor(.red)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                }
+                .padding()
+                .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 12))
+            }
         }
     }
 }
