@@ -522,7 +522,7 @@ struct PultoHomeView: View {
                 let projectName = "New_Project_\(timestamp)"
                 
                 // Create the project with automatic notebook generation
-                if let notebookURL = windowManager.createNewProjectWithNotebook(projectName: projectName) {
+                if let notebookURL = await windowManager.createNewProjectWithNotebook(projectName: projectName) {
                     print("✅ Created new project with notebook: \(notebookURL.lastPathComponent)")
                     
                     // Create a new project object

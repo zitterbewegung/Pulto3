@@ -215,7 +215,14 @@ struct AnyCodable: Codable {
     let value: Any
     
     init(_ value: Any) {
-        self.value = value
+        // Handle common types specifically to avoid encoding issues
+        if let dict = value as? [String: Any] {
+            self.value = dict.mapValues { AnyCodable($0) }
+        } else if let array = value as? [Any] {
+            self.value = array.map { AnyCodable($0) }
+        } else {
+            self.value = value
+        }
     }
     
     init(from decoder: Decoder) throws {
@@ -250,13 +257,26 @@ struct AnyCodable: Codable {
             try container.encode(double)
         case let string as String:
             try container.encode(string)
+        case let array as [AnyCodable]:
+            try container.encode(array)
+        case let dictionary as [String: AnyCodable]:
+            try container.encode(dictionary)
         case let array as [Any]:
             try container.encode(array.map { AnyCodable($0) })
         case let dictionary as [String: Any]:
             try container.encode(dictionary.mapValues { AnyCodable($0) })
-        default:
+        case is NSNull:
             try container.encodeNil()
+        default:
+            // Try to convert to string as fallback
+            try container.encode(String(describing: value))
         }
+    }
+    
+    // Add Equatable conformance for better debugging
+    static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
+        // Simple equality check - in practice this might need to be more sophisticated
+        return String(describing: lhs.value) == String(describing: rhs.value)
     }
 }
 
@@ -574,7 +594,7 @@ class JupyterAPIClient: ObservableObject {
     }
     
     // MARK: - Remote Editing
-    
+
     func saveNotebook(_ notebook: JupyterNotebook, with content: JupyterNotebookContent) async throws {
         guard let config = config else {
             throw JupyterAPIError.notConnected
@@ -589,60 +609,109 @@ class JupyterAPIClient: ObservableObject {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
-        let saveData: [String: Any] = [
-            "type": "notebook",
-            "format": "json",
-            "content": [
-                "cells": content.cells.map { cell in
-                    var cellDict: [String: Any] = [
-                        "cell_type": cell.cellType,
-                        "source": cell.source
-                    ]
-                    
-                    if let metadata = cell.metadata {
-                        cellDict["metadata"] = metadata.mapValues { $0.value }
-                    }
-                    
-                    if let outputs = cell.outputs {
-                        cellDict["outputs"] = outputs.map { output in
-                            var outputDict: [String: Any] = [
-                                "output_type": output.outputType
-                            ]
-                            if let text = output.text {
-                                outputDict["text"] = text
-                            }
-                            if let data = output.data {
-                                outputDict["data"] = data.mapValues { $0.value }
-                            }
-                            if let executionCount = output.executionCount {
-                                outputDict["execution_count"] = executionCount
-                            }
-                            return outputDict
-                        }
-                    }
-                    
-                    if let executionCount = cell.executionCount {
-                        cellDict["execution_count"] = executionCount
-                    }
-                    
-                    return cellDict
-                },
-                "metadata": content.metadata.mapValues { $0.value },
-                "nbformat": content.nbformat,
-                "nbformat_minor": content.nbformatMinor
-            ]
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: saveData, options: .prettyPrinted)
-        
-        let (_, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw JupyterAPIError.invalidResponse
+        // Create a simplified structure for JSON encoding
+        struct SaveRequest: Codable {
+            let type: String
+            let format: String
+            let content: NotebookContent
         }
         
-        guard httpResponse.statusCode == 200 else {
-            throw JupyterAPIError.httpError(httpResponse.statusCode)
+        struct NotebookContent: Codable {
+            let cells: [Cell]
+            let metadata: [String: AnyCodable]
+            let nbformat: Int
+            let nbformatMinor: Int
+        }
+        
+        struct Cell: Codable {
+            let cellType: String
+            let source: [String]
+            let metadata: [String: AnyCodable]?
+            let outputs: [Output]?
+            let executionCount: Int?
+            
+            enum CodingKeys: String, CodingKey {
+                case cellType = "cell_type"
+                case source, metadata, outputs
+                case executionCount = "execution_count"
+            }
+        }
+        
+        struct Output: Codable {
+            let outputType: String
+            let text: [String]?
+            let data: [String: AnyCodable]?
+            let executionCount: Int?
+            
+            enum CodingKeys: String, CodingKey {
+                case outputType = "output_type"
+                case text, data
+                case executionCount = "execution_count"
+            }
+        }
+        
+        // Convert the content to our simplified structure
+        let cells = content.cells.map { cell in
+            Cell(
+                cellType: cell.cellType,
+                source: cell.source,
+                metadata: cell.metadata,
+                outputs: cell.outputs?.map { output in
+                    Output(
+                        outputType: output.outputType,
+                        text: output.text,
+                        data: output.data,
+                        executionCount: output.executionCount
+                    )
+                },
+                executionCount: cell.executionCount
+            )
+        }
+        
+        let notebookContent = NotebookContent(
+            cells: cells,
+            metadata: content.metadata,
+            nbformat: content.nbformat,
+            nbformatMinor: content.nbformatMinor
+        )
+        
+        let saveRequest = SaveRequest(
+            type: "notebook",
+            format: "json",
+            content: notebookContent
+        )
+        
+        do {
+            // Encode the request
+            let requestData = try JSONEncoder().encode(saveRequest)
+            request.httpBody = requestData
+            
+            // Send the request
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw JupyterAPIError.invalidResponse
+            }
+            
+            // Check for successful response (200 or 201 are both valid for Jupyter API)
+            guard httpResponse.statusCode == 200 || httpResponse.statusCode == 201 else {
+                // Try to parse error response for better debugging
+                if let errorString = String(data: data, encoding: .utf8) {
+                    print("Jupyter API Error Response: \(errorString)")
+                }
+                throw JupyterAPIError.httpError(httpResponse.statusCode)
+            }
+            
+            print("Notebook saved successfully to \(notebook.path)")
+        } catch let encodingError as EncodingError {
+            print("JSON Encoding Error: \(encodingError)")
+            throw JupyterAPIError.decodingFailed
+        } catch let decodingError as DecodingError {
+            print("JSON Decoding Error: \(decodingError)")
+            throw JupyterAPIError.decodingFailed
+        } catch {
+            print("Network Error: \(error)")
+            throw JupyterAPIError.networkError(error)
         }
     }
     
@@ -856,6 +925,7 @@ enum JupyterAPIError: LocalizedError {
     case networkError(Error)
     case kernelNotAvailable
     case executionFailed(String)
+    case saveFailed(String)
     
     var errorDescription: String? {
         switch self {
@@ -875,6 +945,56 @@ enum JupyterAPIError: LocalizedError {
             return "No kernel available for execution"
         case .executionFailed(let message):
             return "Execution failed: \(message)"
+        case .saveFailed(let message):
+            return "Failed to save notebook: \(message)"
         }
     }
+}
+
+// MARK: - Helper Methods for Testing
+
+extension JupyterAPIClient {
+    /// Test method to verify notebook submission functionality
+    func testNotebookSubmission() async throws -> Bool {
+        // Create a simple test notebook
+        let testCell = JupyterCell(
+            cellType: "code",
+            source: ["print('Hello, Jupyter!')"],
+            metadata: ["trusted": AnyCodable(true)],
+            outputs: nil,
+            executionCount: nil
+        )
+        
+        let testContent = JupyterNotebookContent(
+            cells: [testCell],
+            metadata: ["test": AnyCodable(true)],
+            nbformat: 4,
+            nbformatMinor: 4
+        )
+        
+        let testNotebook = JupyterNotebook(
+            name: "test_notebook.ipynb",
+            path: "test_notebook.ipynb",
+            type: "notebook",
+            size: nil,
+            lastModified: Date(),
+            content: nil
+        )
+        
+        do {
+            try await self.saveNotebook(testNotebook, with: testContent)
+            print("Test notebook submission successful!")
+            return true
+        } catch {
+            print("Test notebook submission failed: \(error)")
+            throw error
+        }
+    }
+}
+
+// MARK: - Static Helper Methods for Testing
+
+/// Static test method to verify notebook submission functionality with a client instance
+func testNotebookSubmissionWithClient(_ client: JupyterAPIClient) async throws -> Bool {
+    return try await client.testNotebookSubmission()
 }

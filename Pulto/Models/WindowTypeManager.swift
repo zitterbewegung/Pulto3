@@ -20,6 +20,7 @@ extension Notification.Name {
 }
 
 // Enhanced window manager with export capabilities and lifecycle management
+@MainActor
 class WindowTypeManager: ObservableObject {
 
     static let shared = WindowTypeManager()
@@ -38,7 +39,7 @@ class WindowTypeManager: ObservableObject {
         // Notify that a project has been selected - can be used to trigger 3D content creation
         NotificationCenter.default.post(name: .projectSelected, object: project)
         
-        Task { @MainActor in
+        Task {
             await WorkspaceManager.shared.ensureProjectWorkspaceExists(for: project)
         }
     }
@@ -60,7 +61,9 @@ class WindowTypeManager: ObservableObject {
         openWindowIDs.insert(id)
         objectWillChange.send()
         
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
         print("🪟 Window #\(id) marked as opened, triggering auto-save")
     }
 
@@ -68,13 +71,15 @@ class WindowTypeManager: ObservableObject {
         openWindowIDs.remove(id)
         
         // NEW: Clean up entities when window closes
-        Task { @MainActor in
-            EntityLifecycleManager.shared.cleanupWindow(id)
+        Task {
+            await EntityLifecycleManager.shared.cleanupWindow(id)
         }
         
         objectWillChange.send()
         
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
         print("🪟 Window #\(id) marked as closed, triggering auto-save")
     }
 
@@ -86,8 +91,8 @@ class WindowTypeManager: ObservableObject {
         let windowsToRemove = windows.keys.filter { !openWindowIDs.contains($0) }
         for windowID in windowsToRemove {
             // Clean up entities before removing window data
-            Task { @MainActor in
-                EntityLifecycleManager.shared.cleanupWindow(windowID)
+            Task {
+                await EntityLifecycleManager.shared.cleanupWindow(windowID)
             }
             windows.removeValue(forKey: windowID)
         }
@@ -532,8 +537,18 @@ class WindowTypeManager: ObservableObject {
     func clearAllWindows() {
         // Clean up all entities before clearing windows
         Task { @MainActor in
-            EntityLifecycleManager.shared.cleanupAll()
+            await EntityLifecycleManager.shared.cleanupAll()
         }
+        
+        windows.removeAll()
+        openWindowIDs.removeAll()
+        objectWillChange.send()
+    }
+    
+    /// Async version for cases where you need to await the cleanup
+    func clearAllWindowsAsync() async {
+        // Clean up all entities before clearing windows
+        await EntityLifecycleManager.shared.cleanupAll()
         
         windows.removeAll()
         openWindowIDs.removeAll()
@@ -876,7 +891,9 @@ class WindowTypeManager: ObservableObject {
         
         // Notify that windows have changed, which will trigger auto-save
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
         return window
     }
 
@@ -891,34 +908,44 @@ class WindowTypeManager: ObservableObject {
     func updateWindowPosition(_ id: Int, position: WindowPosition) {
         windows[id]?.position = position
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func updateWindowState(_ id: Int, state: WindowState) {
         windows[id]?.state = state
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func updateWindowContent(_ id: Int, content: String) {
         windows[id]?.state.content = content
         windows[id]?.state.lastModified = Date()
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func updateWindowTemplate(_ id: Int, template: ExportTemplate) {
         windows[id]?.state.exportTemplate = template
         windows[id]?.state.lastModified = Date()
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func updateWindowImports(_ id: Int, imports: [String]) {
         windows[id]?.state.customImports = imports
         windows[id]?.state.lastModified = Date()
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func addWindowTag(_ id: Int, tag: String) {
@@ -926,7 +953,9 @@ class WindowTypeManager: ObservableObject {
             windows[id]?.state.tags.append(tag)
             windows[id]?.state.lastModified = Date()
             objectWillChange.send()
-            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            Task {
+                await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            }
         }
     }
 
@@ -939,7 +968,9 @@ class WindowTypeManager: ObservableObject {
             windows[id]?.state.exportTemplate = .pandas
         }
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     func getWindowDataFrame(for id: Int) -> DataFrameData? {
@@ -948,14 +979,16 @@ class WindowTypeManager: ObservableObject {
 
     func removeWindow(_ id: Int) {
         // Clean up entities before removing window
-        Task { @MainActor in
-            EntityLifecycleManager.shared.cleanupWindow(id)
+        Task {
+            await EntityLifecycleManager.shared.cleanupWindow(id)
         }
         
         windows.removeValue(forKey: id)
         markWindowAsClosed(id)
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     // MARK: - Jupyter Export Functions
@@ -1198,7 +1231,7 @@ class WindowTypeManager: ObservableObject {
 
     // MARK: - Project Creation with Notebook Generation
     
-    func createNewProjectWithNotebook(projectName: String) -> URL? {
+    func createNewProjectWithNotebook(projectName: String) async -> URL? {
         print("🚀 Creating new project: \(projectName)")
         
         // Create a basic project structure with template windows
@@ -1308,7 +1341,6 @@ class WindowTypeManager: ObservableObject {
     }
 
     // MARK: - 3-D Model payload --------------------------------------------
-    @MainActor
     func updateWindowModel3D(_ id: Int,
                              modelData: Model3DData,
                              replaceExisting: Bool = true)
@@ -1327,7 +1359,9 @@ class WindowTypeManager: ObservableObject {
         // 4. Write the mutated value back into the dictionary.
         windows[id] = win
         objectWillChange.send()
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 
     // Updated updateUSDZBookmark function in WindowTypeManager
@@ -1335,7 +1369,9 @@ class WindowTypeManager: ObservableObject {
         if var window = windows[id] {
             window.state.usdzBookmark = bookmark
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
-            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            Task {
+                await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            }
         }
     }
 
@@ -1343,7 +1379,9 @@ class WindowTypeManager: ObservableObject {
         if var window = windows[id] {
             window.state.pointCloudBookmark = bookmark
             windows[id] = window  // Re-assign to mutate the struct in the dictionary
-            WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            Task {
+                await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+            }
         }
     }
     
@@ -1353,6 +1391,8 @@ class WindowTypeManager: ObservableObject {
         window.state.tags.removeAll { $0 == tag }
         window.state.lastModified = Date()
         windows[windowID] = window
-        WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        Task {
+            await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
+        }
     }
 }

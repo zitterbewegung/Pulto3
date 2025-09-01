@@ -128,6 +128,7 @@ enum WorkspaceCategory: String, CaseIterable, Codable {
 
 // MARK: - Workspace Manager
 
+@MainActor
 class WorkspaceManager: ObservableObject {
     static let shared = WorkspaceManager()
     
@@ -194,7 +195,7 @@ class WorkspaceManager: ObservableObject {
     
     /// Refreshes metadata for all workspaces by re-reading their files
     /// This fixes the "0 views" issue for existing workspaces  
-    func refreshWorkspaceMetadata() {
+    func refreshWorkspaceMetadata() async {
         print("🔄 WorkspaceManager: Refreshing workspace metadata...")
         
         for i in 0..<workspaces.count {
@@ -303,10 +304,8 @@ class WorkspaceManager: ObservableObject {
         print("🔄 WorkspaceManager: Loading workspace '\(metadata.name)' from \(fileURL.lastPathComponent)")
         
         if clearExisting {
-            await MainActor.run {
-                windowManager.clearAllWindows()
-                print("🗑️ WorkspaceManager: Cleared existing windows")
-            }
+            await windowManager.clearAllWindows()
+            print("🗑️ WorkspaceManager: Cleared existing windows")
         }
         
         let importResult = try windowManager.importFromGenericNotebook(fileURL: fileURL)
@@ -316,18 +315,16 @@ class WorkspaceManager: ObservableObject {
         var openedWindows: [NewWindowID] = []
         
         for window in importResult.restoredWindows {
-            await MainActor.run {
-                print("🪟 WorkspaceManager: Processing window #\(window.id) (\(window.windowType.displayName))")
-                
-                // Store window data in manager before opening
-                // (This ensures the window data is available when openWindow is called)
-                
-                openWindow(window.id) // This will call the closure that handles window type detection
-                windowManager.markWindowAsOpened(window.id)
-                openedWindows.append(window)
-                
-                print("✅ WorkspaceManager: Opened and marked window #\(window.id)")
-            }
+            print("🪟 WorkspaceManager: Processing window #\(window.id) (\(window.windowType.displayName))")
+            
+            // Store window data in manager before opening
+            // (This ensures the window data is available when openWindow is called)
+            
+            openWindow(window.id) // This will call the closure that handles window type detection
+            await windowManager.markWindowAsOpened(window.id)
+            openedWindows.append(window)
+            
+            print("✅ WorkspaceManager: Opened and marked window #\(window.id)")
             
             // Small delay for smooth animation
             try? await Task.sleep(nanoseconds: 300_000_000) // Increased delay for volumetric windows
@@ -829,13 +826,13 @@ class WorkspaceManager: ObservableObject {
     }
 
     // Add method to handle auto-saving when windows change
-    func scheduleAutoSave(windowManager: WindowTypeManager) {
+    func scheduleAutoSave(windowManager: WindowTypeManager) async {
         guard autoSaveEnabled else {
             print("⏸️ Auto-save disabled, skipping")
             return
         }
         
-        guard let selectedProject = windowManager.selectedProject else {
+        guard let selectedProject = await windowManager.selectedProject else {
             print("⚠️ No selected project for auto-save")
             return
         }
@@ -845,13 +842,14 @@ class WorkspaceManager: ObservableObject {
         
         if projectWorkspace == nil {
             // Create workspace metadata if it doesn't exist
+            let windows = await windowManager.getAllWindows()
             let newWorkspace = WorkspaceMetadata(
                 name: selectedProject.name,
                 description: "Auto-created workspace for project: \(selectedProject.name)",
                 category: .custom,
                 isTemplate: false,
-                totalWindows: windowManager.getAllWindows().count,
-                windowTypes: Array(Set(windowManager.getAllWindows().map { $0.windowType.rawValue })),
+                totalWindows: windows.count,
+                windowTypes: Array(Set(windows.map { $0.windowType.rawValue })),
                 tags: ["auto-created", "project"]
             )
             workspaces.append(newWorkspace)
@@ -871,7 +869,7 @@ class WorkspaceManager: ObservableObject {
         pendingWindowChanges = true
         
         // Schedule a new save task with debounce (1 second delay)
-        saveTask = Task {
+        saveTask = Task { @MainActor in
             do {
                 // Wait for 1 second to debounce
                 try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -879,18 +877,14 @@ class WorkspaceManager: ObservableObject {
                 // Check if task was cancelled
                 try Task.checkCancellation()
                 
-                // Perform the save on main actor
-                await MainActor.run {
-                    if pendingWindowChanges {
-                        Task {
-                            do {
-                                try await saveCurrentWorkspace(with: workspace, windowManager: windowManager)
-                                pendingWindowChanges = false
-                                print("✅ Auto-saved workspace: \(workspace.name) with \(windowManager.getAllWindows().count) windows")
-                            } catch {
-                                print("❌ Failed to auto-save workspace: \(error)")
-                            }
-                        }
+                // Perform the save
+                if pendingWindowChanges {
+                    do {
+                        try await saveCurrentWorkspace(with: workspace, windowManager: windowManager)
+                        pendingWindowChanges = false
+                        print("✅ Auto-saved workspace: \(workspace.name) with \(await windowManager.getAllWindows().count) windows")
+                    } catch {
+                        print("❌ Failed to auto-save workspace: \(error)")
                     }
                 }
             } catch {

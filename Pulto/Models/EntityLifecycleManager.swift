@@ -227,7 +227,7 @@ class EntityLifecycleManager: ObservableObject {
     private func startMemoryMonitoring() {
         memoryMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.updateMemoryInfo()
+                await self?.updateMemoryInfo()
             }
         }
     }
@@ -237,7 +237,7 @@ class EntityLifecycleManager: ObservableObject {
         memoryMonitorTimer = nil
     }
     
-    private func updateMemoryInfo() {
+    private func updateMemoryInfo() async {
         let memInfo = getMemoryInfo()
         self.memoryUsage = memInfo
         
