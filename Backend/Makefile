@@ -1,10 +1,10 @@
 #
-//  Makefile
-//  Pulto
-//
-//  Created by Joshua Herman on 6/27/25.
-//  Copyright © 2025 Apple. All rights reserved.
-//
+#//  Makefile
+#//  Pulto
+#//
+#//  Created by Joshua Herman on 6/27/25.
+#//  Copyright © 2025 Apple. All rights reserved.
+#//
 
 
 # Makefile for Spatial Visualization Development Environment
@@ -38,7 +38,7 @@ init: ## Initialize the development environment
 # Docker Compose Commands
 up: ## Start all services with Docker Compose
 	@echo "🐳 Starting services with Docker Compose..."
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
+	@docker compose -f $(DOCKER_COMPOSE_FILE) up -d
 	@echo "✅ Services started"
 	@echo "🌐 API available at: http://localhost:8000"
 	@echo "📚 API docs at: http://localhost:8000/docs"
