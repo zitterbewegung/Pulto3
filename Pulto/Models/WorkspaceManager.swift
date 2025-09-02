@@ -174,6 +174,10 @@ class WorkspaceManager: ObservableObject {
         return workspaces.filter { !$0.isTemplate }.sorted { $0.modifiedDate > $1.modifiedDate }
     }
     
+    func getDemoWorkspaces() -> [WorkspaceMetadata] {
+        return workspaces.filter { $0.category == .demo }.sorted { $0.modifiedDate > $1.modifiedDate }
+    }
+    
     func getTemplates() -> [WorkspaceMetadata] {
         return workspaces.filter { $0.isTemplate }.sorted { $0.name < $1.name }
     }
@@ -892,6 +896,127 @@ class WorkspaceManager: ObservableObject {
                 print("⏸️ Auto-save task cancelled")
             }
         }
+    }
+}
+
+// MARK: - Endpoint Data Streaming Extension
+
+extension WorkspaceManager {
+    /// Stream data from a remote endpoint and create/update windows with the data
+    /// - Parameters:
+    ///   - endpointURL: The URL of the data endpoint
+    ///   - windowManager: The window manager to update with the streamed data
+    ///   - windowType: The type of window to create/update
+    ///   - updateInterval: How frequently to poll the endpoint (in seconds)
+    func streamData(
+        from endpointURL: String,
+        using windowManager: WindowTypeManager,
+        as windowType: WindowType,
+        updateInterval: TimeInterval = 5.0
+    ) async throws {
+        guard let url = URL(string: endpointURL) else {
+            throw WorkspaceError.loadError("Invalid endpoint URL")
+        }
+        
+        print("📡 Starting data stream from: \(endpointURL)")
+        
+        // Create a new window for the streamed data
+        let nextID = windowManager.getNextWindowID()
+        let newWindow = windowManager.createWindow(windowType, id: nextID)
+        print("🪟 Created new window #\(newWindow.id) for streaming")
+        
+        // Start streaming data
+        Task {
+            while true {
+                do {
+                    // Fetch data from endpoint
+                    let (data, response) = try await URLSession.shared.data(from: url)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse,
+                          httpResponse.statusCode == 200 else {
+                        print("❌ HTTP error when fetching data")
+                        try await Task.sleep(nanoseconds: UInt64(updateInterval * 1_000_000_000))
+                        continue
+                    }
+                    
+                    // Process the data based on window type
+                    let dataString = String(data: data, encoding: .utf8) ?? ""
+                    
+                    // Update window content
+                    windowManager.updateWindowContent(newWindow.id, content: dataString)
+                    
+                    print("✅ Updated window #\(newWindow.id) with \(data.count) bytes of data")
+                    
+                    // Wait for next update
+                    try await Task.sleep(nanoseconds: UInt64(updateInterval * 1_000_000_000))
+                } catch {
+                    print("❌ Error streaming data: \(error)")
+                    try await Task.sleep(nanoseconds: UInt64(updateInterval * 1_000_000_000))
+                }
+            }
+        }
+    }
+    
+    /// Stream data from a Jupyter notebook endpoint
+    /// - Parameters:
+    ///   - jupyterClient: The Jupyter API client to use
+    ///   - notebookPath: Path to the notebook on the server
+    ///   - windowManager: The window manager to update with the notebook data
+    func streamJupyterNotebook(
+        using jupyterClient: JupyterAPIClient,
+        notebookPath: String,
+        windowManager: WindowTypeManager
+    ) async throws {
+        print("📡 Starting Jupyter notebook stream: \(notebookPath)")
+        
+        // Fetch the notebook
+        let notebook = try await jupyterClient.fetchNotebook(at: notebookPath)
+        
+        // Create a window for each cell in the notebook
+        if let content = notebook.content {
+            for (index, cell) in content.cells.enumerated() {
+                let nextID = windowManager.getNextWindowID()
+                let window = windowManager.createWindow(.column, id: nextID)
+                let cellContent = cell.source.joined(separator: "\n")
+                
+                windowManager.updateWindowContent(window.id, content: cellContent)
+                
+                print("🪟 Created window #\(window.id) for cell \(index)")
+            }
+        }
+        
+        print("✅ Finished streaming notebook: \(notebookPath)")
+    }
+    
+    /// Stream data from a Superset dashboard
+    /// - Parameters:
+    ///   - sliceID: The ID of the chart slice to fetch
+    ///   - jwt: Authentication token
+    ///   - supersetURL: Base URL of the Superset instance
+    ///   - windowManager: The window manager to update with the chart data
+    func streamSupersetData(
+        sliceID: Int,
+        jwt: String,
+        supersetURL: String,
+        windowManager: WindowTypeManager
+    ) async throws {
+        print("📡 Starting Superset data stream for slice: \(sliceID)")
+        
+        // Fetch data from Superset
+        let chartPoints = try await fetchSeries(sliceID: sliceID, jwt: jwt, supersetURL: supersetURL)
+        
+        // Create a chart window with the data
+        let nextID = windowManager.getNextWindowID()
+        let chartWindow = windowManager.createWindow(.charts, id: nextID)
+        
+        // Convert chart points to a format suitable for display
+        let chartData = chartPoints.map { point in
+            "Date: \(point.date), Value: \(point.value)"
+        }.joined(separator: "\n")
+        
+        windowManager.updateWindowContent(chartWindow.id, content: chartData)
+        
+        print("✅ Streamed Superset data to window #\(chartWindow.id)")
     }
 }
 

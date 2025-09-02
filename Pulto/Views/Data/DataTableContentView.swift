@@ -18,6 +18,7 @@ struct DataTableContentView: View {
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var dataFrame: DataFrameModel
     @StateObject private var importer = DataFrameImporter()
+    @StateObject private var streamingImporter = StreamingDataFrameImporter()
     
     @State private var selectedCell: (row: Int, col: Int)? = nil
     @State private var hoveredCell: (row: Int, col: Int)? = nil
@@ -33,6 +34,14 @@ struct DataTableContentView: View {
     @State private var showingHistory = false
     @State private var showingExportOptions = false
     @State private var columnWidths: [String: CGFloat] = [:]
+    
+    // Streaming state
+    @State private var isStreamingActive = false
+    @State private var streamingEndpoint = ""
+    @State private var streamingFormat: ImportFormat = .csv(delimiter: ",")
+    @State private var streamingInterval: Double = 5.0
+    @State private var showingStreamingSheet = false
+    @State private var streamingError: String? = nil
     
     @FocusState private var isFilterFieldFocused: Bool
     @FocusState private var isCellEditing: Bool
@@ -146,6 +155,7 @@ struct DataTableContentView: View {
         }
         .onDisappear {
             saveDataToWindow()
+            streamingImporter.stopAllStreaming()
         }
         .sheet(isPresented: $showingImportSheet) {
             DataImportSheet(importer: importer) { importedDataFrame in
@@ -155,6 +165,16 @@ struct DataTableContentView: View {
                 initializeColumnWidths()
                 saveDataToWindow()
             }
+        }
+        .sheet(isPresented: $showingStreamingSheet) {
+            StreamingSheet(
+                isStreamingActive: $isStreamingActive,
+                endpoint: $streamingEndpoint,
+                format: $streamingFormat,
+                interval: $streamingInterval,
+                onStartStreaming: startStreaming,
+                onStopStreaming: stopStreaming
+            )
         }
         .sheet(isPresented: $showingChartRecommender) {
             ChartRecommenderSheet(
@@ -231,6 +251,16 @@ struct DataTableContentView: View {
                     Label("Import", systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(DataTableButtonStyle(color: .green))
+                
+                Button(action: { showingStreamingSheet = true }) {
+                    Label("Stream Data", systemImage: isStreamingActive ? "pause.circle" : "play.circle")
+                }
+                .buttonStyle(DataTableButtonStyle(color: isStreamingActive ? .red : .orange))
+                .alert("Streaming Error", isPresented: .constant(streamingError != nil)) {
+                    Button("OK") { streamingError = nil }
+                } message: {
+                    Text(streamingError ?? "Unknown error")
+                }
                 
                 Button(action: { showingChartRecommender = true }) {
                     Label("Create Chart", systemImage: "chart.xyaxis.line")
@@ -1030,14 +1060,36 @@ struct DataTableContentView: View {
         }
     }
     
-    // Add this method after the other helper methods
+    // MARK: - Streaming Functions
     
-    private func onDoubleClick(perform action: @escaping () -> Void) -> some View {
-        #if os(macOS)
-        return self.onTapGesture(count: 2, perform: action)
-        #else
-        return self.onTapGesture(count: 2, perform: action)
-        #endif
+    private func startStreaming() {
+        guard !streamingEndpoint.isEmpty else {
+            streamingError = "Please enter a valid endpoint URL"
+            return
+        }
+        
+        streamingImporter.startStreaming(
+            from: streamingEndpoint,
+            format: streamingFormat,
+            interval: streamingInterval,
+            dataFrame: dataFrame
+        ) { progress, status in
+            Task { @MainActor in
+                // Update UI with progress if needed
+            }
+        } onError: { error in
+            Task { @MainActor in
+                streamingError = error.localizedDescription
+                isStreamingActive = false
+            }
+        }
+        
+        isStreamingActive = true
+    }
+    
+    private func stopStreaming() {
+        streamingImporter.stopStreaming(for: streamingEndpoint)
+        isStreamingActive = false
     }
 }
 
@@ -1304,6 +1356,114 @@ struct ChartRecommenderSheet: View {
             xData: xData,
             yData: yData
         )
+    }
+}
+
+struct StreamingSheet: View {
+    @Binding var isStreamingActive: Bool
+    @Binding var endpoint: String
+    @Binding var format: ImportFormat
+    @Binding var interval: Double
+    
+    let onStartStreaming: () -> Void
+    let onStopStreaming: () -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: isStreamingActive ? "pause.circle" : "play.circle")
+                        .font(.system(size: 50))
+                        .foregroundColor(isStreamingActive ? .red : .green)
+                    
+                    Text(isStreamingActive ? "Streaming Active" : "Stream Data")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Connect to a live data endpoint")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Configuration
+                VStack(alignment: .leading, spacing: 16) {
+                    // Endpoint URL
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Endpoint URL")
+                            .font(.headline)
+                        
+                        TextField("https://api.example.com/data", text: $endpoint)
+                            .textFieldStyle(.roundedBorder)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+                    
+                    // Format selection
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Data Format")
+                            .font(.headline)
+                        
+                        Picker("Format", selection: $format) {
+                            Text("CSV (comma)").tag(ImportFormat.csv(delimiter: ","))
+                            Text("TSV (tab)").tag(ImportFormat.csv(delimiter: "\t"))
+                            Text("JSON").tag(ImportFormat.json)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    
+                    // Update interval
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Update Interval")
+                            .font(.headline)
+                        
+                        HStack {
+                            Slider(value: $interval, in: 1...60, step: 1)
+                            Text("\(Int(interval))s")
+                                .frame(width: 40)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                // Action buttons
+                HStack(spacing: 16) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    if isStreamingActive {
+                        Button("Stop Streaming") {
+                            onStopStreaming()
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                    } else {
+                        Button("Start Streaming") {
+                            onStartStreaming()
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                    }
+                }
+            }
+            .padding()
+            .navigationTitle("Stream Data")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

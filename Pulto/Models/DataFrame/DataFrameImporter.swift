@@ -443,6 +443,152 @@ class DataFrameImporter: ObservableObject {
     }
 }
 
+// MARK: - Streaming Import Error
+
+enum DataFrameStreamingError: LocalizedError {
+    case invalidEndpoint
+    case networkError(String)
+    case parsingError(String)
+    case cancelled
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidEndpoint:
+            return "Invalid endpoint URL"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .parsingError(let message):
+            return "Data parsing error: \(message)"
+        case .cancelled:
+            return "Streaming was cancelled"
+        }
+    }
+}
+
+// MARK: - Streaming DataFrame Importer
+
+class StreamingDataFrameImporter: ObservableObject {
+    private var streamingTasks: [String: Task<Void, Never>] = [:]
+    
+    /// Start streaming data from an endpoint and update the DataFrame periodically
+    /// - Parameters:
+    ///   - endpointURL: The URL to fetch data from
+    ///   - format: The format of the data (CSV, JSON, etc.)
+    ///   - interval: Update interval in seconds
+    ///   - dataFrame: The DataFrame to update
+    ///   - onProgress: Progress callback
+    ///   - onError: Error callback
+    func startStreaming(
+        from endpointURL: String,
+        format: ImportFormat,
+        interval: TimeInterval = 5.0,
+        dataFrame: DataFrameModel,
+        onProgress: @escaping (Double, String) -> Void = { _, _ in },
+        onError: @escaping (DataFrameStreamingError) -> Void = { _ in }
+    ) {
+        // Cancel any existing streaming task for this endpoint
+        stopStreaming(for: endpointURL)
+        
+        guard let url = URL(string: endpointURL) else {
+            onError(.invalidEndpoint)
+            return
+        }
+        
+        // Create a new streaming task
+        let task = Task {
+            while !Task.isCancelled {
+                do {
+                    onProgress(0.0, "Fetching data from endpoint...")
+                    
+                    // Fetch data from endpoint
+                    let (data, response) = try await URLSession.shared.data(from: url)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse,
+                          httpResponse.statusCode == 200 else {
+                        throw DataFrameStreamingError.networkError("HTTP \(response is HTTPURLResponse ? (response as! HTTPURLResponse).statusCode : 0)")
+                    }
+                    
+                    guard let text = String(data: data, encoding: .utf8) else {
+                        throw DataFrameStreamingError.parsingError("Failed to decode response as UTF-8")
+                    }
+                    
+                    onProgress(0.5, "Parsing incoming data...")
+                    
+                    // Create appropriate importer
+                    let importer: FileFormatImporter
+                    switch format {
+                    case .csv(let delimiter):
+                        importer = CSVImporter(delimiter: delimiter)
+                    case .json:
+                        importer = JSONImporter()
+                    case .excel:
+                        importer = ExcelImporter()
+                    }
+                    
+                    // Parse the new data
+                    let newDataFrame = try await importer.importFromText(text, progressCallback: { _, _ in })
+                    
+                    // Update the existing DataFrame with new data
+                    await MainActor.run {
+                        dataFrame.columns = newDataFrame.columns
+                        dataFrame.name = newDataFrame.name
+                        dataFrame.metadata = newDataFrame.metadata
+                    }
+                    
+                    onProgress(1.0, "Data updated successfully")
+                    
+                    // Wait for next update
+                    try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                } catch {
+                    if error is CancellationError {
+                        break
+                    }
+                    
+                    let streamingError: DataFrameStreamingError
+                    if let dfError = error as? DataFrameStreamingError {
+                        streamingError = dfError
+                    } else if let dfImportError = error as? DataFrameImportError {
+                        streamingError = .parsingError(dfImportError.localizedDescription ?? "Import error")
+                    } else {
+                        streamingError = .networkError(error.localizedDescription)
+                    }
+                    
+                    onError(streamingError)
+                    
+                    // Wait before retrying
+                    try? await Task.sleep(nanoseconds: UInt64(5 * 1_000_000_000))
+                }
+            }
+        }
+        
+        streamingTasks[endpointURL] = task
+    }
+    
+    /// Stop streaming data from an endpoint
+    /// - Parameter endpointURL: The endpoint URL to stop streaming from
+    func stopStreaming(for endpointURL: String) {
+        if let task = streamingTasks[endpointURL] {
+            task.cancel()
+            streamingTasks.removeValue(forKey: endpointURL)
+        }
+    }
+    
+    /// Check if streaming is active for an endpoint
+    /// - Parameter endpointURL: The endpoint URL to check
+    /// - Returns: True if streaming is active
+    func isStreaming(for endpointURL: String) -> Bool {
+        return streamingTasks[endpointURL] != nil
+    }
+    
+    /// Stop all streaming tasks
+    func stopAllStreaming() {
+        for (_, task) in streamingTasks {
+            task.cancel()
+        }
+        streamingTasks.removeAll()
+    }
+}
+
 // MARK: - Import Configuration
 
 struct ImportConfiguration {

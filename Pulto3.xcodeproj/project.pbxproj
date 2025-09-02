@@ -118,6 +118,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				generateSamplePointCloud.swift,
+				JupyterNotebook.swift,
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};

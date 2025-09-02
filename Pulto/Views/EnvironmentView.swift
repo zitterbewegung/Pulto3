@@ -329,162 +329,50 @@ struct EnhancedActiveWindowsView: View {
             //.navigationTitle("Pulto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Leading toolbar items (left side)
+                // Leading toolbar items (left side) - SIMPLIFIED
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    // GROUP 1: Navigation & Status (pill container)
-                    HStack(spacing: 8) {
-                        Button(action: onHomeButtonTap) {
-                            Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(showNavigationView ? .blue : .gray)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Toggle sidebar")
-
-                        Button(action: {
-                            checkJupyterServerStatus()
-                        }) {
-                            Image(systemName: jupyterServerStatus.icon)
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(jupyterServerStatus.color)
-                                .rotationEffect(isCheckingJupyterServer ? .degrees(360) : .degrees(0))
-                                .animation(.easeInOut(duration: 0.3), value: jupyterServerStatus)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
+                    Button(action: onHomeButtonTap) {
+                        Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
+                            .font(.title3)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
-                    .overlay {
-                        if showNavigationView {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(.blue.opacity(0.3), lineWidth: 1)
-                        }
+                    .buttonStyle(.plain)
+                    .help("Toggle sidebar")
+
+                    Button(action: {
+                        checkJupyterServerStatus()
+                    }) {
+                        Image(systemName: jupyterServerStatus.icon)
+                            .font(.title3)
+                            .foregroundStyle(jupyterServerStatus.color)
                     }
-
-                    // GROUP 2: Project & Content Creation (pill container)
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            sheetManager.presentSheet(.workspaceDialog)
-                        }) {
-                            Image(systemName: "plus.square.fill")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.gray)
-                        }
-                        .buttonStyle(.plain)
-                        .help("New Project")
-
-                        Button(action: {
-                            sheetManager.presentSheet(.templateGallery)
-                        }) {
-                            Image(systemName: "doc.text.fill")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.gray)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Templates")
-
-                        Button(action: {
-                            sheetManager.presentSheet(.classifierSheet)
-                        }) {
-                            Image(systemName: "doc.badge.plus")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.gray)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Import")
-
-                        if navigationState == .workspace {
-                            Menu {
-                                ForEach(StandardWindowType.allCases, id: \.self) { type in
-                                    Button {
-                                        createWindow(type)
-                                    } label: {
-                                        Label(type.displayName, systemImage: type.icon)
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.title3)
-                                    .symbolRenderingMode(.hierarchical)
-                                    .foregroundStyle(.gray)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Add Window")
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
+                    .buttonStyle(.plain)
+                    .help("Jupyter Server Status")
                 }
 
                 // Principal toolbar item (center)
                 ToolbarItem(placement: .principal) {
-                    EmptyView()
+                    Text("Pulto")
+                        .font(.headline)
+                        .fontWeight(.semibold)
                 }
 
-                // Trailing toolbar items (right side)
+                // Trailing toolbar items (right side) - SIMPLIFIED
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    // GROUP 3: User & Settings (pill container)
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            sheetManager.presentSheet(.settings)
-                        }) {
-                            Image(systemName: "gearshape")
-                                .font(.title3)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.gray)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Settings")
-
-                        Button(action: {
-                            sheetManager.presentSheet(.appleSignIn)
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: viewModel.isUserLoggedIn ? "person.circle.fill" : "person.circle")
-                                    .font(.title3)
-                                    .symbolRenderingMode(.hierarchical)
-                                    .foregroundStyle(.gray)
-
-                                if viewModel.isUserLoggedIn {
-                                    Text(viewModel.userName)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .help("User Profile")
+                    Button(action: {
+                        sheetManager.presentSheet(.settings)
+                    }) {
+                        Image(systemName: "gearshape")
+                            .font(.title3)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .buttonStyle(.plain)
+                    .help("Settings")
 
-                    // Inspector toggle (separate)
                     Button(action: onInspectorToggle) {
                         Image(systemName: showInspector ? "sidebar.right" : "sidebar.trailing")
                             .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(showInspector ? .blue : .gray)
                     }
                     .buttonStyle(.plain)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
-                    .overlay {
-                        if showInspector {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(.blue.opacity(0.3), lineWidth: 1)
-                        }
-                    }
                     .help("Toggle inspector")
                 }
             }
@@ -580,7 +468,7 @@ struct EnhancedActiveWindowsView: View {
         let session = URLSession(configuration: config)
 
         defer {
-            session.invalidateAndCancel()  // IMPORTANT: Clean up session
+            session.invalidateAndCancel()  //IMPORTANT: Clean up session
         }
 
         do {
@@ -1284,39 +1172,39 @@ struct EnvironmentView: View {
         case .workspaceDialog:
             WorkspaceDialogWrapper(windowManager: windowManager)
                 .environmentObject(sheetManager)
-
+        
         case .templateGallery:
             TemplateView()
                 .frame(minWidth: 800, minHeight: 600)
                 .environmentObject(sheetManager)
-
+        
         case .notebookImport:
             NotebookImportDialogWrapper(windowManager: windowManager)
                 .environmentObject(sheetManager)
-
+        
         case .classifierSheet:
             UnifiedImportSheet()
                 .environmentObject(windowManager)
                 .environmentObject(sheetManager)
-
+        
         case .welcome:
             WelcomeSheetWrapper()
                 .environmentObject(sheetManager)
-
+        
         case .settings:
             SettingsSheetWrapper()
                 .environmentObject(sheetManager)
-
+        
         case .appleSignIn:
             AppleSignInWrapper()
                 .frame(width: 700, height: 800)
                 .environmentObject(sheetManager)
-
+        
         case .activeWindows:
             ActiveWindowsSheetWrapper()
                 .environmentObject(sheetManager)
                 .environmentObject(windowManager)
-
+        
         default:
             EmptyView()
                 .environmentObject(sheetManager)
@@ -1386,8 +1274,15 @@ struct EnvironmentView: View {
             openWindow(id: "volumetric-model3d", value: nextWindowID)
             print(" Created and opened volumetric-model3d #\(nextWindowID)")
         case .pointCloud:
-            openWindow(id: "volumetric-pointcloud", value: nextWindowID)
-            print(" Created and opened volumetric-pointcloud #\(nextWindowID)")
+            // Check if it's a demo point cloud or regular point cloud
+            if windowManager.getWindow(for: nextWindowID)?.state.tags.contains("Demo-PointCloud") ?? false {
+                openWindow(id: "volumetric-pointclouddemo", value: nextWindowID)
+                print(" Opened volumetric-pointclouddemo for window #\(nextWindowID)")
+            } else {
+                openWindow(id: "volumetric-pointcloud", value: nextWindowID)
+                print(" Opened volumetric-pointcloud for window #\(nextWindowID)")
+            }
+            
         case .dataFrame, .iotDashboard:
             openWindow(value: NewWindowID.ID(nextWindowID))
             print(" Created and opened regular window #\(nextWindowID)")
@@ -1432,11 +1327,13 @@ struct EnvironmentView: View {
     private func loadWorkspaceFromSidebar(_ workspace: WorkspaceMetadata) {
         Task {
             do {
+                // Clear existing windows before loading a new workspace
+                await windowManager.clearAllWindowsAsync()
+
                 // Load the workspace into the window manager
                 let result = try await workspaceManager.loadWorkspace(
                     workspace,
-                    into: windowManager,
-                    clearExisting: true
+                    into: windowManager
                 ) { id in
                     // FIXED: Open the correct window type based on the window's type
                     if let window = windowManager.getWindow(for: id) {
@@ -1966,22 +1863,42 @@ struct RecentProjectsSidebar: View {
                     .padding(.top)
                     .padding(.bottom, 12)
 
-                    if workspaceManager.getCustomWorkspaces().isEmpty {
+                    if !workspaceManager.getDemoWorkspaces().isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Demos")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+                            
+                            ForEach(workspaceManager.getDemoWorkspaces()) { workspace in
+                                demoProjectRow(workspace)
+                            }
+                        }
+                        .padding(.bottom, 12)
+                        
+                        Divider().padding(.horizontal)
+                    }
+
+                    if workspaceManager.getCustomWorkspaces().isEmpty && workspaceManager.getDemoWorkspaces().isEmpty {
                         VStack(spacing: 16) {
                             Image(systemName: "folder.badge.plus")
                                 .font(.system(size: 48))
                                 .foregroundStyle(.secondary)
-
-                            Text("No projects yet")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-
-                            Text("Create a new project to get started")
-                                .font(.subheadline)
-                                .foregroundStyle(.tertiary)
-                                .multilineTextAlignment(.center)
+                            
+                            VStack(spacing: 8) {
+                                Text("No projects yet")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Text("Create a new project to get started")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding()
+                            .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 16))
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .padding()
                     } else {
                         ScrollView {
@@ -1999,7 +1916,6 @@ struct RecentProjectsSidebar: View {
                                             Text(workspace.name)
                                                 .font(.subheadline)
                                                 .foregroundColor(.primary)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
                                             
                                             // Windows count
                                             Text("\(workspace.totalWindows) views")
@@ -2038,6 +1954,42 @@ struct RecentProjectsSidebar: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func demoProjectRow(_ workspace: WorkspaceMetadata) -> some View {
+        Button(action: {
+            selectedWorkspace = workspace
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showingProjectDetail = true
+            }
+        }) {
+            HStack {
+                Image(systemName: "sparkles.tv.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.purple)
+                
+                Text(workspace.name)
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(height: 44)
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.purple.opacity(0.1))
+        )
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+    }
 }
 
 // MARK: - Project Summary Card (for main list)
@@ -2045,7 +1997,6 @@ struct ProjectSummaryCard: View {
     let workspace: WorkspaceMetadata
     let onSelect: () -> Void
     let onLoad: () -> Void
-    @State private var isHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -2111,7 +2062,6 @@ struct ProjectSummaryCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Created")
-                            .font(.caption2)
                             .foregroundStyle(.tertiary)
                         Spacer()
                         Text(workspace.createdDate, style: .date)
@@ -2124,18 +2074,10 @@ struct ProjectSummaryCard: View {
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isHovered ? .blue.opacity(0.05) : .clear)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(isHovered ? .blue.opacity(0.3) : .gray.opacity(0.1), lineWidth: 1)
-                }
+                .fill(Color.blue.opacity(0.05))
         }
-        .scaleEffect(isHovered ? 1.01 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
-        .onHover { isHovered = $0 }
-        .onTapGesture {
-            onSelect()
-        }
+        .scaleEffect(1.01)
+        .animation(.easeInOut(duration: 0.15))
     }
 }
 
@@ -2245,14 +2187,14 @@ struct ProjectDetailView: View {
                         VStack(spacing: 8) {
                             HStack {
                                 Text("Created")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.tertiary)
                                 Spacer()
                                 Text(workspace.createdDate, style: .date)
                             }
 
                             HStack {
                                 Text("Last Modified")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.tertiary)
                                 Spacer()
                                 Text(workspace.modifiedDate, style: .relative)
                             }
@@ -2260,7 +2202,7 @@ struct ProjectDetailView: View {
                             if workspace.totalWindows > 0 {
                                 HStack {
                                     Text("Windows")
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.tertiary)
                                     Spacer()
                                     Text("\(workspace.totalWindows)")
                                 }
@@ -2422,7 +2364,25 @@ struct WorkspaceDialogWrapper: View {
                 get: { true },
                 set: { _ in sheetManager.dismissSheet() }
             ),
-            windowManager: windowManager
+            onSave: { name, description, category, isTemplate, tags in
+                Task {
+                    do {
+                        let workspace = try await WorkspaceManager.shared.createNewWorkspace(
+                            name: name,
+                            description: description,
+                            category: category,
+                            tags: tags,
+                            windowManager: windowManager
+                        )
+                        print(" Created workspace: \(workspace.name)")
+                        await MainActor.run {
+                            sheetManager.dismissSheet()
+                        }
+                    } catch {
+                        print(" Failed to create workspace: \(error)")
+                    }
+                }
+            }
         )
     }
 }
