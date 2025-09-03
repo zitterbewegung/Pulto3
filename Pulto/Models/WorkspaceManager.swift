@@ -897,6 +897,348 @@ class WorkspaceManager: ObservableObject {
             }
         }
     }
+    
+    /// Ensures the Teapot IoT Demo project exists with all required components
+    func ensureTeapotDemoProjectExists() async {
+        // Check if demo already exists
+        if workspaces.contains(where: { $0.name == "Teapot IoT Demo" }) {
+            print("🍵 Teapot demo project already exists")
+            return
+        }
+        
+        print("🍵 Creating Teapot IoT Demo project...")
+        
+        // Create the demo project workspace metadata
+        var demoWorkspace = WorkspaceMetadata(
+            name: "Teapot IoT Demo",
+            description: "Interactive 3D teapot visualization with point cloud data and IoT metrics",
+            category: .demo,
+            isTemplate: false,
+            totalWindows: 4,
+            windowTypes: ["column", "model3d", "pointcloud", "volume"],
+            tags: ["demo", "teapot", "iot", "3d", "pointcloud"]
+        )
+        
+        // Set a fixed ID for consistency in tests
+        demoWorkspace.id = UUID(uuidString: "12345678-1234-1234-1234-123456789012") ?? UUID()
+        
+        // Use shared instance instead of creating new instance
+        let windowManager = WindowTypeManager.shared
+        
+        // Window 1: Data table (column)
+        let dataTableWindowID = 1001
+        let dataTableWindow = windowManager.createWindow(.column, id: dataTableWindowID, position: WindowPosition(x: -200, y: 100, z: 0, width: 500, height: 400))
+        windowManager.updateWindowTemplate(dataTableWindowID, template: .pandas)
+        windowManager.updateWindowContent(dataTableWindowID, content: """
+        # Teapot IoT Sensor Data
+        # Simulated temperature and pressure readings
+        
+        import pandas as pd
+        import numpy as np
+        
+        # Generate sample IoT data for teapot
+        timestamps = pd.date_range('2024-01-01', periods=100, freq='1min')
+        temperature = 95 + 5 * np.sin(np.linspace(0, 4*np.pi, 100)) + np.random.normal(0, 1, 100)
+        pressure = 14.7 + 0.5 * np.cos(np.linspace(0, 2*np.pi, 100)) + np.random.normal(0, 0.1, 100)
+        water_level = np.clip(80 + 20 * np.sin(np.linspace(0, 2*np.pi, 100)) + np.random.normal(0, 5, 100), 0, 100)
+        
+        df = pd.DataFrame({
+            'timestamp': timestamps,
+            'temperature_f': temperature,
+            'pressure_psi': pressure,
+            'water_level_percent': water_level
+        })
+        
+        print("Teapot IoT Data Sample:")
+        print(df.head(10))
+        """)
+        windowManager.addWindowTag(dataTableWindowID, tag: "iot")
+        windowManager.addWindowTag(dataTableWindowID, tag: "data")
+        
+        // Window 2: 3D Model (model3d) with cup_saucer_set.usdz
+        let modelWindowID = 1002
+        let modelWindow = windowManager.createWindow(.model3d, id: modelWindowID, position: WindowPosition(x: 200, y: 150, z: 50, width: 600, height: 500))
+        windowManager.updateWindowTemplate(modelWindowID, template: .custom)
+        windowManager.updateWindowContent(modelWindowID, content: """
+        # Teapot 3D Model Visualization
+        # Using cup_saucer_set.usdz asset
+        
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from mpl_toolkits.mplot3d import Axes3D
+        import plotly.graph_objects as go
+        
+        # Model information
+        model_name = "Teapot & Saucer Set"
+        asset_file = "cup_saucer_set.usdz"
+        vertices = 15420
+        faces = 15200
+        materials = 3
+        
+        print(f"Loaded 3D model: {model_name}")
+        print(f"Asset file: {asset_file}")
+        print(f"Vertices: {vertices}, Faces: {faces}, Materials: {materials}")
+        
+        # Placeholder for 3D visualization
+        # In the actual app, this would load the USDZ file
+        """)
+        windowManager.addWindowTag(modelWindowID, tag: "3d")
+        windowManager.addWindowTag(modelWindowID, tag: "model")
+        windowManager.addWindowTag(modelWindowID, tag: "usdz")
+        
+        // Window 3: Point Cloud (pointcloud) - teapot shape
+        let pointCloudWindowID = 1003
+        let pointCloudWindow = windowManager.createWindow(.pointcloud, id: pointCloudWindowID, position: WindowPosition(x: -150, y: -100, z: 100, width: 550, height: 450))
+        windowManager.updateWindowTemplate(pointCloudWindowID, template: .custom)
+        
+        // Create teapot point cloud data
+        let teapotPoints = PointCloudDemo2.generateTeapotPointCloud(points: 1500)
+        var pointCloudData = PointCloudData(
+            title: "Teapot Point Cloud",
+            xAxisLabel: "Width (cm)",
+            yAxisLabel: "Depth (cm)", 
+            zAxisLabel: "Height (cm)",
+            demoType: "teapot",
+            parameters: ["points": Double(teapotPoints.count)]
+        )
+        
+        // Convert to PointCloudData.PointData format
+        pointCloudData.points = teapotPoints.map { point in
+            PointCloudData.PointData(
+                x: point.x,
+                y: point.y,
+                z: point.z,
+                intensity: point.intensity,
+                color: point.color
+            )
+        }
+        pointCloudData.totalPoints = pointCloudData.points.count
+        
+        windowManager.updateWindowPointCloud(pointCloudWindowID, pointCloud: pointCloudData)
+        windowManager.updateWindowContent(pointCloudWindowID, content: pointCloudData.toPythonCode())
+        windowManager.addWindowTag(pointCloudWindowID, tag: "pointcloud")
+        windowManager.addWindowTag(pointCloudWindowID, tag: "teapot")
+        windowManager.addWindowTag(pointCloudWindowID, tag: "3d")
+        
+        // Window 4: Volume Metrics (volume)
+        let volumeWindowID = 1004
+        let volumeWindow = windowManager.createWindow(.volume, id: volumeWindowID, position: WindowPosition(x: 250, y: -150, z: -50, width: 450, height: 350))
+        windowManager.updateWindowTemplate(volumeWindowID, template: .numpy)
+        windowManager.updateWindowContent(volumeWindowID, content: """
+        # Teapot Performance Metrics
+        # Real-time IoT monitoring data
+        
+        import numpy as np
+        
+        # Simulated performance metrics
+        metrics = {
+            "brew_temperature": 98.6,  // Fahrenheit
+            "brew_time_seconds": 240,
+            "water_level_percent": 85.3,
+            "pressure_psi": 14.7,
+            "power_consumption_watts": 1200,
+            "efficiency_ratio": 0.92,
+            "uptime_hours": 1250.5
+        }
+        
+        # Convert to NumPy array for processing
+        metrics_array = np.array(list(metrics.values()))
+        metrics_keys = list(metrics.keys())
+        
+        print("Teapot Performance Metrics:")
+        for key, value in metrics.items():
+            print(f"  {key}: {value}")
+            
+        print(f"\\nMetrics Array Shape: {metrics_array.shape}")
+        """)
+        windowManager.addWindowTag(volumeWindowID, tag: "metrics")
+        windowManager.addWindowTag(volumeWindowID, tag: "iot")
+        windowManager.addWindowTag(volumeWindowID, tag: "performance")
+        
+        // Save the workspace file
+        do {
+            let fileURL = try await saveWorkspaceToFile(metadata: demoWorkspace, windowManager: windowManager)
+            demoWorkspace.fileURL = fileURL
+            workspaces.append(demoWorkspace)
+            saveWorkspacesMetadata()
+            print("✅ Teapot IoT Demo project created successfully")
+        } catch {
+            print("❌ Failed to create Teapot IoT Demo project: \(error)")
+        }
+    }
+    
+    // MARK: - Teapot Geometry Generation
+    
+    /// Generate vertices for a teapot model (simplified)
+    private func generateTeapotVertices() -> [SIMD3<Float>] {
+        var vertices: [SIMD3<Float>] = []
+        
+        // Create a simple teapot-like shape with body, spout, and handle
+        let bodyRadius: Float = 5.0
+        let bodyHeight: Float = 8.0
+        let segments = 32
+        
+        // Body (cylindrical with tapered top)
+        for i in 0..<segments {
+            let angle = Float(i) * 2 * .pi / Float(segments)
+            let x = bodyRadius * cos(angle)
+            let z = bodyRadius * sin(angle)
+            
+            // Bottom ring
+            vertices.append(SIMD3(x, -bodyHeight/2, z))
+            
+            // Middle ring
+            vertices.append(SIMD3(x * 0.9, 0, z * 0.9))
+            
+            // Top ring (narrower)
+            vertices.append(SIMD3(x * 0.6, bodyHeight/2, z * 0.6))
+        }
+        
+        // Spout (cylinder)
+        let spoutLength: Float = 3.0
+        let spoutRadius: Float = 1.0
+        for i in 0..<16 {
+            let angle = Float(i) * 2 * .pi / 16
+            let x = bodyRadius + spoutLength + spoutRadius * cos(angle)
+            let y: Float = 1.0
+            let z = spoutRadius * sin(angle)
+            vertices.append(SIMD3(x, y, z))
+        }
+        
+        // Handle (torus shape)
+        let handleRadius: Float = 2.0
+        let handleTubeRadius: Float = 0.5
+        for i in 0..<16 {
+            let majorAngle = Float(i) * 2 * .pi / 16
+            let centerX = -(bodyRadius + handleRadius)
+            let centerY: Float = 0.0
+            let centerZ: Float = 0.0
+            
+            for j in 0..<8 {
+                let minorAngle = Float(j) * 2 * .pi / 8
+                let x = centerX + (handleRadius + handleTubeRadius * cos(minorAngle)) * cos(majorAngle)
+                let y = centerY + handleTubeRadius * sin(minorAngle)
+                let z = centerZ + (handleRadius + handleTubeRadius * cos(minorAngle)) * sin(majorAngle)
+                vertices.append(SIMD3(Float(x), Float(y), Float(z)))
+            }
+        }
+        
+        return vertices
+    }
+    
+    /// Generate faces for the teapot model (simplified)
+    private func generateTeapotFaces() -> [Model3DData.Face3D] {
+        var faces: [Model3DData.Face3D] = []
+        
+        // Simple face generation for demonstration
+        // In a real implementation, this would properly connect vertices
+        for i in stride(from: 0, to: 100, by: 3) {
+            faces.append(Model3DData.Face3D(vertices: [i, i+1, i+2], materialIndex: 0))
+        }
+        
+        return faces
+    }
+    
+    /// Generate point cloud data for a teapot shape
+    private func generateTeapotPointCloud() -> [PointCloudData.PointData] {
+        var points: [PointCloudData.PointData] = []
+        
+        // Teapot body (using parametric equations)
+        let uSteps = 50
+        let vSteps = 50
+        let scale: Float = 10.0
+        
+        for i in 0..<uSteps {
+            for j in 0..<vSteps {
+                let u = Float(i) * .pi / Float(uSteps)
+                let v = Float(j) * 2 * .pi / Float(vSteps)
+                
+                // Teapot parametric equations (simplified)
+                let x = scale * (2 * cos(v) * sin(u))
+                let y = scale * (2 * sin(v) * sin(u))
+                let z = scale * (2 * cos(u))
+                
+                // Add some noise for a more natural look
+                let noiseX = Float.random(in: -0.2...0.2)
+                let noiseY = Float.random(in: -0.2...0.2)
+                let noiseZ = Float.random(in: -0.2...0.2)
+                
+                // Calculate intensity based on position
+                let intensity = Double((z + scale) / (2 * scale))
+                
+                points.append(PointCloudData.PointData(
+                    x: Double(x + noiseX),
+                    y: Double(y + noiseY),
+                    z: Double(z + noiseZ),
+                    intensity: intensity,
+                    color: nil
+                ))
+            }
+        }
+        
+        // Add spout points
+        for i in 0..<20 {
+            let angle = Float(i) * 2 * .pi / 20
+            let length = Float.random(in: 0...3)
+            let radius = Float.random(in: 0...1)
+            
+            let x = scale * (2 + length)
+            let y = scale * (radius * cos(angle))
+            let z = scale * (radius * sin(angle))
+            
+            let intensity = Double((length / 3))
+            
+            points.append(PointCloudData.PointData(
+                x: Double(x),
+                y: Double(y),
+                z: Double(z),
+                intensity: intensity,
+                color: nil
+            ))
+        }
+        
+        // Add handle points
+        for i in 0..<30 {
+            let angle = Float(i) * 2 * .pi / 30
+            let majorRadius: Float = 7.0
+            let minorRadius: Float = 1.0
+            
+            let x = scale * (-(majorRadius + minorRadius * cos(angle)))
+            let y = scale * (minorRadius * sin(angle))
+            let z: Double = 0.0
+            
+            let intensity = 0.7
+            
+            points.append(PointCloudData.PointData(
+                x: Double(x),
+                y: Double(y),
+                z: z,
+                intensity: intensity,
+                color: nil
+            ))
+        }
+        
+        return points
+    }
+}
+
+// Add this method to WindowTypeManager to support volume data updates
+extension WindowTypeManager {
+    func updateWindowVolumeData(_ id: Int, volumeData: VolumeData) {
+        // Use the public method instead of accessing private windows directly
+        if var window = self.getWindow(for: id) {
+            window.state.volumeData = volumeData
+            window.state.lastModified = Date()
+            
+            // Auto-set template to numpy if not already set and this is a volume window
+            if window.windowType == .volume && window.state.exportTemplate == .plain {
+                window.state.exportTemplate = .numpy
+            }
+            
+            // Update the window state using the public method
+            self.updateWindowState(id, state: window.state)
+        }
+    }
 }
 
 // MARK: - Endpoint Data Streaming Extension
@@ -1049,7 +1391,6 @@ enum WorkspaceError: LocalizedError {
 }
 
 // MARK: - Navigation Helper
-// Add this to your main app or navigation controller
 
 struct ChartVisualizationNavigator {
     static func openSpatialEditorWithChart(
@@ -1063,10 +1404,6 @@ struct ChartVisualizationNavigator {
             recommendation: recommendation,
             chartData: chartData
         )
-
-        // Create and present the spatial editor
-        // This depends on your navigation system
-        // Example for SwiftUI:
 
         #if os(iOS)
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -1099,7 +1436,6 @@ struct ChartVisualizationNavigator {
     }
 }
 
-
 // MARK: - Helper Extensions
 
 extension DateFormatter {
@@ -1108,5 +1444,4 @@ extension DateFormatter {
         formatter.dateFormat = "yyyyMMdd_HHmmss"
         return formatter
     }()
-
 }

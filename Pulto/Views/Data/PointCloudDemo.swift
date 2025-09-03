@@ -530,6 +530,62 @@ class PointCloudDemo2 {
     }
 }
 
+// MARK: - Teapot Point Cloud Generation
+extension PointCloudDemo2 {
+    /// Generate a teapot point cloud using parametric equations
+    static func generateTeapotPointCloud(points: Int = 2000) -> [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] {
+        var pointCloud: [(x: Double, y: Double, z: Double, color: String?, intensity: Double?)] = []
+        
+        // Teapot parametric equations (simplified version)
+        // Based on the classic Utah teapot model
+        for _ in 0..<points {
+            // Generate random parameters for the teapot surface
+            let u = Double.random(in: 0...(2 * .pi))  // Azimuthal angle
+            let v = Double.random(in: 0...(.pi))      // Polar angle
+            
+            // Teapot body parameters (simplified)
+            let bodyRadius = 1.0 + 0.3 * cos(3 * u)   // Create the ribbed effect
+            let heightFactor = 0.8 + 0.2 * sin(2 * v) // Height variation
+            
+            // Calculate position
+            let x = bodyRadius * sin(v) * cos(u) * heightFactor
+            let y = bodyRadius * sin(v) * sin(u) * heightFactor
+            let z = bodyRadius * cos(v) * heightFactor
+            
+            // Add teapot spout and handle details
+            if u < .pi/4 || u > 7 * .pi/4 {  // Spout area
+                let spoutFactor = 1.0 + 0.3 * sin(u * 4)
+                let newX = x * spoutFactor
+                let newZ = z + 0.2 * sin(v)  // Lift the spout
+                pointCloud.append((x: newX, y: y, z: newZ, color: nil, intensity: Double.random(in: 0.6...1.0)))
+            } else if u > .pi/2 && u < .pi {  // Handle area
+                let handleRadius = 0.2
+                let handleX = x + handleRadius * cos(u) * 1.5
+                let handleY = y + handleRadius * sin(u) * 0.5
+                pointCloud.append((x: handleX, y: handleY, z: z, color: nil, intensity: Double.random(in: 0.3...0.7)))
+            } else {
+                // Regular body points
+                pointCloud.append((x: x, y: y, z: z, color: nil, intensity: Double.random(in: 0.5...0.9)))
+            }
+        }
+        
+        // Add teapot lid (simplified)
+        for _ in 0..<points/4 {
+            let u = Double.random(in: 0...(2 * .pi))
+            let v = Double.random(in: 0...(.pi/3))  // Smaller polar angle for lid
+            
+            let lidRadius = 0.8 + 0.1 * cos(4 * u)  // Ribbed lid
+            let x = lidRadius * sin(v) * cos(u)
+            let y = lidRadius * sin(v) * sin(u)
+            let z = lidRadius * cos(v) + 1.2  // Lifted above the body
+            
+            pointCloud.append((x: x, y: y, z: z, color: nil, intensity: Double.random(in: 0.7...1.0)))
+        }
+        
+        return pointCloud
+    }
+}
+
 /*
  Supported Point Cloud Formats:
  

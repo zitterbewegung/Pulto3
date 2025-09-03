@@ -40,7 +40,6 @@
 		DF58AE232BCD826D00C8F737 /* EntryPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF58AE222BCD826D00C8F737 /* EntryPoint.swift */; };
 		DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE282BCD826F00C8F737 /* Assets.xcassets */; };
 		DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */; };
-		DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */ = {isa = PBXBuildFile; fileRef = DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,7 +100,6 @@
 		DF58AE282BCD826F00C8F737 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DF58AE2B2BCD826F00C8F737 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		DF58AE2D2BCD826F00C8F737 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = cup_saucer_set.usdz; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -255,7 +253,6 @@
 				DC28CF6B2E026B4300F3705E /* template.ipynb */,
 				DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */,
 				DC70C5812DE7672800DADEAE /* Lorenz.ipynb */,
-				DF58AE3E2BCD900500C8F737 /* cup_saucer_set.usdz */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -415,7 +412,6 @@
 				DC64375A2E5E2E8F00032551 /* startup_sound.mp3 in Resources */,
 				DF58AE2C2BCD826F00C8F737 /* Preview Assets.xcassets in Resources */,
 				DF58AE292BCD826F00C8F737 /* Assets.xcassets in Resources */,
-				DF58AE3F2BCD900500C8F737 /* cup_saucer_set.usdz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

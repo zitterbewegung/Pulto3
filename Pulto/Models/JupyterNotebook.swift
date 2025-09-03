@@ -2,31 +2,31 @@ import Foundation
 import SwiftUI
 
 // MARK: - Jupyter Notebook Structure
-// Based on the standard Jupyter Notebook format (nbformat v4.5)
+// Renamed to avoid namespace collisions with other libraries.
 
-struct JupyterNotebook: Codable {
-    var cells: [Cell]
-    var metadata: NotebookMetadata
+struct PultoJupyterNotebook: Codable {
+    var cells: [PultoCell]
+    var metadata: PultoNotebookMetadata
     var nbformat: Int
     var nbformat_minor: Int
 }
 
-enum Cell: Codable {
-    case code(CodeCell)
-    case markdown(MarkdownCell)
+enum PultoCell: Codable {
+    case code(PultoCodeCell)
+    case markdown(PultoMarkdownCell)
 
     enum CodingKeys: String, CodingKey {
         case cell_type
     }
-
+ 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .cell_type)
         switch type {
         case "code":
-            self = .code(try CodeCell(from: decoder))
+            self = .code(try PultoCodeCell(from: decoder))
         case "markdown":
-            self = .markdown(try MarkdownCell(from: decoder))
+            self = .markdown(try PultoMarkdownCell(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(forKey: .cell_type, in: container, debugDescription: "Invalid cell type: \(type)")
         }
@@ -52,14 +52,14 @@ enum Cell: Codable {
     }
 }
 
-struct CodeCell: Codable {
+struct PultoCodeCell: Codable {
     var cell_type: String = "code"
     var execution_count: Int?
-    var metadata: CellMetadata
-    var outputs: [Output]
+    var metadata: PultoCellMetadata
+    var outputs: [PultoOutput]
     var source: String
 
-    init(source: String, metadata: CellMetadata, outputs: [Output] = [], execution_count: Int? = nil) {
+    init(source: String, metadata: PultoCellMetadata, outputs: [PultoOutput] = [], execution_count: Int? = nil) {
         self.source = source
         self.metadata = metadata
         self.outputs = outputs
@@ -67,15 +67,15 @@ struct CodeCell: Codable {
     }
 }
 
-struct MarkdownCell: Codable {
+struct PultoMarkdownCell: Codable {
     var cell_type: String = "markdown"
-    var metadata: CellMetadata
+    var metadata: PultoCellMetadata
     var source: String
 }
 
 // MARK: - Metadata Structures
 
-struct NotebookMetadata: Codable {
+struct PultoNotebookMetadata: Codable {
     var pulto_workspace: PultoWorkspaceMetadata?
 }
 
@@ -88,7 +88,7 @@ struct PultoWorkspaceMetadata: Codable, Hashable {
     var schemaVersion: String
 }
 
-struct CellMetadata: Codable {
+struct PultoCellMetadata: Codable {
     var pulto: PultoWindowMetadata?
 }
 
@@ -100,7 +100,7 @@ struct PultoWindowMetadata: Codable {
 
 // MARK: - Cell Output
 
-struct Output: Codable {
+struct PultoOutput: Codable {
     // Defines the structure for cell outputs (e.g., text, images)
     // For now, we don't need to decode complex outputs.
 }
