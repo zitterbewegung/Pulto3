@@ -1395,4 +1395,11 @@ class WindowTypeManager: ObservableObject {
             await WorkspaceManager.shared.scheduleAutoSave(windowManager: self)
         }
     }
+
+    // Add this method to WindowTypeManager class
+    func getNotebookURL(for project: ProjectModel) async -> URL? {
+        // Find the workspace that matches this project using the public method
+        let workspace = await WorkspaceManager.shared.getWorkspace(byName: project.name)
+        return workspace?.fileURL
+    }
 }

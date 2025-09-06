@@ -23,6 +23,7 @@ enum SheetType: String, CaseIterable {
     case userProfile = "profile"
     case jupyterConnection = "jupyter"
     case activeWindows = "activeWindows"
+    case notebookJSON = "notebook_json"
     
     var displayName: String {
         switch self {
@@ -40,6 +41,7 @@ enum SheetType: String, CaseIterable {
         case .userProfile: return "User Profile"
         case .jupyterConnection: return "Jupyter Connection"
         case .activeWindows: return "Active Windows"
+        case .notebookJSON: return "Notebook JSON"
         }
     }
 }

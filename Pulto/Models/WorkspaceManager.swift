@@ -170,6 +170,10 @@ class WorkspaceManager: ObservableObject {
         return workspaces.sorted { $0.modifiedDate > $1.modifiedDate }
     }
     
+    func getWorkspace(byName name: String) -> WorkspaceMetadata? {
+        return workspaces.first { $0.name == name }
+    }
+    
     func getCustomWorkspaces() -> [WorkspaceMetadata] {
         return workspaces.filter { !$0.isTemplate }.sorted { $0.modifiedDate > $1.modifiedDate }
     }
