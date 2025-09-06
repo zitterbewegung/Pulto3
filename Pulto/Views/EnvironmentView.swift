@@ -445,6 +445,8 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .help("Settings")
 
+                    // Commented out the login button
+                    /*
                     Button(action: {
                         sheetManager.presentSheet(.appleSignIn)
                     }) {
@@ -464,6 +466,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("User Profile")
+                    */
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -534,7 +537,7 @@ struct EnhancedActiveWindowsView: View {
             cells.append(projectInfoCell)
         }
         
-        // Add cells for each windo`w`
+        // Add cells for each window
         for window in windowManager.getAllWindows() {
             let windowCell: [String: Any] = [
                 "cell_type": "code",
@@ -1075,41 +1078,82 @@ struct EnvironmentView: View {
     // Single sheet management - no more multiple @State variables!
     @StateObject private var sheetManager = SheetManager()
 
-    // Navigation state
+    // Navigation state - ensure we always default to workspace view
     @State private var navigationState: NavigationState = .workspace
     @State private var showNavigationView = true
     @State private var showInspector = false
     @State private var selectedWindow: NewWindowID? = nil
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+    
+    // Main window visibility
+    @State private var isMainWindowVisible = true
 
     @State private var initialLoadTask: Task<Void, Never>?
     @State private var welcomeTask: Task<Void, Never>?
 
     var body: some View {
         // Main content area
-        VStack(spacing: 0) {
-            // Main content without toolbar (since it's now in the navigation bar)
-            Group {
-                if navigationState == .home {
-                    // Show the home view
-                    PultoHomeContentView(
-                        viewModel: viewModel,
-                        sheetManager: sheetManager,
-                        onOpenWorkspace: {
+        ZStack {
+            if isMainWindowVisible {
+                VStack(spacing: 0) {
+                    // Main content without toolbar (since it's now in the navigation bar)
+                    Group {
+                        // Always show workspace view - removed the conditional home/workspace logic
+                        workspaceView
+                    }
+                }
+                //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                .padding(20)
+            }
+            
+            // Floating show/hide button when main window is hidden
+            if !isMainWindowVisible {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                navigationState = .workspace
-                                showNavigationView = true
+                                isMainWindowVisible = true
                             }
+                        }) {
+                            Image(systemName: "eye")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
                         }
-                    )
-                } else {
-                    // Show the workspace view
-                    workspaceView
+                        .buttonStyle(.plain)
+                        .padding()
+                    }
+                }
+            } else {
+                // Hide button when main window is visible
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isMainWindowVisible = false
+                            }
+                        }) {
+                            Image(systemName: "eye.slash")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.gray)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .padding()
+                    }
                 }
             }
         }
-        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .padding(20)
         .task {
             initialLoadTask?.cancel()
             initialLoadTask = Task {
