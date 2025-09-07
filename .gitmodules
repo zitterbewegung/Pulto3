@@ -1,0 +1,3 @@
+[submodule "External/Carnets"]
+	path = External/Carnets
+	url = https://github.com/holzschu/Carnets

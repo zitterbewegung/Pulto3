@@ -186,8 +186,6 @@ struct EnhancedActiveWindowsView: View {
     let sheetManager: SheetManager
     let createWindow: (StandardWindowType) -> Void
     @Binding var selectedWindow: NewWindowID?
-
-    // Add parameters for toolbar
     let viewModel: PultoHomeViewModel
     let navigationState: NavigationState
     let showNavigationView: Bool
@@ -355,6 +353,7 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
 
+                    #if !os(visionOS)
                     Button(action: {
                         toggleLocalJupyter()
                     }) {
@@ -365,6 +364,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help(isLocalJupyterRunning ? "Stop Local Jupyter" : "Start Local Jupyter")
+                    #endif
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -534,62 +534,35 @@ struct EnhancedActiveWindowsView: View {
 
     // MARK: - Toggle Local Jupyter
     private func toggleLocalJupyter() {
+        #if !os(visionOS)
         if isLocalJupyterRunning {
-            // Stop local Jupyter
             stopLocalJupyter()
         } else {
-            // Start local Jupyter
             startLocalJupyter()
         }
+        #endif
     }
 
     // MARK: - Start Local Jupyter
     private func startLocalJupyter() {
-        // This would integrate with Carnets to start a local Jupyter instance
-        // For now, we'll just simulate the functionality
-        isLocalJupyterRunning = true
-        print("Starting local Jupyter instance...")
-        
-        // In a real implementation with Carnets, you would:
-        // 1. Initialize the Carnets Jupyter environment
-        // 2. Set up the notebook directory
-        // 3. Start the local server
-        
-        // Example placeholder (you would replace this with actual Carnets integration):
-        /*
-        Task {
-            do {
-                // Initialize Carnets Jupyter environment
-                try await CarnetsJupyter.shared.start()
-                isLocalJupyterRunning = true
-                print("Local Jupyter instance started successfully")
-            } catch {
-                print("Failed to start local Jupyter: \(error)")
-                isLocalJupyterRunning = false
-            }
+        #if !os(visionOS)
+        do {
+            let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            _ = try CarnetsCore.startLocalJupyterServer(root: root)
+            isLocalJupyterRunning = true
+        } catch {
+            print("Carnets start error: \(error)")
+            isLocalJupyterRunning = false
         }
-        */
+        #endif
     }
 
     // MARK: - Stop Local Jupyter
     private func stopLocalJupyter() {
-        // This would integrate with Carnets to stop the local Jupyter instance
-        // For now, we'll just simulate the functionality
+        #if !os(visionOS)
+        CarnetsCore.stopLocalJupyterServer()
         isLocalJupyterRunning = false
-        print("Stopping local Jupyter instance...")
-        
-        // In a real implementation with Carnets, you would:
-        // 1. Stop the local server
-        // 2. Clean up resources
-        
-        // Example placeholder:
-        /*
-        Task {
-            await CarnetsJupyter.shared.stop()
-            isLocalJupyterRunning = false
-            print("Local Jupyter instance stopped successfully")
-        }
-        */
+        #endif
     }
 
     // MARK: - Generate Notebook JSON
