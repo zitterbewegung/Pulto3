@@ -8,6 +8,7 @@
 import SwiftUI
 import RealityKit
 import AVFoundation
+import JupyterKit
 
 // MARK: - Notification Extensions
 extension Notification.Name {
@@ -18,6 +19,10 @@ extension Notification.Name {
 
 @main
 struct EntryPoint: App {
+    // Jupyter integration state
+    @StateObject private var jupyterSettings = PultoSettings()
+    @StateObject private var jupyterBookmarks = BookmarkStore()
+
     @StateObject private var windowManager = WindowTypeManager.shared
     @StateObject private var spatialManager = VisionOSSpatialManager.shared
     @StateObject private var entityManager = EntityLifecycleManager.shared
@@ -42,7 +47,26 @@ struct EntryPoint: App {
         volumetricWindows
         immersiveWorkspace
         #endif
-    }
+
+
+        // === Jupyter integration windows ===
+        WindowGroup(id: WindowType.jupyter.rawValue) {
+            JupyterScene()
+                .environmentObject(jupyterSettings)
+                .environmentObject(jupyterBookmarks)
+        }
+
+        WindowGroup(id: WindowType.terminal.rawValue) {
+            TerminalScene()
+        }
+
+        WindowGroup("Settings") {
+            SettingsView()
+                .environmentObject(jupyterSettings)
+                .environmentObject(jupyterBookmarks)
+        }
+        // === End Jupyter windows ===
+}
 
     init() {
         setupProjectNotifications()
