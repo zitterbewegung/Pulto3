@@ -1,0 +1,646 @@
+From 182c79d Mon Sep 17 00:00:00 2001
+From: Your Name <you@example.com>
+Date: Sun, 07 Sep 2025 22:40:15 +0000
+Subject: [PATCH] Integrate embedded Jupyter (Carnets-style) into Pulto: scenes, settings, resources
+
+---
+
+diff --git a/Pulto/App/EntryPoint.swift b/Pulto/App/EntryPoint.swift
+index 771e405..771e405 100644
+--- a/Pulto/App/EntryPoint.swift
++++ b/Pulto/App/EntryPoint.swift
+@@ -8,6 +8,7 @@
+ import SwiftUI
+ import RealityKit
+ import AVFoundation
++import JupyterKit
+ 
+ // MARK: - Notification Extensions
+ extension Notification.Name {
+@@ -18,6 +19,10 @@
+ 
+ @main
+ struct EntryPoint: App {
++    // Jupyter integration state
++    @StateObject private var jupyterSettings = PultoSettings()
++    @StateObject private var jupyterBookmarks = BookmarkStore()
++
+     @StateObject private var windowManager = WindowTypeManager.shared
+     @StateObject private var spatialManager = VisionOSSpatialManager.shared
+     @StateObject private var entityManager = EntityLifecycleManager.shared
+@@ -42,7 +47,26 @@
+         volumetricWindows
+         immersiveWorkspace
+         #endif
+-    }
++    
++
++        // === Jupyter integration windows ===
++        WindowGroup(id: WindowType.jupyter.rawValue) {
++            JupyterScene()
++                .environmentObject(jupyterSettings)
++                .environmentObject(jupyterBookmarks)
++        }
++
++        WindowGroup(id: WindowType.terminal.rawValue) {
++            TerminalScene()
++        }
++
++        WindowGroup("Settings") {
++            SettingsView()
++                .environmentObject(jupyterSettings)
++                .environmentObject(jupyterBookmarks)
++        }
++        // === End Jupyter windows ===
++}
+ 
+     init() {
+         setupProjectNotifications()
+@@ -826,4 +850,4 @@
+             }
+         }
+     }
+-}
++}
+diff --git a/Pulto/Extensions/WindowType.swift b/Pulto/Extensions/WindowType.swift
+new file mode 100644
+index 0000000..7cc9a22
+--- /dev/null
++++ b/Pulto/Extensions/WindowType.swift
+@@ -0,0 +1,3 @@
++import Foundation
++
++enum WindowType: String { case launcher, jupyter, terminal }
+
+diff --git a/Pulto/Frameworks/JupyterKit/Package.swift b/Pulto/Frameworks/JupyterKit/Package.swift
+new file mode 100644
+index 0000000..7905475
+--- /dev/null
++++ b/Pulto/Frameworks/JupyterKit/Package.swift
+@@ -0,0 +1,19 @@
++// swift-tools-version: 5.10
++import PackageDescription
++
++let package = Package(
++    name: "JupyterKit",
++    defaultLocalization: "en",
++    platforms: [ .visionOS(.v2) ],
++    products: [ .library(name: "JupyterKit", targets: ["JupyterKit"]) ],
++    targets: [
++        .target(
++            name: "JupyterKit",
++            path: "Sources/JupyterKit",
++            resources: [
++                .copy("../../Resources/bootstrap.py"),
++                .copy("../../Resources/jupyter_notebook_config.py")
++            ]
++        )
++    ]
++)
+
+diff --git a/Pulto/Frameworks/JupyterKit/Resources/bootstrap.py b/Pulto/Frameworks/JupyterKit/Resources/bootstrap.py
+new file mode 100644
+index 0000000..78015c6
+--- /dev/null
++++ b/Pulto/Frameworks/JupyterKit/Resources/bootstrap.py
+@@ -0,0 +1,35 @@
++import sys, os, argparse, pathlib
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--port", type=int, required=True)
++    ap.add_argument("--notebook-dir", type=str, required=True)
++    ap.add_argument("--ui", choices=["lab", "notebook"], default="lab")
++    args = ap.parse_args()
++
++    nbdir = pathlib.Path(args.notebook_dir)
++    nbdir.mkdir(parents=True, exist_ok=True)
++
++    # site-packages is in the main bundle Resources/Jupyter/site-packages
++    # PYTHONPATH is already pointing there via the Swift layer.
++
++    module = "jupyterlab" if args.ui == "lab" else "notebook"
++
++    cmd = [
++        sys.executable, "-m", module,
++        f"--ServerApp.port={args.port}",
++        "--ServerApp.ip=127.0.0.1",
++        "--ServerApp.open_browser=False",
++        f"--ServerApp.root_dir={nbdir}",
++        "--ServerApp.allow_remote_access=False",
++        "--ServerApp.allow_origin=",
++        "--ServerApp.disable_check_xsrf=False",
++        "--ServerApp.token=''",
++        "--ServerApp.password=''",
++        "--ServerApp.quit_button=True",
++        "--ServerApp.base_url=/"
++    ]
++    os.execv(sys.executable, cmd)
++
++if __name__ == "__main__":
++    main()
+
+diff --git a/Pulto/Frameworks/JupyterKit/Resources/jupyter_notebook_config.py b/Pulto/Frameworks/JupyterKit/Resources/jupyter_notebook_config.py
+new file mode 100644
+index 0000000..d4177fa
+--- /dev/null
++++ b/Pulto/Frameworks/JupyterKit/Resources/jupyter_notebook_config.py
+@@ -0,0 +1,8 @@
++c = get_config()  # type: ignore
++c.ServerApp.port_retries = 0
++c.ServerApp.ip = "127.0.0.1"
++c.ServerApp.open_browser = False
++c.ServerApp.allow_remote_access = False
++c.ServerApp.allow_origin = ""
++c.ServerApp.token = ""
++c.ServerApp.password = ""
+
+diff --git a/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterManager.swift b/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterManager.swift
+new file mode 100644
+index 0000000..aeb1e8a
+--- /dev/null
++++ b/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterManager.swift
+@@ -0,0 +1,104 @@
++import Foundation
++
++public enum JupyterUI: String, CaseIterable, Codable { case lab, notebook }
++
++public final class JupyterManager: ObservableObject {
++    @Published public var url: URL?
++    @Published public var isRunning = false
++
++    private var process: Process?
++    private var port: Int = 0
++
++    // Default to app Documents folder; caller can override with a security-scoped URL
++    public init() {}
++
++    public func startIfNeeded(ui: JupyterUI, root: URL?) async {
++        if url != nil { return }
++        do {
++            let work = root ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
++            try configurePythonEnv(workDir: work)
++            port = try allocatePort()
++            try launch(ui: ui, workDir: work)
++            try await waitUntilReady()
++            await MainActor.run {
++                self.url = URL(string: "http://127.0.0.1:\(self.port)/" + (ui == .lab ? "lab" : "tree"))!
++                self.isRunning = true
++            }
++        } catch {
++            print("Jupyter start failed: \(error)")
++        }
++    }
++
++    public func stop() {
++        process?.terminate()
++        process = nil
++        url = nil
++        isRunning = false
++    }
++
++    private func configurePythonEnv(workDir: URL) throws {
++        // Expect python-stdlib & site-packages under main app bundle Resources/Jupyter
++        guard let appRes = Bundle.main.resourceURL?.appendingPathComponent("Jupyter") else {
++            throw NSError(domain: "JupyterKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "Missing Resources/Jupyter"])
++        }
++        setenv("PYTHONUNBUFFERED", "1", 1)
++        setenv("PYTHONHOME", appRes.appendingPathComponent("python-stdlib").path, 1)
++        let sp = appRes.appendingPathComponent("site-packages").path
++        setenv("PYTHONPATH", f"{sp}:{appRes.path}", 1)
++        setenv("JUPYTER_CONFIG_DIR", Bundle.module.resourcePath!, 1)
++        setenv("JUPYTER_RUNTIME_DIR", workDir.path, 1)
++        setenv("JUPYTER_DATA_DIR", workDir.path, 1)
++    }
++
++    private func allocatePort() throws -> Int {
++        var addr = sockaddr_in()
++        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
++        addr.sin_family = sa_family_t(AF_INET)
++        addr.sin_port = in_port_t(0).bigEndian
++        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
++        let fd = socket(AF_INET, SOCK_STREAM, 0)
++        guard fd >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
++        var a = addr
++        let ok = withUnsafePointer(to: &a) {
++            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { ptr in
++                bind(fd, ptr, socklen_t(MemoryLayout<sockaddr_in>.size))
++            }
++        } == 0
++        guard ok else { close(fd); throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
++        var len: socklen_t = socklen_t(MemoryLayout<sockaddr_in>.size)
++        getsockname(fd, withUnsafeMutablePointer(to: &a) {
++            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { $0 }
++        }, &len)
++        let p = Int(UInt16(bigEndian: a.sin_port))
++        close(fd)
++        return p
++    }
++
++    private func launch(ui: JupyterUI, workDir: URL) throws {
++        guard let bootstrap = Bundle.module.path(forResource: "bootstrap", ofType: "py") else {
++            throw NSError(domain: "JupyterKit", code: 3, userInfo: [NSLocalizedDescriptionKey: "bootstrap.py not found"])
++        }
++        let python = "/usr/libexec/py" // adjust if your embedded interpreter lives elsewhere
++        let proc = Process()
++        proc.executableURL = URL(fileURLWithPath: python)
++        proc.arguments = [bootstrap, "--port", "\(port)", "--notebook-dir", workDir.path, "--ui", ui.rawValue]
++        proc.environment = ProcessInfo.processInfo.environment
++        proc.standardOutput = Pipe()
++        proc.standardError = Pipe()
++        try proc.run()
++        self.process = proc
++    }
++
++    private func waitUntilReady(timeout: TimeInterval = 30) async throws {
++        let start = Date()
++        while Date().timeIntervalSince(start) < timeout {
++            if let health = URL(string: "http://127.0.0.1:\(port)/api") {
++                if (try? Data(contentsOf: health, options: [.uncached])) is Data { return }
++            }
++            try await Task.sleep(nanoseconds: 300_000_000)
++        }
++        throw NSError(domain: "JupyterKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Server timeout"])
++    }
++
++    deinit { stop() }
++}
+
+diff --git a/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterWebView.swift b/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterWebView.swift
+new file mode 100644
+index 0000000..0eba88f
+--- /dev/null
++++ b/Pulto/Frameworks/JupyterKit/Sources/JupyterKit/JupyterWebView.swift
+@@ -0,0 +1,19 @@
++import SwiftUI
++import WebKit
++
++public struct JupyterWebView: UIViewRepresentable {
++    let url: URL
++
++    public init(url: URL) { self.url = url }
++
++    public func makeUIView(context: Context) -> WKWebView {
++        let cfg = WKWebViewConfiguration()
++        cfg.preferences.javaScriptEnabled = true
++        let wv = WKWebView(frame: .zero, configuration: cfg)
++        wv.allowsBackForwardNavigationGestures = true
++        wv.load(URLRequest(url: url))
++        return wv
++    }
++
++    public func updateUIView(_ uiView: WKWebView, context: Context) {}
++}
+
+diff --git a/Pulto/LICENSES/BSD-3-Clause-Carnets.txt b/Pulto/LICENSES/BSD-3-Clause-Carnets.txt
+new file mode 100644
+index 0000000..96f6570
+--- /dev/null
++++ b/Pulto/LICENSES/BSD-3-Clause-Carnets.txt
+@@ -0,0 +1,2 @@
++BSD 3-Clause License (Carnets attribution)
++See https://github.com/holzschu/Carnets
+
+diff --git a/Pulto/LICENSES/THIRD-PARTY-NOTICES.md b/Pulto/LICENSES/THIRD-PARTY-NOTICES.md
+new file mode 100644
+index 0000000..c161d91
+--- /dev/null
++++ b/Pulto/LICENSES/THIRD-PARTY-NOTICES.md
+@@ -0,0 +1,3 @@
++# Third-Party Notices
++
++Inspired by Carnets (BSD-3-Clause).
+
+diff --git a/Pulto/Models/Jupyter/BookmarkStore.swift b/Pulto/Models/Jupyter/BookmarkStore.swift
+new file mode 100644
+index 0000000..e6bc01e
+--- /dev/null
++++ b/Pulto/Models/Jupyter/BookmarkStore.swift
+@@ -0,0 +1,30 @@
++import Foundation
++
++final class BookmarkStore: ObservableObject {
++    @Published var bookmarkedURL: URL?
++
++    private let key = "securityScopedBookmark"
++
++    init() {
++        if let data = UserDefaults.standard.data(forKey: key) {
++            var isStale = false
++            if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &isStale) {
++                if isStale {
++                    UserDefaults.standard.removeObject(forKey: key)
++                } else {
++                    bookmarkedURL = url
++                }
++            }
++        }
++    }
++
++    func saveBookmark(for url: URL) {
++        do {
++            let data = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
++            UserDefaults.standard.set(data, forKey: key)
++            bookmarkedURL = url
++        } catch {
++            print("Failed to save bookmark: \(error)")
++        }
++    }
++}
+
+diff --git a/Pulto/Models/Jupyter/PultoSettings.swift b/Pulto/Models/Jupyter/PultoSettings.swift
+new file mode 100644
+index 0000000..959f2bd
+--- /dev/null
++++ b/Pulto/Models/Jupyter/PultoSettings.swift
+@@ -0,0 +1,16 @@
++import Foundation
++import JupyterKit
++
++final class PultoSettings: ObservableObject {
++    @Published var preferredUI: JupyterUI {
++        didSet { UserDefaults.standard.set(preferredUI.rawValue, forKey: "preferredUI") }
++    }
++    init() {
++        if let raw = UserDefaults.standard.string(forKey: "preferredUI"),
++           let v = JupyterUI(rawValue: raw) {
++            preferredUI = v
++        } else {
++            preferredUI = .lab
++        }
++    }
++}
+
+diff --git a/Pulto/Resources/Jupyter/bootstrap.py b/Pulto/Resources/Jupyter/bootstrap.py
+new file mode 100644
+index 0000000..6909fe3
+--- /dev/null
++++ b/Pulto/Resources/Jupyter/bootstrap.py
+@@ -0,0 +1,35 @@
++import sys, os, argparse, pathlib
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--port", type=int, required=True)
++    ap.add_argument("--notebook-dir", type=str, required=True)
++    ap.add_argument("--ui", choices=["lab", "notebook"], default="lab")
++    args = ap.parse_args()
++
++    nbdir = pathlib.Path(args.notebook_dir)
++    nbdir.mkdir(parents=True, exist_ok=True)
++
++    # site-packages is in the main bundle Resources/Jupyter/site-packages
++    # PYTHONPATH is already pointing there via the Swift layer.
++
++    module = "jupyterlab" if args.ui == "lab" else "notebook"
++
++    cmd = [
++        sys.executable, "-m", module,
++        f"--ServerApp.port={args.port}",
++        "--ServerApp.ip=127.0.0.1",
++        "--ServerApp.open_browser=False",
++        f"--ServerApp.root_dir={nbdir}",
++        "--ServerApp.allow_remote_access=False",
++        "--ServerApp.allow_origin=",
++        "--ServerApp.disable_check_xsrf=False",
++        "--ServerApp.token=''",
++        "--ServerApp.password=''",
++        "--ServerApp.quit_button=True",
++        "--ServerApp.base_url=/"
++    ]
++    os.execv(sys.executable, cmd)
++
++if __name__ == "__main__":
++    main()
+
+diff --git a/Pulto/Resources/Jupyter/jupyter_notebook_config.py b/Pulto/Resources/Jupyter/jupyter_notebook_config.py
+new file mode 100644
+index 0000000..15628a1
+--- /dev/null
++++ b/Pulto/Resources/Jupyter/jupyter_notebook_config.py
+@@ -0,0 +1,8 @@
++c = get_config()  # type: ignore
++c.ServerApp.port_retries = 0
++c.ServerApp.ip = "127.0.0.1"
++c.ServerApp.open_browser = False
++c.ServerApp.allow_remote_access = False
++c.ServerApp.allow_origin = ""
++c.ServerApp.token = ""
++c.ServerApp.password = ""
+
+diff --git a/Pulto/Resources/Jupyter/python-stdlib/.keep b/Pulto/Resources/Jupyter/python-stdlib/.keep
+new file mode 100644
+index 0000000..37b36ed
+--- /dev/null
++++ b/Pulto/Resources/Jupyter/python-stdlib/.keep
+@@ -0,0 +1,1 @@
++Put Python-Apple-support stdlib here
+
+diff --git a/Pulto/Resources/Jupyter/site-packages/.keep b/Pulto/Resources/Jupyter/site-packages/.keep
+new file mode 100644
+index 0000000..0c0e7a6
+--- /dev/null
++++ b/Pulto/Resources/Jupyter/site-packages/.keep
+@@ -0,0 +1,1 @@
++Put vendored pure-Python wheels here
+
+diff --git a/Pulto/Views/Jupyter/JupyterScene.swift b/Pulto/Views/Jupyter/JupyterScene.swift
+new file mode 100644
+index 0000000..a6468dc
+--- /dev/null
++++ b/Pulto/Views/Jupyter/JupyterScene.swift
+@@ -0,0 +1,38 @@
++import SwiftUI
++import JupyterKit
++
++struct JupyterScene: View {
++    @EnvironmentObject var settings: PultoSettings
++    @EnvironmentObject var bookmarks: BookmarkStore
++    @StateObject private var jm = JupyterManager()
++
++    var body: some View {
++        VStack(spacing: 12) {
++            Text("Pulto — Jupyter").font(.title).bold()
++            if let url = jm.url {
++                JupyterWebView(url: url).frame(minWidth: 1000, minHeight: 700)
++            } else {
++                ProgressView("Launching embedded Python & Jupyter…")
++                    .task {
++                        let root = bookmarks.bookmarkedURL
++                        if let r = root { _ = r.startAccessingSecurityScopedResource() }
++                        await jm.startIfNeeded(ui: settings.preferredUI, root: bookmarks.bookmarkedURL)
++                        if let r = bookmarks.bookmarkedURL { r.stopAccessingSecurityScopedResource() }
++                    }
++            }
++        }
++        .padding()
++        .toolbar {
++            ToolbarItem(placement: .topBarLeading) {
++                Text(settings.preferredUI == .lab ? "Lab" : "Notebook")
++                    .font(.footnote).foregroundStyle(.secondary)
++            }
++            ToolbarItem(placement: .topBarTrailing) {
++                Button("Restart") {
++                    jm.stop()
++                    Task { await jm.startIfNeeded(ui: settings.preferredUI, root: bookmarks.bookmarkedURL) }
++                }
++            }
++        }
++    }
++}
+
+diff --git a/Pulto/Views/Jupyter/LauncherView.swift b/Pulto/Views/Jupyter/LauncherView.swift
+new file mode 100644
+index 0000000..6811b87
+--- /dev/null
++++ b/Pulto/Views/Jupyter/LauncherView.swift
+@@ -0,0 +1,70 @@
++import SwiftUI
++import JupyterKit
++
++struct LauncherView: View {
++    @EnvironmentObject var settings: PultoSettings
++    @EnvironmentObject var bookmarks: BookmarkStore
++    @Environment(.openWindow) private var openWindow
++    @State private var showPicker = false
++
++    var body: some View {
++        VStack(spacing: 16) {
++            Text("Pulto — Launcher").font(.largeTitle).bold()
++
++            Picker("Jupyter UI", selection: $settings.preferredUI) {
++                Text("JupyterLab").tag(JupyterUI.lab)
++                Text("Notebook (Classic)").tag(JupyterUI.notebook)
++            }.pickerStyle(.segmented).frame(maxWidth: 420)
++
++            if let url = bookmarks.bookmarkedURL {
++                Text("Notebook Root: \(url.path)").font(.footnote).foregroundStyle(.secondary)
++            } else {
++                Text("Notebook Root: Documents/").font(.footnote).foregroundStyle(.secondary)
++            }
++
++            HStack(spacing: 12) {
++                Button("Choose Notebook Folder") { showPicker = true }
++                    .buttonStyle(.bordered)
++                    .sheet(isPresented: $showPicker) {
++                        FolderPicker().environmentObject(bookmarks)
++                    }
++
++                Button {
++                    openWindow(id: WindowType.jupyter.rawValue)
++                } label: {
++                    Text("Open Jupyter").font(.title3).bold().padding().frame(maxWidth: 320)
++                }.buttonStyle(.borderedProminent)
++            }
++
++            Button("Open Terminal") { openWindow(id: WindowType.terminal.rawValue) }
++                .buttonStyle(.bordered)
++
++            Spacer()
++        }
++        .padding()
++    }
++}
++
++struct FolderPicker: UIViewControllerRepresentable {
++    @EnvironmentObject var bookmarks: BookmarkStore
++
++    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
++        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder], asCopy: false)
++        picker.allowsMultipleSelection = false
++        picker.delegate = context.coordinator
++        return picker
++    }
++    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
++    func makeCoordinator() -> Coordinator { Coordinator(self) }
++
++    final class Coordinator: NSObject, UIDocumentPickerDelegate {
++        let parent: FolderPicker
++        init(_ parent: FolderPicker) { self.parent = parent }
++        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
++            guard let url = urls.first else { return }
++            _ = url.startAccessingSecurityScopedResource()
++            parent.bookmarks.saveBookmark(for: url)
++            url.stopAccessingSecurityScopedResource()
++        }
++    }
++}
+
+diff --git a/Pulto/Views/Jupyter/SettingsView.swift b/Pulto/Views/Jupyter/SettingsView.swift
+new file mode 100644
+index 0000000..4269ff3
+--- /dev/null
++++ b/Pulto/Views/Jupyter/SettingsView.swift
+@@ -0,0 +1,33 @@
++import SwiftUI
++import JupyterKit
++
++struct SettingsView: View {
++    @EnvironmentObject var settings: PultoSettings
++    @EnvironmentObject var bookmarks: BookmarkStore
++    @State private var showPicker = false
++
++    var body: some View {
++        Form {
++            Section(header: Text("Interface")) {
++                Picker("Jupyter UI", selection: $settings.preferredUI) {
++                    ForEach(JupyterUI.allCases, id: .self) { ui in
++                        Text(ui == .lab ? "JupyterLab" : "Notebook").tag(ui)
++                    }
++                }.pickerStyle(.segmented)
++            }
++            Section(header: Text("Notebook Root")) {
++                if let url = bookmarks.bookmarkedURL {
++                    Text(url.path).font(.footnote).foregroundStyle(.secondary)
++                } else {
++                    Text("Documents/").font(.footnote).foregroundStyle(.secondary)
++                }
++                Button("Choose Folder") { showPicker = true }
++                    .sheet(isPresented: $showPicker) {
++                        FolderPicker().environmentObject(bookmarks)
++                    }
++            }
++        }
++        .padding()
++        .navigationTitle("Settings")
++    }
++}
+
+diff --git a/Pulto/Views/Jupyter/TerminalScene.swift b/Pulto/Views/Jupyter/TerminalScene.swift
+new file mode 100644
+index 0000000..86643ff
+--- /dev/null
++++ b/Pulto/Views/Jupyter/TerminalScene.swift
+@@ -0,0 +1,32 @@
++import SwiftUI
++
++// Placeholder echo terminal; swap with SwiftTerm if desired in your project.
++struct TerminalScene: View {
++    @State private var input: String = ""
++    @State private var lines: [String] = ["Pulto Terminal — demo only"]
++
++    var body: some View {
++        VStack(alignment: .leading, spacing: 8) {
++            ScrollView {
++                LazyVStack(alignment: .leading) {
++                    ForEach(lines.indices, id: .self) { i in
++                        Text(lines[i]).font(.system(.footnote, design: .monospaced))
++                            .frame(maxWidth: .infinity, alignment: .leading)
++                    }
++                }
++            }
++            HStack {
++                TextField("Type a command…", text: $input)
++                    .textFieldStyle(.roundedBorder)
++                Button("Run") {
++                    if !input.isEmpty {
++                        lines.append("$ " + input)
++                        lines.append("echo: " + input)
++                        input.removeAll()
++                    }
++                }.buttonStyle(.borderedProminent)
++            }
++        }
++        .padding()
++    }
++}
