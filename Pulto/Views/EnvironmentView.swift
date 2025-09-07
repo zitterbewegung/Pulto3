@@ -206,6 +206,9 @@ struct EnhancedActiveWindowsView: View {
     @State private var statusCheckTask: Task<Void, Never>?
     @State private var animationTask: Task<Void, Never>?
 
+    // Add state for local Jupyter
+    @State private var isLocalJupyterRunning = false
+    
     enum ServerStatus {
         case online
         case offline
@@ -351,6 +354,17 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
+
+                    Button(action: {
+                        toggleLocalJupyter()
+                    }) {
+                        Image(systemName: isLocalJupyterRunning ? "stop.circle.fill" : "play.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(isLocalJupyterRunning ? .red : .green)
+                    }
+                    .buttonStyle(.plain)
+                    .help(isLocalJupyterRunning ? "Stop Local Jupyter" : "Start Local Jupyter")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -516,6 +530,66 @@ struct EnhancedActiveWindowsView: View {
         // Generate notebook JSON for all open windows
         let notebookJSON = generateNotebookJSON()
         sheetManager.presentSheet(.notebookJSON, data: notebookJSON)
+    }
+
+    // MARK: - Toggle Local Jupyter
+    private func toggleLocalJupyter() {
+        if isLocalJupyterRunning {
+            // Stop local Jupyter
+            stopLocalJupyter()
+        } else {
+            // Start local Jupyter
+            startLocalJupyter()
+        }
+    }
+
+    // MARK: - Start Local Jupyter
+    private func startLocalJupyter() {
+        // This would integrate with Carnets to start a local Jupyter instance
+        // For now, we'll just simulate the functionality
+        isLocalJupyterRunning = true
+        print("Starting local Jupyter instance...")
+        
+        // In a real implementation with Carnets, you would:
+        // 1. Initialize the Carnets Jupyter environment
+        // 2. Set up the notebook directory
+        // 3. Start the local server
+        
+        // Example placeholder (you would replace this with actual Carnets integration):
+        /*
+        Task {
+            do {
+                // Initialize Carnets Jupyter environment
+                try await CarnetsJupyter.shared.start()
+                isLocalJupyterRunning = true
+                print("Local Jupyter instance started successfully")
+            } catch {
+                print("Failed to start local Jupyter: \(error)")
+                isLocalJupyterRunning = false
+            }
+        }
+        */
+    }
+
+    // MARK: - Stop Local Jupyter
+    private func stopLocalJupyter() {
+        // This would integrate with Carnets to stop the local Jupyter instance
+        // For now, we'll just simulate the functionality
+        isLocalJupyterRunning = false
+        print("Stopping local Jupyter instance...")
+        
+        // In a real implementation with Carnets, you would:
+        // 1. Stop the local server
+        // 2. Clean up resources
+        
+        // Example placeholder:
+        /*
+        Task {
+            await CarnetsJupyter.shared.stop()
+            isLocalJupyterRunning = false
+            print("Local Jupyter instance stopped successfully")
+        }
+        */
     }
 
     // MARK: - Generate Notebook JSON
@@ -1093,67 +1167,15 @@ struct EnvironmentView: View {
 
     var body: some View {
         // Main content area
-        ZStack {
-            if isMainWindowVisible {
-                VStack(spacing: 0) {
-                    // Main content without toolbar (since it's now in the navigation bar)
-                    Group {
-                        // Always show workspace view - removed the conditional home/workspace logic
-                        workspaceView
-                    }
-                }
-                //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .padding(20)
-            }
-            
-            // Floating show/hide button when main window is hidden
-            if !isMainWindowVisible {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                isMainWindowVisible = true
-                            }
-                        }) {
-                            Image(systemName: "eye")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(Color.blue)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
-                        }
-                        .buttonStyle(.plain)
-                        .padding()
-                    }
-                }
-            } else {
-                // Hide button when main window is visible
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                isMainWindowVisible = false
-                            }
-                        }) {
-                            Image(systemName: "eye.slash")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(Color.gray)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
-                        }
-                        .buttonStyle(.plain)
-                        .padding()
-                    }
-                }
+        VStack(spacing: 0) {
+            // Main content without toolbar (since it's now in the navigation bar)
+            Group {
+                // Always show workspace view - removed the conditional home/workspace logic
+                workspaceView
             }
         }
+        //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .padding(20)
         .task {
             initialLoadTask?.cancel()
             initialLoadTask = Task {
@@ -1823,6 +1845,7 @@ struct RecentProjectsSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             if showingProjectDetail, let selectedWorkspace = selectedWorkspace {
+                // Show project detail view
                 ProjectDetailView(
                     workspace: selectedWorkspace,
                     onBack: {
@@ -1834,7 +1857,9 @@ struct RecentProjectsSidebar: View {
                     onLoad: { loadWorkspace(selectedWorkspace) }
                 )
             } else {
+                // Show main projects list as data table rows
                 VStack(spacing: 0) {
+                    // Header
                     HStack {
                         Text("Recent Projects")
                             .font(.title2)
@@ -1865,6 +1890,7 @@ struct RecentProjectsSidebar: View {
                         .padding()
                     } else {
                         ScrollView {
+                            // Simple data table style list with consistent row heights
                             VStack(spacing: 1) {
                                 ForEach(workspaceManager.getCustomWorkspaces()) { workspace in
                                     Button(action: {
@@ -1874,28 +1900,32 @@ struct RecentProjectsSidebar: View {
                                         }
                                     }) {
                                         HStack {
+                                            // Project name (removed folder icon)
                                             Text(workspace.name)
                                                 .font(.subheadline)
                                                 .foregroundColor(.primary)
                                                 .frame(maxWidth: .infinity, alignment: .leading)
 
+                                            // Windows count
                                             Text("\(workspace.totalWindows) views")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                                 .frame(width: 80, alignment: .trailing)
 
+                                            // Last modified
                                             Text(workspace.formattedModifiedDate)
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                                 .frame(width: 100, alignment: .trailing)
 
+                                            // Chevron
                                             Image(systemName: "chevron.right")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
                                         .padding(.horizontal, 12)
-                                        .padding(.vertical, 10)
-                                        .frame(height: 44)
+                                        .padding(.vertical, 10) // Standardized padding for consistent height
+                                        .frame(height: 44) // Fixed height for all rows
                                     }
                                     .buttonStyle(.plain)
                                     .background(

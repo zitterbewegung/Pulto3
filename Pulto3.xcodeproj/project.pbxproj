@@ -88,6 +88,8 @@
 		DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PultoHomeView.swift; sourceTree = "<group>"; };
 		DCBB4FAB2E4D79A90094B0BC /* FileImportRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileImportRowView.swift; sourceTree = "<group>"; };
 		DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChartView.swift; sourceTree = "<group>"; };
+		DCD96D932E6CF0BC00567D6E /* BSD-3-Clause-Carnets.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "BSD-3-Clause-Carnets.txt"; sourceTree = "<group>"; };
+		DCD96D942E6CF0BC00567D6E /* THIRD-PARTY-NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "THIRD-PARTY-NOTICES.md"; sourceTree = "<group>"; };
 		DCDD6FAC2E1EF19500E752A0 /* Model3DImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model3DImportView.swift; sourceTree = "<group>"; };
 		DCDD6FB62E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveWorkspaceView.swift; sourceTree = "<group>"; };
 		DCDD6FBC2E1F327400E752A0 /* ModelAndPointCloudImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelAndPointCloudImportSheet.swift; sourceTree = "<group>"; };
@@ -206,14 +208,24 @@
 			path = Packages;
 			sourceTree = "<group>";
 		};
+		DCD96D952E6CF0BC00567D6E /* LICENSES */ = {
+			isa = PBXGroup;
+			children = (
+				DCD96D932E6CF0BC00567D6E /* BSD-3-Clause-Carnets.txt */,
+				DCD96D942E6CF0BC00567D6E /* THIRD-PARTY-NOTICES.md */,
+			);
+			path = LICENSES;
+			sourceTree = "<group>";
+		};
 		DF58AE122BCD826D00C8F737 = {
 			isa = PBXGroup;
 			children = (
+				DCD96D952E6CF0BC00567D6E /* LICENSES */,
 				DC3F86062E0F7CD80042AAD3 /* complete_deployment_guide.sh */,
 				DCF0DDC52DE68DE400D0884D /* Volumetric Window.entitlements */,
+				DF58AE1D2BCD826D00C8F737 /* Pulto */,
 				961121329AB26B80BF5FA320 /* README.md */,
 				DC7630212E17017200BE77CD /* DEV.md */,
-				DF58AE1D2BCD826D00C8F737 /* Pulto */,
 				DC3F8DD52E103E090042AAD3 /* PultoTests */,
 				DF58AE1C2BCD826D00C8F737 /* Products */,
 				0860B14583968FDFE9E0702A /* Configuration */,
