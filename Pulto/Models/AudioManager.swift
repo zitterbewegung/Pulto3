@@ -124,7 +124,7 @@ class AudioManager: ObservableObject {
             let sample = sin(2.0 * Float.pi * frequency * time)
             
             // Apply fade in/out to avoid clicking
-            let fadeDuration = 0.05
+            let fadeDuration = 0.15
             let fadeInFrames = Int(fadeDuration * sampleRate)
             let fadeOutFrames = Int(fadeDuration * sampleRate)
             let totalFrames = Int(frameCount)
@@ -136,7 +136,7 @@ class AudioManager: ObservableObject {
                 envelope = Float(totalFrames - frame) / Float(fadeOutFrames)
             }
             
-            let finalSample = sample * envelope * 0.3 // 30% volume
+            let finalSample = sample * envelope * 0.1 // 10% volume
             leftChannel[frame] = finalSample
             rightChannel[frame] = finalSample
         }
