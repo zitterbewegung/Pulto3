@@ -257,7 +257,6 @@ struct EntryPoint: App {
                 handleAppBecomingActive()
             }
         case .inactive:
-            // App is becoming inactive but not necessarily backgrounded yet
             break
         @unknown default:
             break
@@ -320,7 +319,6 @@ struct EntryPoint: App {
 
     // MARK: - App Lifecycle Notification Setup
     private func setupAppLifecycleNotifications() {
-        // Listen for manual app lifecycle events if needed
         NotificationCenter.default.addObserver(
             forName: .appWillEnterBackground,
             object: nil,
@@ -340,15 +338,12 @@ struct EntryPoint: App {
 
     // MARK: - Project Notification Setup
     private func setupProjectNotifications() {
-        // Listen for project selection notifications
         NotificationCenter.default.addObserver(
             forName: .projectSelected,
             object: nil,
             queue: .main
         ) { notification in
-            // Use explicit type to resolve ambiguity
             if let project = notification.object as? Project {
-                // Create 3D content when a project is selected
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     Task { @MainActor in
                         _ = WindowTypeManager.shared
@@ -358,13 +353,11 @@ struct EntryPoint: App {
             }
         }
 
-        // Listen for project cleared notifications
         NotificationCenter.default.addObserver(
             forName: .projectCleared,
             object: nil,
             queue: .main
         ) { _ in
-            // Optionally clean up project-specific windows
             Task { @MainActor in
                 WindowTypeManager.shared.cleanupClosedWindows()
             }
@@ -373,14 +366,12 @@ struct EntryPoint: App {
     
     // MARK: - Main Window Protection
     private func setupMainWindowProtection() {
-        // Listen for main window reopen requests
         NotificationCenter.default.addObserver(
             forName: .reopenMainWindow,
             object: nil,
             queue: .main
         ) { _ in
             Task { @MainActor in
-                // Reopen the main window
                 self.openWindow(id: "main")
                 print("🔄 Automatically reopened main window")
             }
@@ -390,7 +381,6 @@ struct EntryPoint: App {
     // MARK: - Project-Based Window Creation
     @MainActor
     private func createDemo3DWindowForProject() {
-        // Only create 3D demo windows if there's an active project
         guard let selectedProject = windowManager.selectedProject else {
             print("No project selected - skipping 3D demo window creation")
             return
@@ -403,60 +393,48 @@ struct EntryPoint: App {
     // MARK: - Demo 3D Window Creation
     @MainActor
     private func createDemo3DWindow() {
-        // Create a 3D model window
         let modelWindowID = windowManager.getNextWindowID()
         let modelPosition = WindowPosition(x: -200, y: 0, z: -100, width: 800, height: 600)
         let modelWindow = windowManager.createWindow(.model3d, id: modelWindowID, position: modelPosition)
 
-        // Try to load the Pulto USDZ file first, fallback to demo cube
         if let pultoModel = loadPultoUSDZModel() {
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: pultoModel)
             windowManager.updateWindowContent(modelWindowID, content: "Pulto USDZ model - loaded for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Pulto-USDZ")
         } else {
-            // Create a demo cube as fallback
             let demoCube = Model3DData.generateCube(size: 2.0)
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: demoCube)
             windowManager.updateWindowContent(modelWindowID, content: "Demo 3D cube - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Demo")
         }
 
-        // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
         _ = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
 
-        // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
         windowManager.updateWindowChart3DData(chartWindowID, chart3DData: demo3DChart)
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
 
-        // Create a PointCloudDemo window
         let pointCloudDemoWindowID = windowManager.getNextWindowID()
         let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
         _ = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
 
-        // Create demo point cloud data
         let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
         windowManager.updateWindowPointCloud(pointCloudDemoWindowID, pointCloud: demoPointCloud)
         windowManager.updateWindowContent(pointCloudDemoWindowID, content: "Demo Point Cloud - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(pointCloudDemoWindowID, tag: "Demo-PointCloud")
 
-        print("📊 Created demo windows: Model(#\(modelWindowID)), Chart(#\(chartWindowID)), PointCloud(#\(pointCloudDemoWindowID))")
-
-        // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
         print("🪟 Opened volumetric-model3d with ID: \(modelWindowID)")
 
-        // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
             print("🪟 Opened volumetric-chart3d with ID: \(chartWindowID)")
         }
 
-        // Delay the point cloud demo window a bit more
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
             print("🪟 Opened volumetric-pointclouddemo with ID: \(pointCloudDemoWindowID)")
@@ -465,7 +443,6 @@ struct EntryPoint: App {
     }
 
     private func loadPultoUSDZModel() -> Model3DData? {
-        // Try to find and load the Pulto USDZ file
         guard let bundlePath = Bundle.main.path(forResource: "Pluto_1_2374", ofType: "usdz") else {
             print("Pulto USDZ file not found in bundle")
             return nil
@@ -477,21 +454,16 @@ struct EntryPoint: App {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0
             print("Found Pulto USDZ file: \(bundlePath) (\(fileSize) bytes)")
 
-            // Create a model representation for the USDZ file
-            // Since we can't directly parse USDZ, we'll create a placeholder that represents it
             var model = Model3DData(title: "Pulto Model", modelType: "usdz")
 
-            // Create a sophisticated sphere to represent the Pulto planet
             let radius = 2.0
-            let segments = 32 // High detail for the planet
+            let segments = 32
 
-            // Generate vertices for a detailed sphere
             for i in 0...segments {
                 let phi = Double(i) * .pi / Double(segments)
                 for j in 0..<(segments * 2) {
                     let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
 
-                    // Add some surface variation to make it more planet-like
                     let variation = 0.1 * sin(phi * 3) * cos(theta * 4)
                     let actualRadius = radius + variation
 
@@ -503,7 +475,6 @@ struct EntryPoint: App {
                 }
             }
 
-            // Generate faces for the sphere
             for i in 0..<segments {
                 for j in 0..<(segments * 2) {
                     let current = i * (segments * 2) + j
@@ -512,14 +483,12 @@ struct EntryPoint: App {
                     let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
 
                     if i < segments {
-                        // Create triangular faces for better detail
                         model.faces.append(Model3DData.Face3D(vertices: [current, next, nextNext], materialIndex: 0))
                         model.faces.append(Model3DData.Face3D(vertices: [current, nextNext, currentNext], materialIndex: 0))
                     }
                 }
             }
 
-            // Create materials that represent Pulto's appearance
             model.materials = [
                 Model3DData.Material3D(
                     name: "pulto_surface",
@@ -600,10 +569,8 @@ struct MainWindowProtector: View {
                 }
             }
             .onDisappear {
-                // Only prevent closure if the app is active and we're not intentionally backgrounding
                 if shouldPreventClose && scenePhase == .active {
                     print("🚫 Preventing main window closure - reopening")
-                    // Reopen immediately
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         openWindow(id: "main")
                     }
@@ -615,7 +582,6 @@ struct MainWindowProtector: View {
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
-                // Allow closure when app is backgrounding or becoming inactive
                 shouldPreventClose = (newPhase == .active)
             }
     }
@@ -627,89 +593,73 @@ struct ProjectAwareEnvironmentView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        // Use the updated EnvironmentView we've been working on
         EnvironmentView()
             .environmentObject(windowManager)
             .onOpenURL(perform: handleSharedURL(_:))
             .onReceive(NotificationCenter.default.publisher(for: .projectSelected)) { notification in
                 if let project = notification.object as? Project {
-                    // Create 3D content when a project is selected
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         createDemo3DWindowForProject()
                     }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .projectCleared)) { _ in
-                // Clean up project-specific windows
                 windowManager.cleanupClosedWindows()
-                // Also trigger full entity cleanup
                 Task { @MainActor in
                     EntityLifecycleManager.shared.performEmergencyCleanup()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .appDidBecomeActive)) { _ in
-                // Handle app becoming active - ensure main window is visible
                 print("🚀 EnvironmentView received app active notification")
             }
     }
 
     private func createDemo3DWindowForProject() {
-        // Only create 3D demo windows if there's an active project
         guard windowManager.selectedProject != nil else {
             print("No project selected - skipping 3D demo window creation")
             return
         }
 
-        // Create a 3D model window
         let modelWindowID = windowManager.getNextWindowID()
         let modelPosition = WindowPosition(x: -200, y: 0, z: -100, width: 800, height: 600)
         let modelWindow = windowManager.createWindow(.model3d, id: modelWindowID, position: modelPosition)
 
-        // Try to load the Pulto USDZ file first, fallback to demo cube
         if let pultoModel = loadPultoUSDZModel() {
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: pultoModel)
             windowManager.updateWindowContent(modelWindowID, content: "Pulto USDZ model - loaded for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Pulto-USDZ")
         } else {
-            // Create a demo cube as fallback
             let demoCube = Model3DData.generateCube(size: 2.0)
             windowManager.updateWindowModel3DData(modelWindowID, model3DData: demoCube)
             windowManager.updateWindowContent(modelWindowID, content: "Demo 3D cube - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
             windowManager.addWindowTag(modelWindowID, tag: "Demo")
         }
 
-        // Create a 3D chart window
         let chartWindowID = windowManager.getNextWindowID()
         let chartPosition = WindowPosition(x: 200, y: 0, z: -100, width: 800, height: 600)
         _ = windowManager.createWindow(.charts, id: chartWindowID, position: chartPosition)
 
-        // Create demo 3D chart data
         let demo3DChart = Chart3DData.generateWave()
         windowManager.updateWindowChart3DData(chartWindowID, chart3DData: demo3DChart)
         windowManager.updateWindowContent(chartWindowID, content: "Demo 3D wave chart - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(chartWindowID, tag: "Demo-Chart3D")
 
-        // Create a PointCloudDemo window
         let pointCloudDemoWindowID = windowManager.getNextWindowID()
         let pointCloudDemoPosition = WindowPosition(x: 0, y: 150, z: -100, width: 800, height: 600)
         _ = windowManager.createWindow(.pointcloud, id: pointCloudDemoWindowID, position: pointCloudDemoPosition)
 
-        // Create demo point cloud data
         let demoPointCloud = PointCloudDemo.generateSpherePointCloudData(radius: 5.0, points: 500)
         windowManager.updateWindowPointCloud(pointCloudDemoWindowID, pointCloud: demoPointCloud)
         windowManager.updateWindowContent(pointCloudDemoWindowID, content: "Demo Point Cloud - created for project: \(windowManager.selectedProject?.name ?? "Unknown")")
         windowManager.addWindowTag(pointCloudDemoWindowID, tag: "Demo-PointCloud")
 
-        // Open the volumetric windows
         #if os(visionOS)
         openWindow(id: "volumetric-model3d", value: modelWindowID)
 
-        // Delay the chart window slightly so they don't overlap
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             openWindow(id: "volumetric-chart3d", value: chartWindowID)
         }
 
-        // Delay the point cloud demo window a bit more
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
         }
@@ -717,7 +667,6 @@ struct ProjectAwareEnvironmentView: View {
     }
 
     private func loadPultoUSDZModel() -> Model3DData? {
-        // Try to find and load the Pulto USDZ file
         guard let bundlePath = Bundle.main.path(forResource: "Pluto_1_2374", ofType: "usdz") else {
             print("Pulto USDZ file not found in bundle")
             return nil
@@ -729,21 +678,16 @@ struct ProjectAwareEnvironmentView: View {
             let fileSize = try FileManager.default.attributesOfItem(atPath: bundlePath)[.size] as? Int64 ?? 0
             print("Found Pulto USDZ file: \(bundlePath) (\(fileSize) bytes)")
 
-            // Create a model representation for the USDZ file
-            // Since we can't directly parse USDZ, we'll create a placeholder that represents it
             var model = Model3DData(title: "Pulto Model", modelType: "usdz")
 
-            // Create a sophisticated sphere to represent the Pulto planet
             let radius = 2.0
-            let segments = 32 // High detail for the planet
+            let segments = 32
 
-            // Generate vertices for a detailed sphere
             for i in 0...segments {
                 let phi = Double(i) * .pi / Double(segments)
                 for j in 0..<(segments * 2) {
                     let theta = Double(j) * 2.0 * .pi / Double(segments * 2)
 
-                    // Add some surface variation to make it more planet-like
                     let variation = 0.1 * sin(phi * 3) * cos(theta * 4)
                     let actualRadius = radius + variation
 
@@ -755,7 +699,6 @@ struct ProjectAwareEnvironmentView: View {
                 }
             }
 
-            // Generate faces for the sphere
             for i in 0..<segments {
                 for j in 0..<(segments * 2) {
                     let current = i * (segments * 2) + j
@@ -764,14 +707,12 @@ struct ProjectAwareEnvironmentView: View {
                     let nextNext = (i + 1) * (segments * 2) + (j + 1) % (segments * 2)
 
                     if i < segments {
-                        // Create triangular faces for better detail
                         model.faces.append(Model3DData.Face3D(vertices: [current, next, nextNext], materialIndex: 0))
                         model.faces.append(Model3DData.Face3D(vertices: [current, nextNext, currentNext], materialIndex: 0))
                     }
                 }
             }
 
-            // Create materials that represent Pulto's appearance
             model.materials = [
                 Model3DData.Material3D(
                     name: "pulto_surface",
