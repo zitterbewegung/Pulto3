@@ -72,8 +72,6 @@
 		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
 		DC5839722E2EC42800B8CD7E /* GoodVibes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = GoodVibes.txt; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
-		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
-		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
 		DC6437592E5E2E8F00032551 /* startup_sound.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = startup_sound.mp3; sourceTree = "<group>"; };
 		DC6437932E5E35DA00032551 /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
@@ -191,15 +189,6 @@
 			path = .;
 			sourceTree = "<group>";
 		};
-		DC60FCCD2DFF928500996C50 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				DC60FCD02DFF929900996C50 /* CloudKit.framework */,
-				DC60FCCE2DFF928500996C50 /* WidgetKit.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		DC6437942E5E35DA00032551 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -230,7 +219,6 @@
 				DF58AE1C2BCD826D00C8F737 /* Products */,
 				0860B14583968FDFE9E0702A /* Configuration */,
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
-				DC60FCCD2DFF928500996C50 /* Frameworks */,
 				DCA833952E0E21E200D32258 /* MARKETING.md */,
 			);
 			sourceTree = "<group>";

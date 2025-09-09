@@ -1509,6 +1509,9 @@ struct NewWindow: View {
     @State var showFileImporter = false  // For USDZ import
     @State var showPointCloudImporter = false  // For point cloud import
 
+    @ObservedObject var notebookManager: NotebookManager
+    let generateNotebookJSON: () -> String
+
     var body: some View {
         if let window = windowTypeManager.getWindowSafely(for: id) {
             VStack(spacing: 0) {
@@ -1860,37 +1863,45 @@ struct NewWindow: View {
                     // ───────────── VOLUME METRICS ─────────────
                     case .volume:
                         VStack {
-                            if !window.state.content.isEmpty {
-                                ScrollView {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Model Metrics:")
-                                            .font(.headline)
-
-                                        Text(window.state.content)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .padding(8)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(Color(.tertiarySystemBackground))
-                                            .cornerRadius(8)
-                                    }
-                                    .padding()
-                                }
+                            if window.state.tags.contains("Notebook") {
+                                NotebookWindowView(
+                                    windowId: window.id,
+                                    notebookManager: notebookManager,
+                                    generateNotebookJSON: { generateNotebookJSON() }
+                                )
                             } else {
-                                VStack(spacing: 20) {
-                                    Image(systemName: "gauge")
-                                        .font(.system(size: 60))
-                                        .foregroundStyle(.blue)
-
-                                    Text("Model Metrics Viewer")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-
-                                    Text("Performance metrics and monitoring dashboard")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
+                                if !window.state.content.isEmpty {
+                                    ScrollView {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("Model Metrics:")
+                                                .font(.headline)
+                                            
+                                            Text(window.state.content)
+                                                .font(.system(.caption, design: .monospaced))
+                                                .padding(8)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .background(Color(.tertiarySystemBackground))
+                                                .cornerRadius(8)
+                                        }
+                                        .padding()
+                                    }
+                                } else {
+                                    VStack(spacing: 20) {
+                                        Image(systemName: "gauge")
+                                            .font(.system(size: 60))
+                                            .foregroundStyle(.blue)
+                                        
+                                        Text("Model Metrics Viewer")
+                                            .font(.title2)
+                                            .fontWeight(.semibold)
+                                        
+                                        Text("Performance metrics and monitoring dashboard")
+                                            .font(.body)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    .padding(40)
                                 }
-                                .padding(40)
                             }
                         }
                     }
@@ -1978,6 +1989,6 @@ struct VolumetricPointCloudView: View {
 
 // MARK: - Preview Provider
 
-#Preview {
-    NewWindow(id: 1)
-}
+//#Preview {
+//    NewWindow(id: 1)
+//}
