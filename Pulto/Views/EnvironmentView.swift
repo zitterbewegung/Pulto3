@@ -1,7 +1,16 @@
+//
+//  EnvironmentView.swift
+//  Pulto
+//
+//  Created by Joshua Herman on 6/18/25.
+//  Copyright 2025 Apple. All rights reserved.
+//
+
 import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
 import RealityKit
+//import CarnetsCoreKit
 
 // MARK: - Project Tab Enum
 enum ProjectTab: String, CaseIterable {
@@ -93,6 +102,36 @@ extension WindowType {
     }
 }
 
+// MARK: - Start Local Jupyter
+private func startLocalJupyter() {
+    #if !os(visionOS)
+    do {
+        let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                  ?? URL(fileURLWithPath: NSTemporaryDirectory())
+
+        let url = try CarnetsCore.startLocalJupyterServer(root: root, port: 8888)
+        isLocalJupyterRunning = true
+
+        // Point your app’s Jupyter URL at the embedded server
+        defaultJupyterURL = url.absoluteString
+
+        // Kick your existing status check (you had this function)
+        checkJupyterServerStatus()
+    } catch {
+        print("Carnets start error: \(error)")
+        isLocalJupyterRunning = false
+    }
+    #endif
+}
+
+// MARK: - Stop Local Jupyter
+private func stopLocalJupyter() {
+    #if !os(visionOS)
+    CarnetsCore.stopLocalJupyterServer()
+    isLocalJupyterRunning = false
+    #endif
+}
+
 // MARK: - Window info row component
 struct WindowInfoRow: View {
     let label: String
@@ -176,6 +215,282 @@ struct ProjectActionButtons: View {
         }
     }
 }
+
+//// ==== JUPYTER HELPERS (place at file scope; remove any duplicate old versions) ====
+//func httpToWebSocketURL(base: URL, kernelID: String) -> URL? {
+//    var comps = URLComponents(url: base, resolvingAgainstBaseURL: false)
+//    if comps?.scheme == "http" { comps?.scheme = "ws" }
+//    else if comps?.scheme == "https" { comps?.scheme = "wss" }
+//    comps?.path += "/api/kernels/\(kernelID)/channels"
+//    return comps?.url
+//}
+//
+//final class JupyterClient: ObservableObject {
+//    @Published var serverURLString: String
+//    @Published var kernelID: String? = nil
+//    @Published var sessionID: String? = nil
+//
+//    private var webSocket: URLSessionWebSocketTask?
+//    private let urlSession: URLSession
+//
+//    init(serverURLString: String) {
+//        self.serverURLString = serverURLString
+//        let cfg = URLSessionConfiguration.default
+//        cfg.timeoutIntervalForRequest = 10
+//        cfg.timeoutIntervalForResource = 30
+//        self.urlSession = URLSession(configuration: cfg)
+//    }
+//
+//    @discardableResult
+//    func ensureSession(notebookPath: String = "Untitled.ipynb") async throws -> String {
+//        if let sid = sessionID { return sid }
+//        guard let base = URL(string: serverURLString) else { throw URLError(.badURL) }
+//        var req = URLRequest(url: base.appendingPathComponent("api/sessions"))
+//        req.httpMethod = "POST"
+//        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+//        let body: [String: Any] = [
+//            "kernel": ["name": "python3"],
+//            "name": UUID().uuidString,
+//            "path": notebookPath,
+//            "type": "notebook"
+//        ]
+//        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+//        let (data, resp) = try await urlSession.data(for: req)
+//        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+//            throw URLError(.badServerResponse)
+//        }
+//        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+//            if let sid = json["id"] as? String { self.sessionID = sid }
+//            if let kernel = json["kernel"] as? [String: Any],
+//               let kid = kernel["id"] as? String { self.kernelID = kid }
+//        }
+//        guard let sid = self.sessionID else { throw URLError(.badServerResponse) }
+//        return sid
+//    }
+//
+//    func connectChannels() async throws {
+//        guard let kid = kernelID, let base = URL(string: serverURLString) else {
+//            throw URLError(.badURL)
+//        }
+//        guard let wsURL = httpToWebSocketURL(base: base, kernelID: kid) else {
+//            throw URLError(.badURL)
+//        }
+//        let task = urlSession.webSocketTask(with: wsURL)
+//        self.webSocket = task
+//        task.resume()
+//        Task { await self.receiveLoop() }
+//    }
+//
+//    private func receiveLoop() async {
+//        guard let ws = webSocket else { return }
+//        while true {
+//            do {
+//                let msg = try await ws.receive()
+//                switch msg {
+//                case .string(let text):
+//                    print("[Jupyter IOPub] \(text.prefix(300))…")
+//                case .data(let data):
+//                    if let s = String(data: data, encoding: .utf8) {
+//                        print("[Jupyter IOPub bin] \(s.prefix(300))…")
+//                    }
+//                @unknown default: break
+//                }
+//            } catch {
+//                break
+//            }
+//        }
+//    }
+//
+//    func execute(code: String) async throws {
+//        guard let ws = webSocket else { throw URLError(.cannotConnectToHost) }
+//        let envelope: [String: Any] = [
+//            "header": [
+//                "msg_id": UUID().uuidString,
+//                "username": "pulto",
+//                "session": UUID().uuidString,
+//                "msg_type": "execute_request",
+//                "version": "5.3"
+//            ],
+//            "parent_header": [:],
+//            "metadata": [:],
+//            "content": [
+//                "code": code,
+//                "silent": false,
+//                "store_history": true,
+//                "user_expressions": [:],
+//                "allow_stdin": false,
+//                "stop_on_error": true
+//            ],
+//            "channel": "shell"
+//        ]
+//        let data = try JSONSerialization.data(withJSONObject: envelope)
+//        try await ws.send(.data(data))
+//    }
+//
+//    func interruptKernel() async {
+//        guard let kid = kernelID, let base = URL(string: serverURLString) else { return }
+//        var req = URLRequest(url: base.appendingPathComponent("api/kernels/\(kid)/interrupt"))
+//        req.httpMethod = "POST"
+//        _ = try? await urlSession.data(for: req)
+//    }
+//
+//    func shutdownSession() async {
+//        guard let sid = sessionID, let base = URL(string: serverURLString) else { return }
+//        var req = URLRequest(url: base.appendingPathComponent("api/sessions/\(sid)"))
+//        req.httpMethod = "DELETE"
+//        _ = try? await urlSession.data(for: req)
+//        sessionID = nil
+//        kernelID  = nil
+//        webSocket?.cancel(with: .goingAway, reason: nil)
+//        webSocket = nil
+//    }
+//}
+
+struct NBCodeCell: Identifiable, Codable {
+    let id = UUID()
+    var source: [String]
+    var outputs: [NBOutput]
+    var execution_count: Int?
+
+    enum CodingKeys: String, CodingKey { case source, outputs, execution_count }
+}
+
+enum NBOutput: Codable, Identifiable {
+    var id: UUID { UUID() }
+
+    case stream(text: String)
+    case executeResult(text: String)
+    case displayData(text: String)
+    case error(ename: String, evalue: String)
+
+    enum CodingKeys: String, CodingKey { case output_type, name, text, data, ename, evalue }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let ot = try c.decode(String.self, forKey: .output_type)
+        switch ot {
+        case "stream":
+            let text = (try? c.decode(String.self, forKey: .text)) ?? ""
+            self = .stream(text: text)
+        case "execute_result":
+            if let data = try? c.decode([String: String].self, forKey: .data),
+               let text = data["text/plain"] { self = .executeResult(text: text) }
+            else { self = .executeResult(text: "") }
+        case "display_data":
+            if let data = try? c.decode([String: String].self, forKey: .data),
+               let text = data["text/plain"] { self = .displayData(text: text) }
+            else { self = .displayData(text: "") }
+        case "error":
+            let ename = (try? c.decode(String.self, forKey: .ename)) ?? "Error"
+            let evalue = (try? c.decode(String.self, forKey: .evalue)) ?? ""
+            self = .error(ename: ename, evalue: evalue)
+        default:
+            self = .displayData(text: "")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws { /* not needed */ }
+}
+
+struct NBNotebook: Codable {
+    var cells: [NBAnyCell]
+    var nbformat: Int
+    var nbformat_minor: Int
+
+    struct NBAnyCell: Codable {
+        var cell_type: String
+        var source: [String]?
+        var outputs: [NBOutput]?
+        var execution_count: Int?
+
+        func asCode() -> NBCodeCell? {
+            guard cell_type == "code", let src = source else { return nil }
+            return NBCodeCell(source: src, outputs: outputs ?? [], execution_count: execution_count)
+        }
+    }
+
+    func codeCells() -> [NBCodeCell] { cells.compactMap { $0.asCode() } }
+}
+
+final class NotebookManager: ObservableObject {
+    struct Session {
+        var client: JupyterClient
+        var path: String
+        var cells: [NBCodeCell]
+        var sessionID: String
+    }
+
+    @Published private(set) var sessions: [Int: Session] = [:] // windowId → Session
+
+    private let baseURLProvider: () -> String
+    init(baseURLProvider: @escaping () -> String) {
+        self.baseURLProvider = baseURLProvider
+    }
+
+    func bootstrap(windowId: Int, notebookJSON: String, suggestedPath: String? = nil) async {
+        guard sessions[windowId] == nil else { return }
+        do {
+            guard let data = notebookJSON.data(using: .utf8) else { return }
+            let nb = try JSONDecoder().decode(NBNotebook.self, from: data)
+            let cells = nb.codeCells()
+
+            let path = suggestedPath ?? "Pulto-\(UUID().uuidString.prefix(8)).ipynb"
+
+            let obj = try JSONSerialization.jsonObject(with: data)
+//            try await contentsClient.putNotebook(path: path, notebookObject: obj)
+
+            let client = JupyterClient(serverURLString: baseURLProvider())
+            let sid = try await client.ensureSession(notebookPath: path)
+            try await client.connectChannels()
+
+            await MainActor.run {
+                sessions[windowId] = Session(client: client, path: path, cells: cells, sessionID: sid)
+            }
+        } catch {
+            print("NotebookManager bootstrap error: \(error)")
+        }
+    }
+
+    func runAll(windowId: Int) async {
+        guard let s = sessions[windowId] else { return }
+        do {
+            for cell in s.cells {
+                try await s.client.execute(code: cell.source.joined())
+            }
+        } catch {
+            print("runAll error: \(error)")
+        }
+    }
+
+    func runCell(windowId: Int, index: Int) async {
+        guard let s = sessions[windowId], s.cells.indices.contains(index) else { return }
+        do {
+            try await s.client.execute(code: s.cells[index].source.joined())
+        } catch {
+            print("runCell error: \(error)")
+        }
+    }
+
+    func shutdown(windowId: Int, politelyInterruptFirst: Bool = true) async {
+        guard let s = sessions[windowId] else { return }
+        if politelyInterruptFirst { await s.client.interruptKernel() }
+        await s.client.shutdownSession()
+        await MainActor.run { sessions.removeValue(forKey: windowId) }
+    }
+
+    func shutdownAll(politelyInterruptFirst: Bool = true) async {
+        let ids = await MainActor.run { Array(sessions.keys) }
+        for wid in ids {
+            await shutdown(windowId: wid, politelyInterruptFirst: politelyInterruptFirst)
+        }
+    }
+
+    func cells(windowId: Int) -> [NBCodeCell] { sessions[windowId]?.cells ?? [] }
+    func path(windowId: Int) -> String? { sessions[windowId]?.path }
+}
+
+// ==== /JUPYTER HELPERS ====
+
 
 // MARK: - Enhanced Active Windows View
 struct EnhancedActiveWindowsView: View {
@@ -547,9 +862,12 @@ struct EnhancedActiveWindowsView: View {
     private func startLocalJupyter() {
         #if !os(visionOS)
         do {
-            let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-            _ = try CarnetsCore.startLocalJupyterServer(root: root)
+            let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                      ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            let url = try CarnetsCore.startLocalJupyterServer(root: root, port: 8888)
             isLocalJupyterRunning = true
+            defaultJupyterURL = url.absoluteString   // so NotebookManager/Jupyter client uses embedded server
+            checkJupyterServerStatus()
         } catch {
             print("Carnets start error: \(error)")
             isLocalJupyterRunning = false
@@ -557,7 +875,6 @@ struct EnhancedActiveWindowsView: View {
         #endif
     }
 
-    // MARK: - Stop Local Jupyter
     private func stopLocalJupyter() {
         #if !os(visionOS)
         CarnetsCore.stopLocalJupyterServer()

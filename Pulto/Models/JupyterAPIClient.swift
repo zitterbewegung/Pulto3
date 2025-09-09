@@ -300,6 +300,9 @@ class JupyterAPIClient: ObservableObject {
     // Remote execution
     @Published var executionSessions: [String: RemoteExecutionSession] = [:]
     
+    // msg_id routing dictionary
+    private var msgRouting: [String: String] = [:]
+    
     // MARK: - Connection Management
     
     func connect(to config: JupyterServerConfig) async {
@@ -335,6 +338,7 @@ class JupyterAPIClient: ObservableObject {
         kernels = []
         activeKernel = nil
         executionSessions = [:]
+        msgRouting = [:]
     }
     
     // MARK: - Kernel Management
@@ -447,6 +451,7 @@ class JupyterAPIClient: ObservableObject {
             throw JupyterAPIError.notConnected
         }
         
+        let parentMsgId = UUID().uuidString
         // Create execution session
         let sessionId = cell.id.uuidString
         let session = RemoteExecutionSession()
@@ -455,11 +460,13 @@ class JupyterAPIClient: ObservableObject {
             self.executionSessions[sessionId] = session
             session.isExecuting = true
             session.reset()
+            self.msgRouting[parentMsgId] = sessionId
         }
         
         // Create WebSocket connection if needed
         if webSocketTask == nil {
             try await connectToKernel(kernel)
+            startListening()
         }
         
         // Send execute request
@@ -472,7 +479,7 @@ class JupyterAPIClient: ObservableObject {
         )
         
         let message = JupyterMessage(
-            msgId: UUID().uuidString,
+            msgId: parentMsgId,
             msgType: "execute_request",
             parentHeader: nil,
             metadata: nil,
@@ -490,104 +497,93 @@ class JupyterAPIClient: ObservableObject {
         let messageString = String(data: messageData, encoding: .utf8)!
         
         try await webSocketTask?.send(.string(messageString))
-        
-        // Start listening for responses
-        startListening(for: sessionId)
     }
     
     private func connectToKernel(_ kernel: JupyterKernel) async throws {
         guard let config = config else {
             throw JupyterAPIError.notConnected
         }
-        
-        let wsURL = "\(config.websocketURL)/api/kernels/\(kernel.id)/channels"
+        var wsURL = "\(config.websocketURL)/api/kernels/\(kernel.id)/channels"
+        if let token = config.token, !token.isEmpty {
+            let separator = wsURL.contains("?") ? "&" : "?"
+            wsURL += "\(separator)token=\(token)"
+        }
         guard let url = URL(string: wsURL) else {
             throw JupyterAPIError.invalidURL
         }
-        
         var request = URLRequest(url: url)
-        if let token = config.token {
+        if let token = config.token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        
         webSocketTask = session.webSocketTask(with: request)
         webSocketTask?.resume()
     }
     
-    private func startListening(for sessionId: String) {
+    private func startListening() {
         guard let webSocket = webSocketTask else { return }
-        
         webSocket.receive { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let message):
-                    await self?.handleWebSocketMessage(message, sessionId: sessionId)
-                    self?.startListening(for: sessionId) // Continue listening
-                    
+                    await self?.handleWebSocketMessage(message)
+                    self?.startListening()
                 case .failure(let error):
-                    self?.executionSessions[sessionId]?.error = error.localizedDescription
-                    self?.executionSessions[sessionId]?.isExecuting = false
+                    if let keys = self?.executionSessions.keys {
+                        for key in keys {
+                            self?.executionSessions[key]?.error = error.localizedDescription
+                            self?.executionSessions[key]?.isExecuting = false
+                        }
+                    }
+                    // Optionally clear routing on failure to avoid stale mappings
+                    self?.msgRouting.removeAll()
                 }
             }
         }
     }
     
     @MainActor
-    private func handleWebSocketMessage(_ message: URLSessionWebSocketTask.Message, sessionId: String) async {
-        guard let session = executionSessions[sessionId] else { return }
-        
+    private func handleWebSocketMessage(_ message: URLSessionWebSocketTask.Message) async {
+        func routeSession(for parentId: String?) -> String? {
+            guard let parentId else { return nil }
+            return msgRouting[parentId]
+        }
         switch message {
         case .string(let text):
             do {
                 let data = text.data(using: .utf8)!
                 let jupyterMessage = try JSONDecoder().decode(JupyterMessage.self, from: data)
-                
-                switch jupyterMessage.msgType {
-                case "execute_reply":
-                    session.isExecuting = false
-                    if let executionCount = jupyterMessage.content["execution_count"]?.value as? Int {
-                        session.executionCount = executionCount
+                let parentId = (jupyterMessage.parentHeader?["msg_id"]?.value as? String)
+                let key = routeSession(for: parentId)
+                if let key, let session = executionSessions[key] {
+                    switch jupyterMessage.msgType {
+                    case "execute_reply":
+                        session.isExecuting = false
+                        if let cnt = jupyterMessage.content["execution_count"]?.value as? Int {
+                            session.executionCount = cnt
+                        }
+                    case "stream":
+                        if let text = jupyterMessage.content["text"]?.value as? [String] {
+                            let output = JupyterCellOutput(outputType: "stream", text: text, data: nil, executionCount: nil)
+                            session.outputs.append(output)
+                        }
+                    case "display_data", "execute_result":
+                        if let data = jupyterMessage.content["data"]?.value as? [String: Any] {
+                            let output = JupyterCellOutput(outputType: jupyterMessage.msgType, text: nil, data: data.mapValues { AnyCodable($0) }, executionCount: jupyterMessage.content["execution_count"]?.value as? Int)
+                            session.outputs.append(output)
+                        }
+                    case "error":
+                        let err = jupyterMessage.content["evalue"]?.value as? String ?? "Execution error"
+                        session.error = err
+                        session.isExecuting = false
+                    default:
+                        break
                     }
-                    
-                case "stream":
-                    if let text = jupyterMessage.content["text"]?.value as? [String] {
-                        let output = JupyterCellOutput(
-                            outputType: "stream",
-                            text: text,
-                            data: nil,
-                            executionCount: nil
-                        )
-                        session.outputs.append(output)
-                    }
-                    
-                case "display_data", "execute_result":
-                    if let data = jupyterMessage.content["data"]?.value as? [String: Any] {
-                        let output = JupyterCellOutput(
-                            outputType: jupyterMessage.msgType,
-                            text: nil,
-                            data: data.mapValues { AnyCodable($0) },
-                            executionCount: jupyterMessage.content["execution_count"]?.value as? Int
-                        )
-                        session.outputs.append(output)
-                    }
-                    
-                case "error":
-                    let errorMessage = jupyterMessage.content["evalue"]?.value as? String ?? "Execution error"
-                    session.error = errorMessage
-                    session.isExecuting = false
-                    
-                default:
-                    break
                 }
             } catch {
-                session.error = "Failed to parse message: \(error.localizedDescription)"
-                session.isExecuting = false
+                // Ignore decode errors for now
             }
-            
         case .data(_):
-            // Handle binary data if needed
             break
-            
         @unknown default:
             break
         }
@@ -912,6 +908,46 @@ class JupyterAPIClient: ObservableObject {
         
         return try JSONSerialization.data(withJSONObject: notebookDict, options: .prettyPrinted)
     }
+    
+    // MARK: - Ensure Session
+    
+    struct SessionCreateResponse: Decodable {
+        struct Kernel: Decodable { let id: String; let name: String }
+        let id: String
+        let kernel: Kernel
+    }
+
+    func ensureSession(forNotebookPath path: String, kernelName: String = "python3") async throws {
+        guard let config = config else { throw JupyterAPIError.notConnected }
+        let url = buildURL(endpoint: "api/sessions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = config.token, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body: [String: Any] = [
+            "kernel": ["name": kernelName],
+            "name": UUID().uuidString,
+            "path": path,
+            "type": "notebook"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw JupyterAPIError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else { throw JupyterAPIError.httpError(http.statusCode) }
+        let info = try JSONDecoder().decode(SessionCreateResponse.self, from: data)
+
+        // Update active kernel from session
+        let kernel = JupyterKernel(id: info.kernel.id, name: info.kernel.name, lastActivity: nil, executionState: nil, connections: nil)
+        await MainActor.run {
+            self.activeKernel = kernel
+            if !self.kernels.contains(where: { $0.id == kernel.id }) {
+                self.kernels.append(kernel)
+            }
+        }
+    }
 }
 
 // MARK: - Error Types
@@ -998,3 +1034,4 @@ extension JupyterAPIClient {
 func testNotebookSubmissionWithClient(_ client: JupyterAPIClient) async throws -> Bool {
     return try await client.testNotebookSubmission()
 }
+
