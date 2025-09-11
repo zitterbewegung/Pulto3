@@ -30,6 +30,7 @@
 		DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */; };
 		DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */; };
 		DC5839732E2EC42800B8CD7E /* GoodVibes.txt in Resources */ = {isa = PBXBuildFile; fileRef = DC5839722E2EC42800B8CD7E /* GoodVibes.txt */; };
+		DC5FCD9F2E735A7A009490DE /* JupyterLiteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5FCD9E2E735A7A009490DE /* JupyterLiteView.swift */; };
 		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
 		DC64375A2E5E2E8F00032551 /* startup_sound.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DC6437592E5E2E8F00032551 /* startup_sound.mp3 */; };
@@ -95,6 +96,8 @@
 		DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveNotebookDialog.swift; sourceTree = "<group>"; };
 		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
 		DC5839722E2EC42800B8CD7E /* GoodVibes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = GoodVibes.txt; sourceTree = "<group>"; };
+		DC5FCD9D2E735702009490DE /* Pulto-Bridging-Header 2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Pulto-Bridging-Header 2.h"; sourceTree = "<group>"; };
+		DC5FCD9E2E735A7A009490DE /* JupyterLiteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JupyterLiteView.swift; sourceTree = "<group>"; };
 		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
 		DC6437592E5E2E8F00032551 /* startup_sound.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = startup_sound.mp3; sourceTree = "<group>"; };
@@ -246,6 +249,7 @@
 				DC0A5CE22E709A3C00A5D349 /* CarnetsLauncher.h */,
 				DC0A5CE32E709A4900A5D349 /* CarnetsLauncher.m */,
 				DC0A5CE52E709A5100A5D349 /* Pulto-Bridging-Header.h */,
+				DC5FCD9D2E735702009490DE /* Pulto-Bridging-Header 2.h */,
 			);
 			path = Carnets;
 			sourceTree = "<group>";
@@ -352,6 +356,7 @@
 				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
 				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
 				DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */,
+				DC5FCD9E2E735A7A009490DE /* JupyterLiteView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -519,6 +524,7 @@
 				DC0A5C232E7089A900A5D349 /* JupyterKernelConnection.swift in Sources */,
 				DCCF6DB32E01EC6900C90252 /* WindowChartView.swift in Sources */,
 				DC0A5C212E7089A200A5D349 /* JupyterSessionInfo.swift in Sources */,
+				DC5FCD9F2E735A7A009490DE /* JupyterLiteView.swift in Sources */,
 				DC85D58C2E03A2C400559301 /* EnvironmentRestoreDialog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
