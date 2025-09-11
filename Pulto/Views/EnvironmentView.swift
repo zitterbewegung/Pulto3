@@ -216,135 +216,6 @@ struct ProjectActionButtons: View {
     }
 }
 
-//// ==== JUPYTER HELPERS (place at file scope; remove any duplicate old versions) ====
-//func httpToWebSocketURL(base: URL, kernelID: String) -> URL? {
-//    var comps = URLComponents(url: base, resolvingAgainstBaseURL: false)
-//    if comps?.scheme == "http" { comps?.scheme = "ws" }
-//    else if comps?.scheme == "https" { comps?.scheme = "wss" }
-//    comps?.path += "/api/kernels/\(kernelID)/channels"
-//    return comps?.url
-//}
-//
-//final class JupyterClient: ObservableObject {
-//    @Published var serverURLString: String
-//    @Published var kernelID: String? = nil
-//    @Published var sessionID: String? = nil
-//
-//    private var webSocket: URLSessionWebSocketTask?
-//    private let urlSession: URLSession
-//
-//    init(serverURLString: String) {
-//        self.serverURLString = serverURLString
-//        let cfg = URLSessionConfiguration.default
-//        cfg.timeoutIntervalForRequest = 10
-//        cfg.timeoutIntervalForResource = 30
-//        self.urlSession = URLSession(configuration: cfg)
-//    }
-//
-//    @discardableResult
-//    func ensureSession(notebookPath: String = "Untitled.ipynb") async throws -> String {
-//        if let sid = sessionID { return sid }
-//        guard let base = URL(string: serverURLString) else { throw URLError(.badURL) }
-//        var req = URLRequest(url: base.appendingPathComponent("api/sessions"))
-//        req.httpMethod = "POST"
-//        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
-//        let body: [String: Any] = [
-//            "kernel": ["name": "python3"],
-//            "name": UUID().uuidString,
-//            "path": notebookPath,
-//            "type": "notebook"
-//        ]
-//        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-//        let (data, resp) = try await urlSession.data(for: req)
-//        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-//            throw URLError(.badServerResponse)
-//        }
-//        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-//            if let sid = json["id"] as? String { self.sessionID = sid }
-//            if let kernel = json["kernel"] as? [String: Any],
-//               let kid = kernel["id"] as? String { self.kernelID = kid }
-//        }
-//        guard let sid = self.sessionID else { throw URLError(.badServerResponse) }
-//        return sid
-//    }
-//
-//    func connectChannels() async throws {
-//        guard let kid = kernelID, let base = URL(string: serverURLString) else {
-//            throw URLError(.badURL)
-//        }
-//        guard let wsURL = httpToWebSocketURL(base: base, kernelID: kid) else {
-//            throw URLError(.badURL)
-//        }
-//        let task = urlSession.webSocketTask(with: wsURL)
-//        self.webSocket = task
-//        task.resume()
-//        Task { await self.receiveLoop() }
-//    }
-//
-//    private func receiveLoop() async {
-//        guard let ws = webSocket else { return }
-//        while true {
-//            do {
-//                let msg = try await ws.receive()
-//                switch msg {
-//                case .string(let text):
-//                    print("[Jupyter IOPub] \(text.prefix(300))…")
-//                case .data(let data):
-//                    if let s = String(data: data, encoding: .utf8) {
-//                        print("[Jupyter IOPub bin] \(s.prefix(300))…")
-//                    }
-//                @unknown default: break
-//                }
-//            } catch {
-//                break
-//            }
-//        }
-//    }
-//
-//    func execute(code: String) async throws {
-//        guard let ws = webSocket else { throw URLError(.cannotConnectToHost) }
-//        let envelope: [String: Any] = [
-//            "header": [
-//                "msg_id": UUID().uuidString,
-//                "username": "pulto",
-//                "session": UUID().uuidString,
-//                "msg_type": "execute_request",
-//                "version": "5.3"
-//            ],
-//            "parent_header": [:],
-//            "metadata": [:],
-//            "content": [
-//                "code": code,
-//                "silent": false,
-//                "store_history": true,
-//                "user_expressions": [:],
-//                "allow_stdin": false,
-//                "stop_on_error": true
-//            ],
-//            "channel": "shell"
-//        ]
-//        let data = try JSONSerialization.data(withJSONObject: envelope)
-//        try await ws.send(.data(data))
-//    }
-//
-//    func interruptKernel() async {
-//        guard let kid = kernelID, let base = URL(string: serverURLString) else { return }
-//        var req = URLRequest(url: base.appendingPathComponent("api/kernels/\(kid)/interrupt"))
-//        req.httpMethod = "POST"
-//        _ = try? await urlSession.data(for: req)
-//    }
-//
-//    func shutdownSession() async {
-//        guard let sid = sessionID, let base = URL(string: serverURLString) else { return }
-//        var req = URLRequest(url: base.appendingPathComponent("api/sessions/\(sid)"))
-//        req.httpMethod = "DELETE"
-//        _ = try? await urlSession.data(for: req)
-//        sessionID = nil
-//        kernelID  = nil
-//        webSocket?.cancel(with: .goingAway, reason: nil)
-//        webSocket = nil
-//    }
-//}
 
 struct NBCodeCell: Identifiable, Codable {
     let id = UUID()
@@ -521,6 +392,7 @@ struct EnhancedActiveWindowsView: View {
 
     // Add state for local Jupyter
     @State private var isLocalJupyterRunning = false
+    @State private var isStartingLocalJupyter = false
     
     enum ServerStatus {
         case online
@@ -667,10 +539,10 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
-
                     #if !os(visionOS)
                     Button(action: {
-                        toggleLocalJupyter()
+                        CarnetsControlView()
+                            .scenePadding()
                     }) {
                         Image(systemName: isLocalJupyterRunning ? "stop.circle.fill" : "play.circle.fill")
                             .font(.title2)
@@ -853,7 +725,65 @@ struct EnhancedActiveWindowsView: View {
         if isLocalJupyterRunning {
             stopLocalJupyter()
         } else {
-            startLocalJupyter()
+            startLocalJupyterWithTimeout(timeoutSeconds: 5)
+        }
+        #endif
+    }
+
+    // MARK: - Start Local Jupyter with Timeout
+    private func startLocalJupyterWithTimeout(timeoutSeconds: Double = 5) {
+        #if !os(visionOS)
+        // Prevent concurrent start attempts
+        guard !isStartingLocalJupyter else { return }
+        isStartingLocalJupyter = true
+        jupyterServerStatus = .checking
+
+        // Perform the potentially long-running start on a detached task
+        let startTask = Task.detached(priority: .userInitiated) { () -> URL? in
+            do {
+                let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                          ?? URL(fileURLWithPath: NSTemporaryDirectory())
+                let url = try CarnetsCore.startLocalJupyterServer(root: root, port: 8888)
+                return url
+            } catch {
+                print("Carnets start error: \(error)")
+                return nil
+            }
+        }
+
+        // Timeout task
+        Task { @MainActor in
+            // Sleep for the timeout duration
+            let nanos = UInt64(timeoutSeconds * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanos)
+
+            // If still starting after timeout, mark as failed
+            if isStartingLocalJupyter {
+                isStartingLocalJupyter = false
+                isLocalJupyterRunning = false
+                jupyterServerStatus = .offline
+                print("Carnets start timed out after \(timeoutSeconds)s")
+            }
+        }
+
+        // Observe the result of the start attempt
+        Task { @MainActor in
+            let url = await startTask.value
+
+            // If a timeout already flipped the flag, ignore late success/failure
+            guard isStartingLocalJupyter else { return }
+
+            if let url {
+                isLocalJupyterRunning = true
+                defaultJupyterURL = url.absoluteString
+                // Kick off a status check to reflect accurate state
+                checkJupyterServerStatus()
+            } else {
+                isLocalJupyterRunning = false
+                jupyterServerStatus = .offline
+            }
+
+            isStartingLocalJupyter = false
         }
         #endif
     }
@@ -2924,3 +2854,4 @@ struct SettingsSheetWrapper: View {
 struct EnvironmentView_Previews: PreviewProvider {
     static var previews: some View { EnvironmentView() }
 }
+
