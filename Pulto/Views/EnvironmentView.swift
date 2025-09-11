@@ -394,6 +394,10 @@ struct EnhancedActiveWindowsView: View {
     @State private var isLocalJupyterRunning = false
     @State private var isStartingLocalJupyter = false
     
+    // Added per instructions:
+    @State private var showingJupyterLite = false
+    @State private var jupyterLiteURL: URL? = nil
+
     enum ServerStatus {
         case online
         case offline
@@ -541,8 +545,7 @@ struct EnhancedActiveWindowsView: View {
                     .help("Jupyter Server: \(defaultJupyterURL)\nTap to check status")
                     #if !os(visionOS)
                     Button(action: {
-                        CarnetsControlView()
-                            .scenePadding()
+                        toggleLocalJupyter()
                     }) {
                         Image(systemName: isLocalJupyterRunning ? "stop.circle.fill" : "play.circle.fill")
                             .font(.title2)
@@ -586,6 +589,18 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Templates")
+
+                    // Added button for new JupyterLite notebook per instructions
+                    Button(action: {
+                        openJupyterLiteNewNotebook()
+                    }) {
+                        Image(systemName: "curlybraces.square")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("New JupyterLite Notebook")
 
                     Button(action: {
                         sheetManager.presentSheet(.classifierSheet)
@@ -709,6 +724,15 @@ struct EnhancedActiveWindowsView: View {
         }
         .onDisappear {
             cancelAllTasks()
+        }
+        .sheet(isPresented: $showingJupyterLite) {
+            if let url = jupyterLiteURL {
+                JupyterLiteView(url: url, createNewOnAppear: true)
+                    .frame(minWidth: 800, minHeight: 600)
+            } else {
+                Text("JupyterLite not available")
+                    .padding()
+            }
         }
     }
 
@@ -974,6 +998,17 @@ struct EnhancedActiveWindowsView: View {
             // Network error or server not reachable
             return .offline
         }
+    }
+    
+    // Added helper method per instructions:
+    private func openJupyterLiteNewNotebook() {
+        // Prefer bundled JupyterLite if available; otherwise hosted demo
+        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "JupyterLite") {
+            jupyterLiteURL = url
+        } else if let hosted = URL(string: "https://jupyterlite.github.io/demo/latest") {
+            jupyterLiteURL = hosted
+        }
+        showingJupyterLite = (jupyterLiteURL != nil)
     }
 }
 
@@ -2735,10 +2770,19 @@ struct ActiveWindowsSheetWrapper: View {
     }
 }
 
+// This is the modified struct as per instructions:
+
 struct SettingsSheetWrapper: View {
     @EnvironmentObject var sheetManager: SheetManager
     @AppStorage("defaultSupersetURL") private var defaultSupersetURL: String = "https://your-superset-instance.com"
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
+    
+    @AppStorage("EnableEmbeddedJupyter") private var enableEmbeddedJupyter: Bool = false
+    @State private var isTestingJupyter = false
+    @State private var jupyterTestMessage: String?
+
+    @State private var jupyterLiteURL: URL?
+    @State private var showingJupyterLite = false
 
     var body: some View {
         NavigationStack {
@@ -2771,18 +2815,63 @@ struct SettingsSheetWrapper: View {
                             Text("Default Jupyter notebook server to connect to when importing or creating notebooks")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            
+                            #if !os(visionOS)
+                            Toggle("Use Embedded Jupyter (Experimental)", isOn: $enableEmbeddedJupyter)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                ForEach(["http://localhost:8888", "http://localhost:8889", "http://127.0.0.1:8888"], id: \.self) { url in
-                                    Button(url) {
-                                        defaultJupyterURL = url
+                            Text("Requires building with -D CARNETS_EMBEDDED. When enabled, the app may start an embedded Jupyter server on supported platforms.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            #endif
+
+                            HStack(spacing: 8) {
+                                Button(action: { testJupyterConnection() }) {
+                                    if isTestingJupyter {
+                                        ProgressView().scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "wave.3.forward.circle")
                                     }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .font(.caption)
-                                    .fontDesign(.monospaced)
+                                    Text("Test Connection")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+
+                                if let msg = jupyterTestMessage {
+                                    Text(msg)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
+                        }
+                        
+                        SettingsSection("JupyterLite") {
+                            Text("Run Python in the browser with WebAssembly (Pyodide). Works on all platforms including visionOS.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            HStack(spacing: 8) {
+                                Button {
+                                    openJupyterLiteHosted()
+                                } label: {
+                                    Label("Open Hosted Demo", systemImage: "network")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+
+                                Button {
+                                    openJupyterLiteBundled()
+                                } label: {
+                                    Label("Open Bundled", systemImage: "shippingbox")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+
+                            Text("Bundled expects Resources/JupyterLite/index.html inside the app bundle.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                         }
 
                         SettingsSection("Superset Server") {
@@ -2847,6 +2936,67 @@ struct SettingsSheetWrapper: View {
             }
         }
         .frame(width: 700, height: 600)
+        .sheet(isPresented: $showingJupyterLite) {
+            if let url = jupyterLiteURL {
+                JupyterLiteView(url: url)
+                    .frame(minWidth: 700, minHeight: 500)
+            } else {
+                Text("JupyterLite URL not found")
+                    .padding()
+            }
+        }
+    }
+    
+    private func testJupyterConnection() {
+        guard !isTestingJupyter else { return }
+        isTestingJupyter = true
+        jupyterTestMessage = nil
+
+        let urlString = defaultJupyterURL
+        guard let base = URL(string: urlString) else {
+            isTestingJupyter = false
+            jupyterTestMessage = "Invalid URL"
+            return
+        }
+        let healthURL = base.appendingPathComponent("api/kernels")
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 5.0
+        config.timeoutIntervalForResource = 10.0
+        let session = URLSession(configuration: config)
+
+        Task {
+            defer { session.invalidateAndCancel() }
+            do {
+                let (_, response) = try await session.data(from: healthURL)
+                if let http = response as? HTTPURLResponse {
+                    switch http.statusCode {
+                    case 200...299: jupyterTestMessage = "Online (\(http.statusCode))"
+                    case 401, 403:  jupyterTestMessage = "Online (auth required)"
+                    default:        jupyterTestMessage = "Offline (\(http.statusCode))"
+                    }
+                } else {
+                    jupyterTestMessage = "No response"
+                }
+            } catch {
+                jupyterTestMessage = "Offline (\(error.localizedDescription))"
+            }
+            isTestingJupyter = false
+        }
+    }
+    
+    private func openJupyterLiteHosted() {
+        if let url = URL(string: "https://jupyterlite.github.io/demo/latest") {
+            jupyterLiteURL = url
+            showingJupyterLite = true
+        }
+    }
+
+    private func openJupyterLiteBundled() {
+        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "JupyterLite") {
+            jupyterLiteURL = url
+            showingJupyterLite = true
+        }
     }
 }
 

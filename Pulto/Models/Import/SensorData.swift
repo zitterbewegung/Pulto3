@@ -352,6 +352,8 @@ struct DashboardView: View {
     @AppStorage("defaultJupyterURL") private var jupyterURL: String = "http://localhost:8888"
     @State private var jupyterToken = ""
     
+    @Environment(\.openWindow) private var openWindow
+    
     var body: some View {
         NavigationView {
             HStack(spacing: 20) {
@@ -379,7 +381,25 @@ struct DashboardView: View {
             .padding()
             .navigationTitle("IoT Dashboard")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Label {
+                        Text("Jupyter")
+                    } icon: {
+                        Circle()
+                            .fill(jupyterManager.isConnected ? .green : .gray)
+                            .frame(width: 8, height: 8)
+                    }
+                    .labelStyle(.titleAndIcon)
+
+                    Spacer()
+                        .frame(width: 8)
+                    
+                    Button {
+                        openWindow(id: "jupyter")
+                    } label: {
+                        Label("Jupyter", systemImage: "book")
+                    }
+
                     Button("Connections") {
                         showingConnectionSheet = true
                     }

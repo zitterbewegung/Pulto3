@@ -100,6 +100,7 @@ struct EntryPoint: App {
     @SceneBuilder
     var body: some SwiftUI.Scene {
         mainWindow
+        jupyterWindow
         //launcherWindow
         secondaryWindows
         #if os(visionOS)
@@ -139,15 +140,14 @@ struct EntryPoint: App {
         
     }
 
-    /*
-    private var launcherWindow: some SwiftUI.Scene {
-        WindowGroup(id: "launcher") {
-            LauncherView()
+    private var jupyterWindow: some SwiftUI.Scene {
+        WindowGroup(id: "jupyter") {
+            JupyterLiteWindow()
         }
         .windowStyle(.plain)
-        .defaultSize(width: 800, height: 600)
+        .defaultSize(width: 1200, height: 800)
     }
-    */
+
 
     @SceneBuilder
     private var secondaryWindows: some SwiftUI.Scene {
