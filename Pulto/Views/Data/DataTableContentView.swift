@@ -1139,6 +1139,7 @@ struct DataImportSheet: View {
                     Divider()
                     
                     // Paste data
+                    /*
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Or paste data directly:")
                             .font(.headline)
@@ -1175,9 +1176,9 @@ struct DataImportSheet: View {
                     }
                     
                     Divider()
-                    
+                    */
                     // Sample data
-                    VStack(alignment: .leading, spacing: 8) {
+                    /*VStack(alignment: .leading, spacing: 8) {
                         Text("Or use sample data:")
                             .font(.headline)
                         
@@ -1196,7 +1197,7 @@ struct DataImportSheet: View {
                             }
                             .buttonStyle(.bordered)
                         }
-                    }
+                    }*/
                 }
                 
                 Spacer()
