@@ -8,6 +8,18 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
+
+private enum FeatureFlags {
+    static var jupyterLiteEnabled: Bool {
+        if let v = UserDefaults.standard.object(forKey: "feature.jupyterlite") as? Bool { return v }
+        return true // default enabled
+    }
+    static var templatesEnabled: Bool {
+        if let v = UserDefaults.standard.object(forKey: "feature.templates") as? Bool { return v }
+        return true // default enabled
+    }
+}
 
 struct ProjectBrowserView: View {
     @ObservedObject var windowManager: WindowTypeManager
@@ -20,6 +32,14 @@ struct ProjectBrowserView: View {
     @State private var showingFilePicker = false
     @State private var showingRestoreDialog = false
     @State private var errorMessage: String?
+
+    // Remote Jupyter integration
+    @StateObject private var jupyterClient = JupyterAPIClient()
+    @State private var remoteProjects: [NotebookFile] = []
+    @State private var isLoadingRemote = false
+    @State private var remoteError: String?
+    @State private var showingJupyterLiteSheet = false
+    @State private var showingTemplatesSheet = false
 
     var body: some View {
         NavigationView {
@@ -36,6 +56,9 @@ struct ProjectBrowserView: View {
                     } else {
                         projectsListView
                     }
+                    
+                    // Remote projects section
+                    remoteProjectsSection
                     
                     Spacer()
                 }
@@ -54,6 +77,20 @@ struct ProjectBrowserView: View {
                             dismiss()
                         }
                         .buttonStyle(CurvedButtonStyle(variant: .secondary))
+                        
+                        if FeatureFlags.templatesEnabled {
+                            Button("Templates") {
+                                showingTemplatesSheet = true
+                            }
+                            .buttonStyle(CurvedButtonStyle())
+                        }
+                        
+                        if FeatureFlags.jupyterLiteEnabled && !hasRemoteSettings() {
+                            Button("Set Remote") {
+                                showingJupyterLiteSheet = true
+                            }
+                            .buttonStyle(CurvedButtonStyle())
+                        }
                     }
                 }
             }
@@ -80,9 +117,17 @@ struct ProjectBrowserView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingJupyterLiteSheet) {
+                JupyterLiteWindow()
+                    .interactiveDismissDisabled(true)
+            }
+            .sheet(isPresented: $showingTemplatesSheet) {
+                TemplatesSheet()
+            }
         }
         .onAppear {
             loadAvailableProjects()
+            connectAndLoadRemote()
         }
     }
     
@@ -200,6 +245,57 @@ struct ProjectBrowserView: View {
         }
     }
     
+    private var remoteProjectsSection: some View {
+        Group {
+            if isLoadingRemote {
+                CurvedWindow {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text("Connecting to remote Jupyter…")
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(20)
+                }
+            } else if let remoteError {
+                CurvedWindow {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Remote Jupyter", systemImage: "server.rack")
+                            .font(.headline)
+                        Text(remoteError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        Button("Retry") { connectAndLoadRemote() }
+                            .buttonStyle(CurvedButtonStyle())
+                    }
+                    .padding(20)
+                }
+            } else if !remoteProjects.isEmpty {
+                CurvedWindow {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Label("Remote Projects", systemImage: "server.rack")
+                                .font(.title3).fontWeight(.semibold)
+                            Spacer()
+                            Button("Refresh") { connectAndLoadRemote(force: true) }
+                                .buttonStyle(CurvedButtonStyle())
+                        }
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(remoteProjects) { project in
+                                    ProjectRowView(project: project) {
+                                        openRemoteProject(project)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+        }
+    }
+    
     private func loadAvailableProjects() {
         isLoading = true
         errorMessage = nil
@@ -309,6 +405,51 @@ struct ProjectBrowserView: View {
         } else {
             errorMessage = result.summary
         }
+    }
+
+    private func hasRemoteSettings() -> Bool {
+        if let s = UserDefaults.standard.string(forKey: "remoteJupyter.baseURL") {
+            return !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return false
+    }
+
+    private func loadRemoteServerConfig() -> JupyterServerConfig? {
+        let defaults = UserDefaults.standard
+        guard let url = defaults.string(forKey: "remoteJupyter.baseURL"),
+              !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let token = defaults.string(forKey: "remoteJupyter.token")
+        let name = defaults.string(forKey: "remoteJupyter.name") ?? url
+        return JupyterServerConfig(baseURL: url, token: token, name: name)
+    }
+
+    private func connectAndLoadRemote(force: Bool = false) {
+        guard let serverConfig = loadRemoteServerConfig() else { return }
+        if jupyterClient.isConnected && !force { return }
+        isLoadingRemote = true
+        remoteError = nil
+        Task { @MainActor in
+            await jupyterClient.connect(to: serverConfig)
+            if jupyterClient.isConnected {
+                do {
+                    let notebooks = try await jupyterClient.listNotebooks()
+                    self.remoteProjects = notebooks.compactMap { jupyterClient.convertToNotebookFile($0) }
+                        .sorted { $0.modifiedDate > $1.modifiedDate }
+                    self.remoteError = nil
+                } catch {
+                    self.remoteError = error.localizedDescription
+                    self.remoteProjects = []
+                }
+            } else {
+                self.remoteError = jupyterClient.connectionError
+            }
+            self.isLoadingRemote = false
+        }
+    }
+
+    private func openRemoteProject(_ project: NotebookFile) {
+        // Remote projects are represented as temp files; reuse local open logic
+        openProjectFromURL(project.url)
     }
 }
 
@@ -564,6 +705,33 @@ enum ProjectBrowserError: LocalizedError {
             return "Could not access Documents folder"
         case .scanningFailed:
             return "Failed to scan for project files"
+        }
+    }
+}
+
+private struct TemplatesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.blue)
+                Text("Templates")
+                    .font(.title2).fontWeight(.semibold)
+                Text("Browse and create from project templates. (Placeholder)")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button("Close") { dismiss() }
+                    .buttonStyle(CurvedButtonStyle())
+                    .padding(.top, 12)
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Templates")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

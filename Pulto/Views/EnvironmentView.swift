@@ -578,7 +578,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("New Project")
-
+                    /*
                     Button(action: {
                         sheetManager.presentSheet(.templateGallery)
                     }) {
@@ -589,9 +589,9 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Templates")
-
+              */
                     // Added button for new JupyterLite notebook per instructions
-                    Button(action: {
+                    /*Button(action: {
                         openJupyterLiteNewNotebook()
                     }) {
                         Image(systemName: "curlybraces.square")
@@ -601,7 +601,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("New JupyterLite Notebook")
-
+             */
                     Button(action: {
                         sheetManager.presentSheet(.classifierSheet)
                     }) {
@@ -1663,6 +1663,22 @@ struct EnvironmentView: View {
             windowManager.addWindowTag(nextWindowID, tag: "IoT-Dashboard")
         }
 
+        // Ensure Data Table windows have initial data so the viewer renders immediately
+        if type == .dataFrame {
+            let initialDF = DataFrameData(
+                columns: ["Name", "Value"],
+                rows: [
+                    ["Sample", "1"],
+                    ["Example", "2"]
+                ],
+                dtypes: [
+                    "Name": "string",
+                    "Value": "int"
+                ]
+            )
+            windowManager.updateWindowDataFrame(nextWindowID, dataFrame: initialDF)
+        }
+
         #if os(visionOS)
         switch type {
         case .model3d:
@@ -1997,6 +2013,19 @@ struct PultoHomeContentView: View {
         _ = windowManager.createWindow(windowType,
                                        id: newWindowID,
                                        position: position)
+
+        // Seed imported Data Table windows with basic info so the table shows immediately
+        if type == .dataFrame {
+            let df = DataFrameData(
+                columns: ["File", "ImportedAt"],
+                rows: [[fileURL.lastPathComponent, ISO8601DateFormatter().string(from: Date())]],
+                dtypes: [
+                    "File": "string",
+                    "ImportedAt": "date"
+                ]
+            )
+            windowManager.updateWindowDataFrame(newWindowID, dataFrame: df)
+        }
 
         openWindow(value: newWindowID)
         windowManager.markWindowAsOpened(newWindowID)

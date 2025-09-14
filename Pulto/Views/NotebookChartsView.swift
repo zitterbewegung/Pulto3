@@ -24,6 +24,7 @@ struct NotebookChartsView: View {
     @State private var showingSidebar = true
     @State private var showCodeSidebar = false
     @State private var generatedCode = ""
+    @State private var recentNotebooks: [URL] = []
 
     var body: some View {
         NavigationSplitView {
@@ -101,13 +102,25 @@ struct NotebookChartsView: View {
 
                     // Recent Files Section
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Recent")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text("Recent")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if isLoading {
+                                ProgressView().scaleEffect(0.6)
+                            }
+                        }
 
-                        ForEach(["Analysis.ipynb", "DataViz.ipynb", "Research.ipynb"], id: \.self) { name in
-                            RecentFileButton(name: name) {
-                                notebookName = name
+                        if recentNotebooks.isEmpty {
+                            Text("No recent notebooks found")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            ForEach(recentNotebooks.prefix(6), id: \.self) { url in
+                                RecentFileButton(name: url.lastPathComponent) {
+                                    notebookName = url.lastPathComponent
+                                }
                             }
                         }
                     }
@@ -201,6 +214,7 @@ struct NotebookChartsView: View {
         }
         .onAppear {
             loadModel()
+            scanRecentNotebooks()
         }
         // Add keyboard dismiss gesture
         .onTapGesture {
@@ -378,6 +392,7 @@ struct NotebookChartsView: View {
             await sendNotebookJSON(named: notebookName)
             generateCodeFromNotebook()
             isLoading = false
+            scanRecentNotebooks()
         }
     }
     
@@ -641,6 +656,27 @@ struct NotebookChartsView: View {
         }
 
         return notebookDocURL
+    }
+
+    func scanRecentNotebooks() {
+        let fileManager = FileManager.default
+        guard let docsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        guard let enumerator = fileManager.enumerator(at: docsURL, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return }
+        var results: [(url: URL, date: Date)] = []
+        for case let fileURL as URL in enumerator {
+            guard fileURL.pathExtension.lowercased() == "ipynb" else { continue }
+            do {
+                let values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .contentModificationDateKey])
+                if values.isRegularFile == true {
+                    let date = values.contentModificationDate ?? Date.distantPast
+                    results.append((fileURL, date))
+                }
+            } catch {
+                continue
+            }
+        }
+        results.sort { $0.date > $1.date }
+        recentNotebooks = results.map { $0.url }
     }
 
     func sendNotebookJSON(named name: String) async {
