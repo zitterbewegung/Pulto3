@@ -192,6 +192,7 @@ struct EnhancedActiveWindowsView: View {
     let showInspector: Bool
     let onHomeButtonTap: () -> Void
     let onInspectorToggle: () -> Void
+    let onImportUSDZ: () -> Void
 
     // Add Jupyter server settings
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
@@ -373,6 +374,7 @@ struct EnhancedActiveWindowsView: View {
                     if showNavigationView {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(.blue.opacity(0.3), lineWidth: 1)
+                            .allowsHitTesting(false)
                     }
                 }
 
@@ -421,6 +423,17 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Add Window")
+
+                    Button(action: {
+                        onImportUSDZ()
+                    }) {
+                        Image(systemName: "cube.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Import 3D Model (USDZ)")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -501,6 +514,7 @@ struct EnhancedActiveWindowsView: View {
                     if showInspector {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(.blue.opacity(0.3), lineWidth: 1)
+                            .allowsHitTesting(false)
                     }
                 }
                 .help("Toggle inspector")
@@ -1138,6 +1152,9 @@ struct EnvironmentView: View {
     @State private var initialLoadTask: Task<Void, Never>?
     @State private var welcomeTask: Task<Void, Never>?
 
+    // USDZ file import
+    @State private var showingUSDZImporter = false
+
     var body: some View {
         // Main content area
         VStack(spacing: 0) {
@@ -1166,6 +1183,18 @@ struct EnvironmentView: View {
         }
         .singleSheetManager(sheetManager) { sheetType, data in
             AnyView(sheetContent(for: sheetType, data: data))
+        }
+        .fileImporter(isPresented: $showingUSDZImporter,
+                      allowedContentTypes: [.usdz],
+                      allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    importUSDZ(from: url)
+                }
+            case .failure(let error):
+                print("USDZ import error: \(error)")
+            }
         }
     }
 
@@ -1255,6 +1284,10 @@ struct EnvironmentView: View {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showInspector.toggle()
                 }
+            }
+            ,
+            onImportUSDZ: {
+                showingUSDZImporter = true
             }
         )
     }
@@ -1407,6 +1440,37 @@ struct EnvironmentView: View {
         #endif
 
         windowManager.markWindowAsOpened(nextWindowID)
+        nextWindowID += 1
+    }
+
+    @MainActor
+    private func importUSDZ(from url: URL) {
+        let position = WindowPosition(
+            x: 100 + Double(nextWindowID * 20),
+            y: 100 + Double(nextWindowID * 20),
+            z: 0,
+            width: 800,
+            height: 600
+        )
+
+        let windowType: WindowType = .model3d
+        _ = windowManager.createWindow(windowType,
+                                       id: nextWindowID,
+                                       position: position)
+
+        // Tag the window to indicate it was imported and include filename
+        windowManager.addWindowTag(nextWindowID, tag: "Imported")
+        windowManager.addWindowTag(nextWindowID, tag: "3D-Model")
+        windowManager.addWindowTag(nextWindowID, tag: url.lastPathComponent)
+
+        #if os(visionOS)
+        openWindow(id: "volumetric-model3d", value: nextWindowID)
+        #else
+        openWindow(value: NewWindowID.ID(nextWindowID))
+        #endif
+
+        windowManager.markWindowAsOpened(nextWindowID)
+        print("Imported USDZ: \(url.lastPathComponent) -> window #\(nextWindowID)")
         nextWindowID += 1
     }
 

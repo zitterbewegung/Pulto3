@@ -67,7 +67,7 @@ struct EntryPoint: App {
             MainWindowProtector(windowManager: windowManager)
         }
         .windowStyle(.plain)
-        .defaultSize(width: 1_400, height: 900)
+        //.defaultSize(width: 1_400, height: 900)
         .windowResizability(.contentSize)
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)

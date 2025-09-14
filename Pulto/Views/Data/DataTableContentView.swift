@@ -19,6 +19,7 @@ struct DataTableContentView: View {
     @StateObject private var dataFrame: DataFrameModel
     @StateObject private var importer = DataFrameImporter()
     @StateObject private var streamingImporter = StreamingDataFrameImporter()
+    @Environment(\.openWindow) private var openWindow
     
     @State private var selectedCell: (row: Int, col: Int)? = nil
     @State private var hoveredCell: (row: Int, col: Int)? = nil
@@ -34,6 +35,8 @@ struct DataTableContentView: View {
     @State private var showingHistory = false
     @State private var showingExportOptions = false
     @State private var columnWidths: [String: CGFloat] = [:]
+    @State private var hasPresentedInitialImport = false
+    @State private var showingUSDZImporter = false
     
     // Streaming state
     @State private var isStreamingActive = false
@@ -152,6 +155,34 @@ struct DataTableContentView: View {
         .onAppear {
             loadDataFromWindow()
             initializeColumnWidths()
+            
+            // Present import sheet automatically on first creation if no data is present
+            if !hasPresentedInitialImport {
+                hasPresentedInitialImport = true
+                if let windowID = windowID {
+                    if let win = windowManager.getWindow(for: windowID) {
+                        if win.state.dataFrameData == nil {
+                            DispatchQueue.main.async {
+                                showingImportSheet = true
+                            }
+                        }
+                    } else {
+                        // If window not found in manager, still offer import on first open
+                        if initialDataFrame == nil {
+                            DispatchQueue.main.async {
+                                showingImportSheet = true
+                            }
+                        }
+                    }
+                } else {
+                    // No window ID (preview or ad-hoc) — show if no initial data provided
+                    if initialDataFrame == nil {
+                        DispatchQueue.main.async {
+                            showingImportSheet = true
+                        }
+                    }
+                }
+            }
         }
         .onDisappear {
             saveDataToWindow()
@@ -185,6 +216,41 @@ struct DataTableContentView: View {
                     showingChartRecommender = false
                 }
             )
+        }
+        .fileImporter(
+            isPresented: $showingUSDZImporter,
+            allowedContentTypes: [.usdz],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    Task { @MainActor in
+                        do {
+                            let id = windowManager.getNextWindowID()
+                            let position = WindowPosition(x: 100, y: 100, z: 0, width: 800, height: 600)
+                            _ = windowManager.createWindow(.model3d, id: id, position: position)
+
+                            // Create a security-scoped bookmark for the USDZ file
+                            let bookmark = try url.bookmarkData(options: .minimalBookmark)
+                            windowManager.updateUSDZBookmark(for: id, bookmark: bookmark)
+
+                            // Optionally set a placeholder model for immediate UI feedback
+                            let placeholderModel = Model3DData(title: url.lastPathComponent, modelType: "usdz", scale: 1.0)
+                            windowManager.updateWindowModel3D(id, modelData: placeholderModel)
+
+                            windowManager.markWindowAsOpened(id)
+                            #if os(visionOS)
+                            openWindow(id: "volumetric-model3d", value: id)
+                            #endif
+                        } catch {
+                            print("USDZ import failed: \(error)")
+                        }
+                    }
+                }
+            case .failure(let error):
+                print("USDZ file import error: \(error)")
+            }
         }
         .animation(.easeInOut(duration: 0.3), value: showingSidebar)
     }
@@ -266,6 +332,11 @@ struct DataTableContentView: View {
                     Label("Create Chart", systemImage: "chart.xyaxis.line")
                 }
                 .buttonStyle(DataTableButtonStyle(color: .purple))
+                
+                Button(action: { showingUSDZImporter = true }) {
+                    Label("Import USDZ", systemImage: "cube")
+                }
+                .buttonStyle(DataTableButtonStyle(color: .red))
                 
                 Button(action: { showingSidebar.toggle() }) {
                     Label("Details", systemImage: showingSidebar ? "sidebar.right" : "sidebar.left")
@@ -1489,3 +1560,4 @@ struct DataTableButtonStyle: ButtonStyle {
 #Preview {
     DataTableContentView(windowID: 1)
 }
+
