@@ -193,6 +193,8 @@ struct EnhancedActiveWindowsView: View {
     let onHomeButtonTap: () -> Void
     let onInspectorToggle: () -> Void
     let onImportUSDZ: () -> Void
+    let onImportPointCloud: () -> Void
+    let onImportDataFrame: () -> Void
 
     // Add Jupyter server settings
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
@@ -433,7 +435,29 @@ struct EnhancedActiveWindowsView: View {
                             .foregroundStyle(.gray)
                     }
                     .buttonStyle(.plain)
-                    .help("Import 3D Model (USDZ)")
+                    .help("Open 3D Model Window")
+
+                    Button(action: {
+                        onImportPointCloud()
+                    }) {
+                        Image(systemName: "circle.grid.3x3.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Import Point Cloud")
+
+                    Button(action: {
+                        createWindow(.dataFrame)
+                    }) {
+                        Image(systemName: "tablecells")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Add DataFrame Window")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -1152,8 +1176,8 @@ struct EnvironmentView: View {
     @State private var initialLoadTask: Task<Void, Never>?
     @State private var welcomeTask: Task<Void, Never>?
 
-    // USDZ file import
-    @State private var showingUSDZImporter = false
+    @State private var showingPointCloudImporter = false
+    // REMOVED: @State private var showingDataframeImporter = false
 
     var body: some View {
         // Main content area
@@ -1184,18 +1208,27 @@ struct EnvironmentView: View {
         .singleSheetManager(sheetManager) { sheetType, data in
             AnyView(sheetContent(for: sheetType, data: data))
         }
-        .fileImporter(isPresented: $showingUSDZImporter,
-                      allowedContentTypes: [.usdz],
-                      allowsMultipleSelection: false) { result in
+        .fileImporter(
+            isPresented: $showingPointCloudImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    importUSDZ(from: url)
+                    let ext = url.pathExtension.lowercased()
+                    let supported = ["ply", "pcd", "xyz", "pts", "las", "laz", "e57", "npz", "csv"]
+                    if supported.contains(ext) {
+                        importPointCloud(from: url)
+                    } else {
+                        print("Unsupported point cloud file type: \(ext)")
+                    }
                 }
             case .failure(let error):
-                print("USDZ import error: \(error)")
+                print("Point cloud import error: \(error)")
             }
         }
+        // REMOVED: .fileImporter(...) for showingDataframeImporter
     }
 
     // MARK: - Workspace View (broken out to reduce complexity)
@@ -1287,7 +1320,13 @@ struct EnvironmentView: View {
             }
             ,
             onImportUSDZ: {
-                showingUSDZImporter = true
+                createStandardWindow(.model3d)
+            },
+            onImportPointCloud: {
+                showingPointCloudImporter = true
+            },
+            onImportDataFrame: {
+                createStandardWindow(.dataFrame)
             }
         )
     }
@@ -1444,7 +1483,7 @@ struct EnvironmentView: View {
     }
 
     @MainActor
-    private func importUSDZ(from url: URL) {
+    private func importPointCloud(from url: URL) {
         let position = WindowPosition(
             x: 100 + Double(nextWindowID * 20),
             y: 100 + Double(nextWindowID * 20),
@@ -1453,26 +1492,28 @@ struct EnvironmentView: View {
             height: 600
         )
 
-        let windowType: WindowType = .model3d
+        let windowType: WindowType = .pointcloud
         _ = windowManager.createWindow(windowType,
                                        id: nextWindowID,
                                        position: position)
 
         // Tag the window to indicate it was imported and include filename
         windowManager.addWindowTag(nextWindowID, tag: "Imported")
-        windowManager.addWindowTag(nextWindowID, tag: "3D-Model")
+        windowManager.addWindowTag(nextWindowID, tag: "Point-Cloud")
         windowManager.addWindowTag(nextWindowID, tag: url.lastPathComponent)
 
         #if os(visionOS)
-        openWindow(id: "volumetric-model3d", value: nextWindowID)
+        openWindow(id: "volumetric-pointcloud", value: nextWindowID)
         #else
         openWindow(value: NewWindowID.ID(nextWindowID))
         #endif
 
         windowManager.markWindowAsOpened(nextWindowID)
-        print("Imported USDZ: \(url.lastPathComponent) -> window #\(nextWindowID)")
+        print("Imported Point Cloud: \(url.lastPathComponent) -> window #\(nextWindowID)")
         nextWindowID += 1
     }
+
+    // REMOVED: @MainActor private func importDataFrame(from url: URL) { ... }
 
     private func handleWindowAction(_ action: WindowAction, windowId: Int) {
         switch action {
@@ -1751,9 +1792,9 @@ struct PultoHomeContentView: View {
 
         let windowType: StandardWindowType
         switch fileExtension {
-        case "usdz":
+        case "usdz", "usd", "usda", "usdc", "reality":
             windowType = .model3d
-        case "ply", "pcd", "xyz", "pts":
+        case "ply", "pcd", "xyz", "pts", "las", "laz", "e57", "npz", "csv":
             windowType = .pointCloud
         default:
             windowType = .dataFrame // Default fallback
@@ -1780,7 +1821,29 @@ struct PultoHomeContentView: View {
                                        id: newWindowID,
                                        position: position)
 
+        // Tag imported windows
+        switch type {
+        case .model3d:
+            windowManager.addWindowTag(newWindowID, tag: "Imported")
+            windowManager.addWindowTag(newWindowID, tag: "3D-Model")
+            windowManager.addWindowTag(newWindowID, tag: fileURL.lastPathComponent)
+        case .pointCloud:
+            windowManager.addWindowTag(newWindowID, tag: "Imported")
+            windowManager.addWindowTag(newWindowID, tag: "Point-Cloud")
+            windowManager.addWindowTag(newWindowID, tag: fileURL.lastPathComponent)
+        case .dataFrame, .iotDashboard:
+            break
+        }
+
+        #if os(visionOS)
+        if type == .model3d {
+            openWindow(id: "volumetric-model3d", value: newWindowID)
+        } else {
+            openWindow(value: newWindowID)
+        }
+        #else
         openWindow(value: newWindowID)
+        #endif
         windowManager.markWindowAsOpened(newWindowID)
 
         print(" Imported file: \(fileURL.lastPathComponent) as \(type.displayName)")
@@ -2671,3 +2734,4 @@ struct SettingsSheetWrapper: View {
 struct EnvironmentView_Previews: PreviewProvider {
     static var previews: some View { EnvironmentView() }
 }
+
