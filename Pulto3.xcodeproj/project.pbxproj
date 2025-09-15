@@ -88,6 +88,8 @@
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
 		DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointCloudShaders.metal; sourceTree = "<group>"; };
 		DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstancedPointCloudRenderer.swift; sourceTree = "<group>"; };
+		DC743D992E77B08A00C24529 /* PointCloudRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudRendererView.swift; sourceTree = "<group>"; };
+		DC743D9A2E77B09600C24529 /* PointCloudIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudIO.swift; sourceTree = "<group>"; };
 		DC7630212E17017200BE77CD /* DEV.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEV.md; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
@@ -244,6 +246,8 @@
 				DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */,
 				DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */,
 				DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */,
+				DC743D992E77B08A00C24529 /* PointCloudRendererView.swift */,
+				DC743D9A2E77B09600C24529 /* PointCloudIO.swift */,
 			);
 			sourceTree = "<group>";
 		};

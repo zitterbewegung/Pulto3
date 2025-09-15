@@ -10,6 +10,10 @@ import Charts
 import UniformTypeIdentifiers
 import RealityKit
 
+#if canImport(ObjectCapture)
+import ObjectCapture
+#endif
+
 // ─────────────────────────────────────────────────────────────
 // MARK: - Window metadata
 // ─────────────────────────────────────────────────────────────
@@ -1939,6 +1943,18 @@ struct VolumetricPointCloudView: View {
     var body: some View {
         if let window = manager.getWindow(for: windowID),
            let pointCloudData = window.state.pointCloudData {
+            #if canImport(ObjectCapture) && os(visionOS)
+            // Prefer ObjectCapturePointCloudView on visionOS when available
+            // Convert our points to SIMD3<Float>
+            let points: [SIMD3<Float>] = pointCloudData.simplePoints
+            ObjectCapturePointCloudView(points: points)
+                .ornament(attachmentAnchor: .scene(.bottom)) {
+                    Text(pointCloudData.title)
+                        .font(.headline)
+                        .padding()
+                }
+            #else
+            // Fallback: RealityKit sphere-based renderer
             RealityView { content in
                 let root = Entity()
 
@@ -1957,6 +1973,7 @@ struct VolumetricPointCloudView: View {
                     .font(.headline)
                     .padding()
             }
+            #endif
         } else {
             Text("No point cloud data available")
                 .font(.title)
