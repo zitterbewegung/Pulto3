@@ -633,6 +633,14 @@ struct ProjectAwareEnvironmentView: View {
                     }
                     .help("Import Point Cloud (CSV / PLY / PCD / XYZ)")
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        openPointCloudDemo()
+                    } label: {
+                        Label("Point Cloud Demo", systemImage: "circle.grid.3x3.fill")
+                    }
+                    .help("Open Point Cloud Demo View")
+                }
             }
             .fileImporter(
                 isPresented: $showPointCloudImporter,
@@ -846,5 +854,24 @@ struct ProjectAwareEnvironmentView: View {
         #endif
 
         print("✅ Imported point cloud (\(pointCloudData.totalPoints) points) from \(url.lastPathComponent)")
+    }
+
+    // REPLACED FUNCTION BODY BELOW:
+    private func openPointCloudDemo() {
+        // Create a point cloud window ID for tracking/demo state
+        let newID = windowManager.getNextWindowID()
+        _ = windowManager.createWindow(.pointcloud, id: newID)
+        windowManager.addWindowTag(newID, tag: "Demo-PointCloud")
+        windowManager.updateWindowContent(newID, content: "Point Cloud Demo Window")
+
+        // Always open the 2D window (handled by WindowGroup(for: NewWindowID.ID.self))
+        openWindow(value: newID)
+
+        #if os(visionOS)
+        // Also open the volumetric demo window that hosts PointCloudPlotView
+        openWindow(id: "volumetric-pointclouddemo", value: newID)
+        #endif
+
+        print("🪟 Opened Point Cloud Demo windows for ID #\(newID)")
     }
 }
