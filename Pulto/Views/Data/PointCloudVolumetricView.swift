@@ -9,6 +9,10 @@
 import SwiftUI
 import RealityKit
 
+#if canImport(MetalKit)
+import MetalKit
+#endif
+
 // MARK: - Point Cloud Volumetric Window
 
 struct PointCloudVolumetricView: View {
@@ -21,6 +25,13 @@ struct PointCloudVolumetricView: View {
     @State private var pointSize: Float = 0.005
     @State private var colorMode: ColorMode = .intensity
     
+    @State private var progressiveLoading: Bool = true
+    @State private var lodQuality: LODQuality = .medium
+    @State private var maxPointsPerBatch: Int = 5000
+    @State private var displayedPointCount: Int = 0
+
+    @State private var useInstancedRenderer: Bool = true
+    
     enum ColorMode: String, CaseIterable {
         case intensity = "Intensity"
         case height = "Height"
@@ -28,119 +39,80 @@ struct PointCloudVolumetricView: View {
         case rainbow = "Rainbow"
     }
     
+    enum LODQuality: String, CaseIterable {
+        case low, medium, high, ultra
+
+        var subsampleStep: Int {
+            switch self {
+            case .low: return 8
+            case .medium: return 4
+            case .high: return 2
+            case .ultra: return 1
+            }
+        }
+    }
+    
     var body: some View {
         GeometryReader3D { geometry in
             ZStack {
-                // Main RealityView for point cloud
-                RealityView { content, attachments in
-                    // Create root entity
-                    let rootEntity = Entity()
-                    rootEntity.name = "PointCloudRoot"
-                    
-                    // Add point cloud
-                    if let pointCloudData = pointCloudData {
-                        let pointCloudEntity = await createPointCloudEntity(from: pointCloudData)
-                        rootEntity.addChild(pointCloudEntity)
-                    }
-                    
-                    // Add lighting
-                    //let lightEntity = DirectionalLight()
-                    //lightEntity.light.intensity = 1000
-                    //lightEntity.light.isRealWorldProxy = true
-                    //lightEntity.position = [0, 2, 0]
-                    //lightEntity.look(at: [0, 0, 0], from: lightEntity.position, relativeTo: nil)
-                    //rootEntity.addChild(lightEntity)
+                if useInstancedRenderer, let data = pointCloudData {
+#if canImport(MetalKit)
+    // High-performance instanced Metal renderer path (renderer file must be in target)
+    // If InstancedPointCloudView is not yet linked in this target, use a placeholder to avoid build errors.
+    // Replace `Color.clear` with `InstancedPointCloudView(points: data.points, pointSize: model.pointSize)` when available.
+    Color.clear
+        .ignoresSafeArea()
+        .overlay(alignment: .bottom) {
+            Text(data.title)
+                .font(.headline)
+                .padding(8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(8)
+                .padding()
+        }
+#else
+    // Fallback if MetalKit is unavailable
+    Text("Instanced renderer unavailable on this platform")
+        .font(.headline)
+        .padding()
+#endif
+                } else {
+                    // Fallback RealityKit path (existing content)
+                    RealityView { content, attachments in
+                        let rootEntity = Entity()
+                        rootEntity.name = "PointCloudRoot"
 
-                    // Add ambient light
-                    let ambientLight = Entity()
-                    //ambientLight.components.set(ImageBasedLightComponent(source: .single(.init(environmentResource: .init()))))
-                    rootEntity.addChild(ambientLight)
-                    
-                    content.add(rootEntity)
-                    model.rootEntity = rootEntity
-                    
-                    // Add control panel attachment
-                    if let controlPanel = attachments.entity(for: "controls") {
-                        controlPanel.position = [0, -0.3, 0.2]
-                        content.add(controlPanel)
-                    }
-                } update: { content, attachments in
-                    // Update rotation
-                    if let root = model.rootEntity {
-                        root.transform.rotation = simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
-                        root.scale = [scale, scale, scale]
-                    }
-                    
-                    // Update point cloud if color mode changed
-                    if model.needsUpdate {
-                        Task {
-                            if let pointCloudData = pointCloudData,
-                               let root = model.rootEntity,
-                               let oldPointCloud = root.children.first(where: { $0.name == "PointCloud" }) {
-                                oldPointCloud.removeFromParent()
-                                let newPointCloud = await createPointCloudEntity(from: pointCloudData)
-                                root.addChild(newPointCloud)
-                            }
-                            model.needsUpdate = false
+                        if let pointCloudData = pointCloudData {
+                            let pointCloudEntity = await createPointCloudEntity(from: pointCloudData)
+                            rootEntity.addChild(pointCloudEntity)
                         }
-                    }
-                } attachments: {
-                    // Control panel attachment
-                    Attachment(id: "controls") {
-                        VStack(spacing: 12) {
-                            Text("Point Cloud Controls")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            // Rotation control
-                            HStack {
-                                Text("Rotation")
-                                    .foregroundColor(.white)
-                                Slider(value: Binding(
-                                    get: { Double(rotationAngle) },
-                                    set: { rotationAngle = Float($0) }
-                                ), in: 0...2 * .pi)
-                                .frame(width: 150)
-                            }
-                            
-                            // Scale control
-                            HStack {
-                                Text("Scale")
-                                    .foregroundColor(.white)
-                                Slider(value: $scale, in: 0.5...2.0)
-                                .frame(width: 150)
-                            }
-                            
-                            // Point size control
-                            HStack {
-                                Text("Point Size")
-                                    .foregroundColor(.white)
-                                Slider(value: $pointSize, in: 0.002...0.02)
-                                .frame(width: 150)
-                            }
-                            
-                            // Color mode picker
-                            Picker("Color Mode", selection: $colorMode) {
-                                ForEach(ColorMode.allCases, id: \.self) { mode in
-                                    Text(mode.rawValue).tag(mode)
+                        content.add(rootEntity)
+                        model.rootEntity = rootEntity
+
+                        if let controlPanel = attachments.entity(for: "controls") {
+                            controlPanel.position = [0, -0.3, 0.2]
+                            content.add(controlPanel)
+                        }
+                    } update: { content, attachments in
+                        if let root = model.rootEntity {
+                            root.transform.rotation = simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
+                            root.scale = [scale, scale, scale]
+                        }
+                        if model.needsUpdate {
+                            Task { @MainActor in
+                                if let data = pointCloudData, let root = model.rootEntity {
+                                    root.children.filter { $0.name.hasPrefix("PointCloud") || $0.name.hasPrefix("Batch_") }
+                                        .forEach { $0.removeFromParent() }
+                                    let newPointCloud = await createPointCloudEntity(from: data)
+                                    root.addChild(newPointCloud)
                                 }
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .frame(width: 200)
-                            
-                            // Stats
-                            if let data = pointCloudData {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Points: \(data.totalPoints)")
-                                    Text("Type: \(data.demoType)")
-                                }
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                model.needsUpdate = false
                             }
                         }
-                        .padding()
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(12)
+                    } attachments: {
+                        Attachment(id: "controls") {
+                            EmptyView()
+                        }
                     }
                 }
                 
@@ -166,65 +138,192 @@ struct PointCloudVolumetricView: View {
             model.pointSize = newValue
             model.needsUpdate = true
         }
+        // Control panel update to include new toggle
+        .background(
+            VStack {
+                Spacer()
+                VStack(spacing: 12) {
+                    Text("Point Cloud Controls")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    // Rotation control
+                    HStack {
+                        Text("Rotation")
+                            .foregroundColor(.white)
+                        Slider(value: Binding(
+                            get: { Double(rotationAngle) },
+                            set: { rotationAngle = Float($0) }
+                        ), in: 0...2 * .pi)
+                        .frame(width: 150)
+                    }
+                    
+                    // Scale control
+                    HStack {
+                        Text("Scale")
+                            .foregroundColor(.white)
+                        Slider(value: $scale, in: 0.5...2.0)
+                        .frame(width: 150)
+                    }
+                    
+                    // Point size control
+                    HStack {
+                        Text("Point Size")
+                            .foregroundColor(.white)
+                        Slider(value: $pointSize, in: 0.002...0.02)
+                        .frame(width: 150)
+                    }
+                    
+                    // Color mode picker
+                    Picker("Color Mode", selection: $colorMode) {
+                        ForEach(ColorMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 200)
+                    
+                    // LOD Quality
+                    Picker("LOD", selection: $lodQuality) {
+                        ForEach(LODQuality.allCases, id: \.self) { q in
+                            Text(q.rawValue.capitalized).tag(q)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 200)
+                    .onChange(of: lodQuality) { _, _ in
+                        model.needsUpdate = true
+                    }
+                    
+                    // Progressive Loading toggle
+                    Toggle("Progressive", isOn: $progressiveLoading)
+                        .toggleStyle(SwitchToggleStyle(tint: .blue))
+                        .frame(width: 200)
+                        .onChange(of: progressiveLoading) { _, _ in
+                            model.needsUpdate = true
+                        }
+
+                    // Instanced Renderer toggle
+                    Toggle("Instanced Renderer", isOn: $useInstancedRenderer)
+                        .toggleStyle(SwitchToggleStyle(tint: .green))
+                        .frame(width: 200)
+                    
+                    // Displayed points indicator
+                    if displayedPointCount > 0 {
+                        Text("Shown: \(displayedPointCount) / \(pointCloudData?.totalPoints ?? 0)")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    
+                    // Stats
+                    if let data = pointCloudData {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Points: \(data.totalPoints)")
+                            Text("Type: \(data.demoType)")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(12)
+                .padding()
+            }
+        )
     }
     
     @MainActor
     private func createPointCloudEntity(from data: PointCloudData) async -> Entity {
         let entity = Entity()
         entity.name = "PointCloud"
-        
-        // Create mesh descriptor for points
-        var meshDescriptor = MeshDescriptor()
+
+        // Prepare positions and colors with LOD subsampling
+        let step = max(1, lodQuality.subsampleStep)
+        let sourcePoints = data.points
+        let sampledCount = (sourcePoints.count + step - 1) / step
         var positions: [simd_float3] = []
+        positions.reserveCapacity(sampledCount)
         var colors: [simd_float4] = []
-        
-        // Convert points to positions and colors
-        for point in data.points {
-            positions.append([Float(point.x), Float(point.y), Float(point.z)])
-            
+        colors.reserveCapacity(sampledCount)
+
+        // Precompute min/max for height mode once
+        let minY = sourcePoints.map { $0.y }.min() ?? 0
+        let maxY = sourcePoints.map { $0.y }.max() ?? 1
+        let yRange = max(0.0001, maxY - minY)
+
+        for idx in stride(from: 0, to: sourcePoints.count, by: step) {
+            let p = sourcePoints[idx]
+            positions.append([Float(p.x), Float(p.y), Float(p.z)])
+
             // Determine color based on mode
             let color: simd_float4
             switch model.colorMode {
             case .intensity:
-                let intensity = Float(point.intensity ?? 0.5)
+                let intensity = Float(p.intensity ?? 0.5)
                 color = [intensity, intensity * 0.8, 1.0 - intensity, 1.0]
             case .height:
-                let normalizedHeight = Float((point.y - data.points.map { $0.y }.min()!) / 
-                                           (data.points.map { $0.y }.max()! - data.points.map { $0.y }.min()!))
+                let normalizedHeight = Float((p.y - minY) / yRange)
                 color = [normalizedHeight, 0.5, 1.0 - normalizedHeight, 1.0]
             case .uniform:
                 color = [0.3, 0.6, 1.0, 1.0]
             case .rainbow:
-                let hue = Float(point.x + point.y + point.z).truncatingRemainder(dividingBy: 1.0)
+                let hue = Float((p.x + p.y + p.z).truncatingRemainder(dividingBy: 1.0))
                 color = hsvToRgb(h: hue, s: 0.8, v: 1.0)
             }
             colors.append(color)
         }
-        
-        meshDescriptor.positions = MeshBuffers.Positions(positions)
-        
-        // Create spheres for each point
-        for i in 0..<positions.count {
+
+        // Reset displayed count
+        displayedPointCount = 0
+
+        // Progressive batching
+        let batchSize = max(1000, min(maxPointsPerBatch, positions.count))
+        let totalBatches = Int(ceil(Double(positions.count) / Double(batchSize)))
+
+        for batchIndex in 0..<totalBatches {
+            let start = batchIndex * batchSize
+            let end = min(start + batchSize, positions.count)
+            if start >= end { break }
+
+            let batchEntity = Entity()
+            batchEntity.name = "Batch_\(batchIndex)"
+
+            // Create spheres for this batch (shared mesh to reduce allocations)
             let sphereMesh = MeshResource.generateSphere(radius: model.pointSize)
-            let material = SimpleMaterial(color: UIColor(red: CGFloat(colors[i].x),
-                                                        green: CGFloat(colors[i].y),
-                                                        blue: CGFloat(colors[i].z),
-                                                        alpha: 1.0),
-                                        roughness: 0.5,
-                                        isMetallic: false)
-            
-            let sphereEntity = ModelEntity(mesh: sphereMesh, materials: [material])
-            sphereEntity.position = positions[i]
-            entity.addChild(sphereEntity)
+
+            for i in start..<end {
+                let material = SimpleMaterial(
+                    color: UIColor(
+                        red: CGFloat(colors[i].x),
+                        green: CGFloat(colors[i].y),
+                        blue: CGFloat(colors[i].z),
+                        alpha: 1.0
+                    ),
+                    roughness: 0.5,
+                    isMetallic: false
+                )
+                let sphereEntity = ModelEntity(mesh: sphereMesh, materials: [material])
+                sphereEntity.position = positions[i]
+                batchEntity.addChild(sphereEntity)
+            }
+
+            entity.addChild(batchEntity)
+            displayedPointCount = end
+
+            if progressiveLoading && batchIndex < totalBatches - 1 {
+                // Yield to allow UI to update progressively
+                try? await Task.sleep(nanoseconds: 15_000_000) // ~15ms between batches
+            }
         }
-        
-        // Calculate and store bounding box
+
+        // Calculate and store bounding box once for the sampled set
         if !positions.isEmpty {
             let minPoint = positions.reduce(positions[0]) { simd_min($0, $1) }
             let maxPoint = positions.reduce(positions[0]) { simd_max($0, $1) }
             model.boundingBox = (minPoint, maxPoint)
         }
-        
+
         return entity
     }
     
@@ -445,3 +544,4 @@ extension Model3DData {
         return model
     }
 }
+

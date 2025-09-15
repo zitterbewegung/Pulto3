@@ -11,6 +11,7 @@
 		DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* OpenWindowView.swift */; };
 		DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */; };
 		DC1CD6752E779D5C002EDE42 /* PointCloudRendererView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */; };
+		DC1CD6782E77A128002EDE42 /* PointCloudSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */; };
 		DC2408592E2EC6CC0062838C /* Composer.icon in Resources */ = {isa = PBXBuildFile; fileRef = DC2408582E2EC6CC0062838C /* Composer.icon */; };
 		DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC28CF662E02673000F3705E /* LoadUnloadTest.swift */; };
 		DC28CF6C2E026B4300F3705E /* template.ipynb in Resources */ = {isa = PBXBuildFile; fileRef = DC28CF6B2E026B4300F3705E /* template.ipynb */; };
@@ -63,6 +64,8 @@
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
 		DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudView.swift; sourceTree = "<group>"; };
 		DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudRendererView.swift; sourceTree = "<group>"; };
+		DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDataStore.swift; sourceTree = "<group>"; };
+		DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudSupport.swift; sourceTree = "<group>"; };
 		DC2408582E2EC6CC0062838C /* Composer.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Composer.icon; sourceTree = "<group>"; };
 		DC28CF662E02673000F3705E /* LoadUnloadTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadUnloadTest.swift; sourceTree = "<group>"; };
 		DC28CF6B2E026B4300F3705E /* template.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = template.ipynb; sourceTree = "<group>"; };
@@ -83,6 +86,8 @@
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
+		DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointCloudShaders.metal; sourceTree = "<group>"; };
+		DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstancedPointCloudRenderer.swift; sourceTree = "<group>"; };
 		DC7630212E17017200BE77CD /* DEV.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEV.md; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
@@ -236,6 +241,9 @@
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
 				DC60FCCD2DFF928500996C50 /* Frameworks */,
 				DCA833952E0E21E200D32258 /* MARKETING.md */,
+				DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */,
+				DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */,
+				DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -317,6 +325,7 @@
 				DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */,
 				DCDE06E92E77535B000FCBD1 /* PointCloudRenderer.swift */,
 				DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */,
+				DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -454,6 +463,7 @@
 				DC28CF672E02673000F3705E /* LoadUnloadTest.swift in Sources */,
 				DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */,
 				DCAEF7CB2E5F6EFF009551A3 /* PultoHomeView.swift in Sources */,
+				DC1CD6782E77A128002EDE42 /* PointCloudSupport.swift in Sources */,
 				DC1CD6752E779D5C002EDE42 /* PointCloudRendererView.swift in Sources */,
 				DCDD6FAD2E1EF19500E752A0 /* Model3DImportView.swift in Sources */,
 				DC28EA392E036B7D00586089 /* NotebookImportDialog.swift in Sources */,

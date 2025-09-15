@@ -98,7 +98,7 @@ struct EntryPoint: App {
                 .environmentObject(windowManager)
         }
         .windowStyle(.plain)
-        .defaultSize(width: 1_000, height: 700)
+        //.defaultSize(width: 1_000, height: 700)
     }
 
     // MARK: - visionOS-only Scenes
@@ -107,22 +107,30 @@ struct EntryPoint: App {
     private var volumetricWindows: some SwiftUI.Scene {
         // Point-cloud volume
         WindowGroup(id: "volumetric-pointcloud", for: Int.self) { $id in
-            if
-                let id = id,
-                let win = windowManager.getWindow(for: id),
-                let pointCloudData = win.state.pointCloudData
-            {
-                PointCloudVolumetricView(
-                    windowID: id,
-                    pointCloudData: pointCloudData
-                )
-                .environmentObject(windowManager)
-                .environmentObject(entityManager)
-                .onAppear {
-                    windowManager.markWindowAsOpened(id)
-                }
-                .onDisappear {
-                    windowManager.markWindowAsClosed(id)
+            if let id = id {
+                if let win = windowManager.getWindow(for: id), let pointCloudData = win.state.pointCloudData {
+                    PointCloudVolumetricView(
+                        windowID: id,
+                        pointCloudData: pointCloudData
+                    )
+                    .environmentObject(windowManager)
+                    .environmentObject(entityManager)
+                    .ornament(attachmentAnchor: .scene(.bottom)) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "circle.grid.3x3.fill")
+                            Text("Points: \(pointCloudData.totalPoints)")
+                                .font(.caption)
+                                .fontDesign(.monospaced)
+                        }
+                        .padding(8)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .onAppear { windowManager.markWindowAsOpened(id) }
+                    .onDisappear { windowManager.markWindowAsClosed(id) }
+                } else {
+                    // Nothing to render yet
+                    EmptyView()
                 }
             } else {
                 EmptyView()
@@ -436,8 +444,8 @@ struct EntryPoint: App {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
-            print("🪟 Opened volumetric-pointclouddemo with ID: \(pointCloudDemoWindowID)")
+            openWindow(id: "volumetric-pointcloud", value: pointCloudDemoWindowID)
+            print("🪟 Opened volumetric-pointcloud with ID: \(pointCloudDemoWindowID)")
         }
         #endif
     }
@@ -661,7 +669,7 @@ struct ProjectAwareEnvironmentView: View {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            openWindow(id: "volumetric-pointclouddemo", value: pointCloudDemoWindowID)
+            openWindow(id: "volumetric-pointcloud", value: pointCloudDemoWindowID)
         }
         #endif
     }
@@ -768,3 +776,4 @@ struct ProjectAwareEnvironmentView: View {
         }
     }
 }
+

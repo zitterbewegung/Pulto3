@@ -1749,7 +1749,7 @@ struct NewWindow: View {
 
                                 Button {
                                     // Open the volumetric window (visionOS-safe)
-                                    openWindow(id: "volumetric-pointclouddemo", value: id)
+                                    openWindow(id: "volumetric-pointcloud", value: id)
                                 } label: {
                                     Label("Open Point Cloud View", systemImage: "view.3d")
                                         .font(.headline)
@@ -1802,7 +1802,7 @@ struct NewWindow: View {
                                             windowTypeManager.updateWindowPointCloud(id, pointCloud: pointCloudData)
 
                                             // Automatically open the volumetric view with the loaded data
-                                            openWindow(id: "volumetric-pointclouddemo", value: id)
+                                            openWindow(id: "volumetric-pointcloud", value: id)
 
                                             print("Successfully imported point cloud: \(url.lastPathComponent)")
                                         }

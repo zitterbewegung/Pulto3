@@ -211,18 +211,41 @@ fileprivate final class PointCloudScene {
 
     func build(points: [SIMD3<Float>], pointRadius: Float) {
         root.addChild(container)
-        pointMesh = try? MeshResource.generateSphere(radius: pointRadius)
-        pointMaterial = SimpleMaterial(color: .white, roughness: 0.4, isMetallic: false)
+        // Early exit for empty input
+        guard !points.isEmpty else { return }
 
         // Center the cloud by subtracting mean
-        let centroid = points.reduce(SIMD3<Float>(repeating: 0), +) / Float(max(points.count, 1))
+        let centroid = points.reduce(SIMD3<Float>(repeating: 0), +) / Float(points.count)
         let centered = points.map { $0 - centroid }
 
-        // Add each point as a very small sphere entity.
-        // Note: For very large clouds, consider batching/instancing techniques.
+        // Compute bounding box of centered points
+        var minV = SIMD3<Float>(Float.greatestFiniteMagnitude, Float.greatestFiniteMagnitude, Float.greatestFiniteMagnitude)
+        var maxV = SIMD3<Float>(-Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude)
         for p in centered {
+            minV = simd_min(minV, p)
+            maxV = simd_max(maxV, p)
+        }
+        let extent = maxV - minV
+        let maxExtent = max(extent.x, extent.y, extent.z)
+
+        // Fit uniformly into a target cube inside the volumetric window
+        // Target ~30cm cube to be comfortably visible in a 40cm volumetric window
+        let targetExtent: Float = 0.30
+        let scaleFactor: Float = (maxExtent > 0) ? (targetExtent / maxExtent) : 1.0
+
+        // Choose an effective point radius based on the fitted size and density
+        // Aim for ~250 points across the largest extent
+        let suggestedRadius = (targetExtent / 250)
+        let effectiveRadius = max(0.0005, min(0.01, suggestedRadius))
+
+        // Build mesh with effective radius (override provided pointRadius so points remain visible)
+        pointMesh = try? MeshResource.generateSphere(radius: effectiveRadius)
+
+        // Add each point as a small sphere, scaled to fit the volume
+        for p in centered {
+            let sp = p * scaleFactor
             let model = ModelEntity(mesh: pointMesh ?? MeshResource.generateSphere(radius: pointRadius), materials: [pointMaterial])
-            model.position = p
+            model.position = sp
             pointEntities.append(model)
             container.addChild(model)
         }
