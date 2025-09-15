@@ -1,6 +1,8 @@
 import SwiftUI
 import RealityKit
 import UIKit
+import UniformTypeIdentifiers
+
 
 // MARK: - Charts View
 struct ChartsView: View {
@@ -12,6 +14,12 @@ struct ChartsView: View {
     @State private var visualizationSettings = VisualizationSettings()
     @State private var showCodeSidebar = false
     @State private var generatedCode = ""
+    @State private var isImporting = false
+    @State private var importedPoints: [PointCloudPoint] = []
+    @State private var importedFileName: String? = nil
+    @State private var showingImportAlert = false
+    @State private var importAlertTitle = ""
+    @State private var importAlertMessage = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -57,12 +65,7 @@ struct ChartsView: View {
                 }
 
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button(action: { showCodeSidebar.toggle() }) {
-                        Image(systemName: showCodeSidebar ? "chevron.right" : "chevron.left")
-                    }
-                    .help("Toggle Code Sidebar")
-
-                    Button(action: {}) {
+                    Button(action: { isImporting = true }) {
                         Image(systemName: "square.and.arrow.down")
                     }
                     .help("Import Data")
@@ -100,6 +103,37 @@ struct ChartsView: View {
             generateChartsCode()
         }
         .animation(.easeInOut(duration: 0.3), value: showCodeSidebar)
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: allowedPointCloudTypes(), allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else {
+                    importAlertTitle = "No File Selected"
+                    importAlertMessage = "Please choose a file to import."
+                    showingImportAlert = true
+                    return
+                }
+                do {
+                    let (points, _) = try parsePointCloud(from: url)
+                    importedPoints = points
+                    importedFileName = url.lastPathComponent
+                } catch {
+                    importAlertTitle = "Import Failed"
+                    importAlertMessage = error.localizedDescription
+                    showingImportAlert = true
+                    print("Import failed: \(error.localizedDescription)")
+                }
+            case .failure(let error):
+                importAlertTitle = "Import Failed"
+                importAlertMessage = error.localizedDescription
+                showingImportAlert = true
+                print("Import failed: \(error.localizedDescription)")
+            }
+        }
+        .alert(importAlertTitle, isPresented: $showingImportAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importAlertMessage)
+        }
     }
 
     // Code Sidebar View
@@ -241,7 +275,7 @@ struct ChartsView: View {
                     ax.plot_surface(X + center[0], Y + center[1], 
                                   np.ones_like(X) * (z + center[2]), alpha=0.6)
                 for y in r:
-                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1], 
+                    ax.plot_surface(X + center[0], np.ones_like(X) * (y + center[1]), 
                                   Y + center[2], alpha=0.6)
                 for x in r:
                     ax.plot_surface(np.ones_like(X) * (x + center[0]), X + center[1], 
@@ -269,7 +303,7 @@ struct ChartsView: View {
             if settings['show_axes']:
                 ax.plot([0, 3], [0, 0], [0, 0], 'r-', linewidth=3, label='X')
                 ax.plot([0, 0], [0, 3], [0, 0], 'g-', linewidth=3, label='Y') 
-                ax.plot([0, 0], [0, 0, [0, 3], 'b-', linewidth=3, label='Z')
+                ax.plot([0, 0], [0, 0], [0, 3], 'b-', linewidth=3, label='Z')
                 ax.legend()
             
             ax.set_xlabel('X')
@@ -405,6 +439,57 @@ struct ChartsView: View {
 
         generatedCode = code
     }
+
+    private func allowedPointCloudTypes() -> [UTType] {
+        var types: [UTType] = [.commaSeparatedText, .plainText]
+        if let xyz = UTType(filenameExtension: "xyz") { types.append(xyz) }
+        if let ply = UTType(filenameExtension: "ply") { types.append(ply) }
+        if let txt = UTType(filenameExtension: "txt") { types.append(txt) }
+        return types
+    }
+    
+    private func parsePointCloud(from url: URL) throws -> ([PointCloudPoint], String) {
+        let data = try Data(contentsOf: url)
+        guard let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .ascii) else {
+            throw NSError(domain: "PointCloudImport", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unsupported text encoding"]) }
+
+        var points: [PointCloudPoint] = []
+        points.reserveCapacity(10_000)
+
+        let lines = content.split(whereSeparator: { $0.isNewline })
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty { continue }
+            if line.hasPrefix("#") { continue }
+            // Split by comma or whitespace
+            let parts = line.contains(",") ? line.split(separator: ",") : line.split(whereSeparator: { $0.isWhitespace })
+            let nums = parts.compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            if nums.count < 3 { continue }
+
+            let x = nums[0]
+            let y = nums[1]
+            let z = nums[2]
+            let intensity = nums.count >= 4 ? min(max(nums[3], 0.0), 1.0) : 1.0
+            let r = nums.count >= 6 ? nums[4] / 255.0 : 1.0
+            let g = nums.count >= 6 ? nums[5] / 255.0 : 1.0
+            let b = nums.count >= 7 ? nums[6] / 255.0 : (nums.count >= 6 ? nums[5] / 255.0 : 1.0)
+
+            points.append(PointCloudPoint(x: x, y: y, z: z, intensity: intensity, classification: 0, red: r, green: g, blue: b))
+        }
+
+        // Normalize around centroid for nicer initial framing
+        if !points.isEmpty {
+            let cx = points.map { $0.x }.reduce(0, +) / Double(points.count)
+            let cy = points.map { $0.y }.reduce(0, +) / Double(points.count)
+            let cz = points.map { $0.z }.reduce(0, +) / Double(points.count)
+            points = points.map { p in
+                PointCloudPoint(x: p.x - cx, y: p.y - cy, z: p.z - cz, intensity: p.intensity, classification: p.classification, red: p.red, green: p.green, blue: p.blue)
+            }
+        }
+
+        let summary = "Imported \(points.count) points from \(url.lastPathComponent)"
+        return (points, summary)
+    }
 }
 
 // MARK: - Visualization Types
@@ -428,28 +513,9 @@ enum VisualizationType: String, CaseIterable, Identifiable {
 struct SidebarView: View {
     @Binding var selectedDataset: String?
     @Binding var visualizationType: VisualizationType
-    @State private var datasets = [
-        Dataset(name: "Temperature Heatmap", type: .twoDimensional),
-        Dataset(name: "Elevation Map", type: .twoDimensional),
-        Dataset(name: "Scatter Analysis", type: .twoDimensional),
-        Dataset(name: "City Model", type: .threeDimensional),
-        Dataset(name: "Mechanical Part", type: .threeDimensional),
-        Dataset(name: "Building Structure", type: .threeDimensional),
-        Dataset(name: "LiDAR Scan - Street", type: .pointCloud),
-        Dataset(name: "Building Interior", type: .pointCloud),
-        Dataset(name: "Terrain Survey", type: .pointCloud),
-        Dataset(name: "Archaeological Site", type: .pointCloud)
-    ]
 
     var body: some View {
         List(selection: $selectedDataset) {
-            Section("Datasets") {
-                ForEach(datasets.filter { $0.type == visualizationType }) { dataset in
-                    DatasetRow(dataset: dataset)
-                        .tag(dataset.id)
-                }
-            }
-
             Section("Layers") {
                 LayerRow(name: "Base Layer", isVisible: true)
                 LayerRow(name: "Annotations", isVisible: true)
@@ -474,6 +540,7 @@ struct VisualizationView: View {
     let type: VisualizationType
     @Binding var settings: VisualizationSettings
     @State private var cameraPosition: SIMD3<Float> = [0, 5, 10]
+    @State var pointCloudPoints: [PointCloudPoint] = []
 
     var body: some View {
         ZStack {
@@ -1195,7 +1262,7 @@ struct PointCloudView: View {
             lineWidth: 2
         )
 
-        // Y-axis (green) â�� vertical, no rotation
+        // Y-axis (green) — vertical, no rotation
         context.stroke(
             Path { path in
                 path.move(to: CGPoint(x: centerX, y: centerY))
@@ -1272,3 +1339,4 @@ enum Quality: Equatable {
 #Preview("ChartsView", traits: .fixedLayout(width: 1600, height: 900)) {
     ChartsView()
 }
+

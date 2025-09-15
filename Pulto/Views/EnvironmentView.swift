@@ -1179,6 +1179,10 @@ struct EnvironmentView: View {
     @State private var showingPointCloudImporter = false
     // REMOVED: @State private var showingDataframeImporter = false
 
+    @State private var showingPointCloudImportAlert = false
+    @State private var pointCloudImportAlertTitle = ""
+    @State private var pointCloudImportAlertMessage = ""
+
     var body: some View {
         // Main content area
         VStack(spacing: 0) {
@@ -1210,25 +1214,49 @@ struct EnvironmentView: View {
         }
         .fileImporter(
             isPresented: $showingPointCloudImporter,
-            allowedContentTypes: [.item],
+            allowedContentTypes: [
+                .commaSeparatedText,
+                .plainText,
+                .plyFile,
+                .pcdFile,
+                .xyzFile,
+                UTType(filenameExtension: "pts")!,
+                UTType(filenameExtension: "las")!,
+                UTType(filenameExtension: "laz")!,
+                UTType(filenameExtension: "e57")!,
+                UTType(filenameExtension: "npz")!
+            ],
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
-                if let url = urls.first {
-                    let ext = url.pathExtension.lowercased()
-                    let supported = ["ply", "pcd", "xyz", "pts", "las", "laz", "e57", "npz", "csv"]
-                    if supported.contains(ext) {
-                        importPointCloud(from: url)
-                    } else {
-                        print("Unsupported point cloud file type: \(ext)")
-                    }
+                guard let url = urls.first else {
+                    pointCloudImportAlertTitle = "No File Selected"
+                    pointCloudImportAlertMessage = "Please choose a point cloud file to import."
+                    showingPointCloudImportAlert = true
+                    return
+                }
+                let ext = url.pathExtension.lowercased()
+                let supported = ["ply", "pcd", "xyz", "pts", "las", "laz", "e57", "npz", "csv"]
+                if supported.contains(ext) {
+                    importPointCloud(from: url)
+                } else {
+                    pointCloudImportAlertTitle = "Unsupported File Type"
+                    pointCloudImportAlertMessage = "The selected file (\(url.lastPathComponent)) is not a supported point cloud format. Supported: PLY, PCD, XYZ, PTS, LAS/LAZ, E57, NPZ, CSV."
+                    showingPointCloudImportAlert = true
                 }
             case .failure(let error):
+                pointCloudImportAlertTitle = "Import Failed"
+                pointCloudImportAlertMessage = error.localizedDescription
+                showingPointCloudImportAlert = true
                 print("Point cloud import error: \(error)")
             }
         }
-        // REMOVED: .fileImporter(...) for showingDataframeImporter
+        .alert(pointCloudImportAlertTitle, isPresented: $showingPointCloudImportAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(pointCloudImportAlertMessage)
+        }
     }
 
     // MARK: - Workspace View (broken out to reduce complexity)

@@ -1,4 +1,4 @@
-/*import SwiftUI
+import SwiftUI
 import simd
 import Foundation
 
@@ -8,7 +8,7 @@ import RealityKit
 import SceneKit
 #endif
 
-public struct PointCloudRendererView: View {
+public struct LegacyPointCloudRendererView: View {
     @State private var points: [SIMD3<Float>] = []
 
     // MARK: - Initializers
@@ -20,7 +20,7 @@ public struct PointCloudRendererView: View {
 
     /// Initialize with a file URL pointing to a supported point cloud file
     public init(fileURL: URL) {
-        let loadedPoints = PointCloudRendererView.parsePointCloud(fileURL: fileURL)
+        let loadedPoints = LegacyPointCloudRendererView.parsePointCloud(fileURL: fileURL)
         _points = State(initialValue: loadedPoints)
     }
 
@@ -171,26 +171,22 @@ public struct PointCloudRendererView: View {
 
 #if canImport(RealityKit) && os(visionOS)
 
-private struct RealityKitPointCloudView: UIViewRepresentable {
+private struct RealityKitPointCloudView: View {
     let points: [SIMD3<Float>]
 
-    func makeUIView(context: Context) -> RealityView {
-        let view = RealityView(frame: .zero)
-        view.scene.anchors.removeAll()
-        let anchor = AnchorEntity(world: .zero)
-
-        for point in points {
-            let sphere = ModelEntity(mesh: .generateSphere(radius: 0.002), materials: [.color(.white)])
-            sphere.position = SIMD3<Float>(point.x, point.y, point.z)
-            anchor.addChild(sphere)
+    var body: some View {
+        RealityView { content in
+            let anchor = AnchorEntity(world: .zero)
+            for point in points {
+                let sphere = ModelEntity(
+                    mesh: .generateSphere(radius: 0.002),
+                    materials: [SimpleMaterial(color: .white, isMetallic: false)]
+                )
+                sphere.position = point
+                anchor.addChild(sphere)
+            }
+            content.add(anchor)
         }
-
-        view.scene.addAnchor(anchor)
-        return view
-    }
-
-    func updateUIView(_ uiView: RealityView, context: Context) {
-        // No dynamic update needed for now
     }
 }
 
@@ -276,4 +272,27 @@ private struct SceneKitPointCloudView: UIViewRepresentable {
 }
 
 #endif
-*/
+
+
+// MARK: - Previews
+#Preview("Sample Point Cloud") {
+    // Generate a small random sphere of points for preview
+    let count = 2_000
+    let points: [SIMD3<Float>] = (0..<count).map { _ in
+        let theta = Float.random(in: 0..<(2 * .pi))
+        let phi = acos(Float.random(in: -1...1))
+        let r: Float = 0.2
+        let x = r * sin(phi) * cos(theta)
+        let y = r * sin(phi) * sin(theta)
+        let z = r * cos(phi)
+        return SIMD3<Float>(x, y, z)
+    }
+    return LegacyPointCloudRendererView(points: points)
+        .frame(width: 600, height: 400)
+}
+
+#Preview("Empty State") {
+    LegacyPointCloudRendererView(points: [])
+        .frame(width: 400, height: 300)
+}
+

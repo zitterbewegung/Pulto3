@@ -679,9 +679,59 @@ class FlatViewModel: ObservableObject {
 
 
 
+// MARK: - Previews
+#Preview("Control Panel") {
+    ControlWindowView(viewModel: ChartViewModel())
+        .frame(width: 400, height: 600)
+}
 
-// MARK: - Preview Provider
-#Preview {
-    SpatialEditorView()
+#Preview("Draggable Window") {
+    let vm = ChartViewModel()
+    // Ensure at least one window is visible for the preview
+    if !vm.windows.isEmpty {
+        vm.windows[0].isVisible = true
+    }
+    return ZStack {
+        if vm.windows.indices.contains(0) {
+            DraggableWindow(
+                window: vm.windows[0],
+                index: 0,
+                viewModel: vm,
+                draggingOffset: .zero,
+                onDragChanged: { _ in }
+            )
+        }
+    }
+    .frame(width: 500, height: 400)
+}
+
+#Preview("Windows Grid") {
+    struct GridPreview: View {
+        @StateObject var vm = ChartViewModel()
+        var body: some View {
+            ZStack {
+                ForEach(Array(vm.windows.enumerated()), id: \.element.id) { index, window in
+                    if window.isVisible {
+                        DraggableWindow(
+                            window: window,
+                            index: index,
+                            viewModel: vm,
+                            draggingOffset: .zero,
+                            onDragChanged: { _ in }
+                        )
+                    }
+                }
+            }
+            .onAppear {
+                // Show the first 3 windows in a grid for preview
+                for i in 0..<min(3, vm.windows.count) {
+                    vm.windows[i].isVisible = true
+                    vm.windows[i].offset = vm.calculateGridPosition(for: i)
+                    vm.windows[i].rotation = .degrees(0)
+                }
+            }
+        }
+    }
+    return GridPreview()
         .frame(width: 1200, height: 800)
 }

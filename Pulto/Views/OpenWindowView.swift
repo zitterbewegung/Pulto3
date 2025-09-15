@@ -1943,50 +1943,21 @@ struct VolumetricPointCloudView: View {
     var body: some View {
         if let window = manager.getWindow(for: windowID),
            let pointCloudData = window.state.pointCloudData {
-            #if canImport(ObjectCapture) && os(visionOS)
-            // Prefer ObjectCapturePointCloudView on visionOS when available
-            // Convert our points to SIMD3<Float>
-            let points: [SIMD3<Float>] = pointCloudData.simplePoints
-            ObjectCapturePointCloudView(points: points)
-                .ornament(attachmentAnchor: .scene(.bottom)) {
-                    Text(pointCloudData.title)
-                        .font(.headline)
-                        .padding()
-                }
-            #else
-            // Fallback: RealityKit sphere-based renderer
-            RealityView { content in
-                let root = Entity()
-
-                for point in pointCloudData.points {
-                    let color = colorForIntensity(point.intensity)
-                    let material = SimpleMaterial(color: color, isMetallic: false)
-                    let sphere = ModelEntity(mesh: .generateSphere(radius: 0.005), materials: [material])
-                    sphere.position = SIMD3(Float(point.x), Float(point.y), Float(point.z))
-                    root.addChild(sphere)
-                }
-
-                content.add(root)
-            }
-            .ornament(attachmentAnchor: .scene(.bottom)) {
-                Text(pointCloudData.title)
+            // Restore the existing, working volumetric point cloud viewer
+            PointCloudVolumetricView(windowID: windowID, pointCloudData: pointCloudData)
+        } else {
+            VStack(spacing: 12) {
+                Image(systemName: "circle.grid.3x3.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+                Text("No point cloud data available")
                     .font(.headline)
-                    .padding()
+                    .foregroundStyle(.secondary)
+                Text("Import a point cloud or generate a demo to continue.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            #endif
-        } else {
-            Text("No point cloud data available")
-                .font(.title)
-                .foregroundStyle(.red)
-        }
-    }
-
-    private func colorForIntensity(_ intensity: Double?) -> UIColor {
-        if let intensity = intensity {
-            let gray = CGFloat(intensity)
-            return UIColor(white: gray, alpha: 1.0)
-        } else {
-            return .white
+            .padding()
         }
     }
 }

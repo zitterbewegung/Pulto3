@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */; };
 		DC0E89992DE366E900B27198 /* OpenWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E89982DE366E900B27198 /* OpenWindowView.swift */; };
-		DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */; };
+		DC0E899F2DE36A5F00B27198 /* ChartWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0E899E2DE36A5F00B27198 /* ChartWindowView.swift */; };
 		DC1CD6752E779D5C002EDE42 /* PointCloudRendererView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */; };
 		DC1CD6782E77A128002EDE42 /* PointCloudSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */; };
 		DC2408592E2EC6CC0062838C /* Composer.icon in Resources */ = {isa = PBXBuildFile; fileRef = DC2408582E2EC6CC0062838C /* Composer.icon */; };
@@ -21,7 +21,7 @@
 		DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */; };
 		DC575EE12E085D4B0057DB73 /* EnhancedNotebookChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */; };
 		DC5839732E2EC42800B8CD7E /* GoodVibes.txt in Resources */ = {isa = PBXBuildFile; fileRef = DC5839722E2EC42800B8CD7E /* GoodVibes.txt */; };
-		DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */; };
+		DC60FCC02DFF34EE00996C50 /* PointCloudImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC60FCBF2DFF34EE00996C50 /* PointCloudImport.swift */; };
 		DC6365FC2DE4FFEA00F94FA8 /* SpatialMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */; };
 		DC64375A2E5E2E8F00032551 /* startup_sound.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DC6437592E5E2E8F00032551 /* startup_sound.mp3 */; };
 		DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC661B342E04A126005454FE /* SpatialEditorView.swift */; };
@@ -62,7 +62,7 @@
 		DC09C57B2DE3A75E00774D7D /* NotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookChartsView.swift; sourceTree = "<group>"; };
 		DC0E89982DE366E900B27198 /* OpenWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWindowView.swift; sourceTree = "<group>"; };
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
-		DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudView.swift; sourceTree = "<group>"; };
+		DC0E899E2DE36A5F00B27198 /* ChartWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartWindowView.swift; sourceTree = "<group>"; };
 		DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudRendererView.swift; sourceTree = "<group>"; };
 		DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDataStore.swift; sourceTree = "<group>"; };
 		DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudSupport.swift; sourceTree = "<group>"; };
@@ -77,7 +77,7 @@
 		DC575EDC2E079DC30057DB73 /* SaveNotebookDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveNotebookDialog.swift; sourceTree = "<group>"; };
 		DC575EE02E085D4B0057DB73 /* EnhancedNotebookChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedNotebookChartsView.swift; sourceTree = "<group>"; };
 		DC5839722E2EC42800B8CD7E /* GoodVibes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = GoodVibes.txt; sourceTree = "<group>"; };
-		DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		DC60FCBF2DFF34EE00996C50 /* PointCloudImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudImport.swift; sourceTree = "<group>"; };
 		DC60FCCE2DFF928500996C50 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC60FCD02DFF929900996C50 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		DC6365FB2DE4FFEA00F94FA8 /* SpatialMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialMetadata.swift; sourceTree = "<group>"; };
@@ -324,8 +324,8 @@
 				DCCF6DB22E01EC6900C90252 /* WindowChartView.swift */,
 				DCFC32DF2E15DCAF002A2AA4 /* WorkspaceDialog.swift */,
 				DC509DEA2DF12D790097C6DB /* ChartDataPoint.swift */,
-				DC60FCBF2DFF34EE00996C50 /* ChartsView.swift */,
-				DC0E899E2DE36A5F00B27198 /* PointCloudView.swift */,
+				DC60FCBF2DFF34EE00996C50 /* PointCloudImport.swift */,
+				DC0E899E2DE36A5F00B27198 /* ChartWindowView.swift */,
 				DCAEF7CA2E5F6EFF009551A3 /* PultoHomeView.swift */,
 				DCDE06E92E77535B000FCBD1 /* PointCloudRenderer.swift */,
 				DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */,
@@ -478,11 +478,11 @@
 				DC09C57C2DE3A75E00774D7D /* NotebookChartsView.swift in Sources */,
 				DC85D58E2E03AD7E00559301 /* SimpleRestoreDialog.swift in Sources */,
 				DCF74ED02E0619550078C4B8 /* GridConstants.swift in Sources */,
-				DC60FCC02DFF34EE00996C50 /* ChartsView.swift in Sources */,
+				DC60FCC02DFF34EE00996C50 /* PointCloudImport.swift in Sources */,
 				DCF0DDC72DE6989D00D0884D /* AppleSignInView.swift in Sources */,
 				DC28CF6E2E026E2300F3705E /* TemplateNotebook.swift in Sources */,
 				DCDD6FB72E1F1F1E00E752A0 /* ImmersiveWorkspaceView.swift in Sources */,
-				DC0E899F2DE36A5F00B27198 /* PointCloudView.swift in Sources */,
+				DC0E899F2DE36A5F00B27198 /* ChartWindowView.swift in Sources */,
 				DCBB4FAC2E4D79A90094B0BC /* FileImportRowView.swift in Sources */,
 				DC575EDD2E079DC30057DB73 /* SaveNotebookDialog.swift in Sources */,
 				DC661B352E04A126005454FE /* SpatialEditorView.swift in Sources */,

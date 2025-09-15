@@ -8,6 +8,7 @@
 import SwiftUI
 import RealityKit
 import AVFoundation
+import UniformTypeIdentifiers
 
 // MARK: - Notification Extensions
 extension Notification.Name {
@@ -599,6 +600,9 @@ struct MainWindowProtector: View {
 struct ProjectAwareEnvironmentView: View {
     @ObservedObject var windowManager: WindowTypeManager
     @Environment(\.openWindow) private var openWindow
+    
+    @State private var showPointCloudImporter = false
+    @State private var importErrorMessage: String? = nil
 
     var body: some View {
         EnvironmentView()
@@ -619,6 +623,35 @@ struct ProjectAwareEnvironmentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .appDidBecomeActive)) { _ in
                 print("🚀 EnvironmentView received app active notification")
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showPointCloudImporter = true
+                    } label: {
+                        Label("Import Point Cloud", systemImage: "square.and.arrow.down")
+                    }
+                    .help("Import Point Cloud (CSV / PLY / PCD / XYZ)")
+                }
+            }
+            .fileImporter(
+                isPresented: $showPointCloudImporter,
+                allowedContentTypes: [
+                    .commaSeparatedText,
+                    UTType(filenameExtension: "ply") ?? .data,
+                    UTType(filenameExtension: "pcd") ?? .data,
+                    UTType(filenameExtension: "xyz") ?? .data
+                ],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    handlePointCloudImport(url: url)
+                case .failure(let error):
+                    importErrorMessage = error.localizedDescription
+                    print("Error importing point cloud: \(error.localizedDescription)")
+                }
             }
     }
 
@@ -775,5 +808,43 @@ struct ProjectAwareEnvironmentView: View {
             }
         }
     }
-}
+    
+    private func handlePointCloudImport(url: URL) {
+        // Supported extensions: csv, ply, pcd, xyz
+        let ext = url.pathExtension.lowercased()
+        let supported = ["csv", "ply", "pcd", "xyz"]
+        guard supported.contains(ext) else {
+            importErrorMessage = "Unsupported file format: \(ext.uppercased())"
+            return
+        }
 
+        // Load points using existing demo loader
+        let loadedPoints = PointCloudDemo.loadPointCloud(from: url)
+
+        // Build PointCloudData for the window manager
+        var pointCloudData = PointCloudData(
+            title: "Imported Point Cloud: \(url.lastPathComponent)",
+            xAxisLabel: "X",
+            yAxisLabel: "Y",
+            zAxisLabel: "Z",
+            demoType: "imported",
+            parameters: ["file": 1.0]
+        )
+        pointCloudData.points = loadedPoints
+        pointCloudData.totalPoints = loadedPoints.count
+
+        // Create a new point cloud window and update it
+        let newID = windowManager.getNextWindowID()
+        _ = windowManager.createWindow(.pointcloud, id: newID)
+        windowManager.updateWindowPointCloud(newID, pointCloud: pointCloudData)
+        windowManager.updateWindowContent(newID, content: pointCloudData.toPythonCode())
+        windowManager.addWindowTag(newID, tag: "Imported-PointCloud")
+
+        #if os(visionOS)
+        // Open the volumetric point cloud view
+        openWindow(id: "volumetric-pointcloud", value: newID)
+        #endif
+
+        print("✅ Imported point cloud (\(pointCloudData.totalPoints) points) from \(url.lastPathComponent)")
+    }
+}
