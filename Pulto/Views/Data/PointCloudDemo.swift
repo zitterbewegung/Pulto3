@@ -634,6 +634,13 @@ extension PointCloudDemo2 {
 struct PointCloudPlotView: View {
     @State private var selectedDemo: Int
     @State private var rotationAngle = 0.0
+    @State private var yaw: Double = 0.0
+    @State private var pitch: Double = 0.0
+    @State private var gestureStartYaw: Double = 0.0
+    @State private var gestureStartPitch: Double = 0.0
+    @State private var isDragging: Bool = false
+    @State private var zoom: Double = 1.0
+    @State private var gestureStartZoom: Double = 1.0
     @State private var showFileImporter = false
     @State private var hasAutoPresentedImporter = false
     @State private var importedPoints: [(x: Double, y: Double, z: Double, intensity: Double?)] = []
@@ -737,19 +744,23 @@ struct PointCloudPlotView: View {
                     Canvas { context, size in
                         let centerX = size.width / 2
                         let centerY = size.height / 2
-                        let scale = min(size.width, size.height) / 40
+                        let baseScale = min(size.width, size.height) / 40
+                        let scale = baseScale * zoom
 
-                        // Apply rotation
-                        let angle = rotationAngle * .pi / 180
-
+                        // Apply rotation: combine auto-rotate (Y) with user yaw/pitch
+                        let angleY = (rotationAngle + yaw) * .pi / 180
+                        let angleX = (pitch) * .pi / 180
                         for point in currentPointCloud {
-                            // Simple 3D rotation around Y axis
-                            let rotatedX = point.x * cos(angle) - point.z * sin(angle)
-                            let rotatedZ = point.x * sin(angle) + point.z * cos(angle)
-
-                            // Project to 2D (simple orthographic projection)
+                            // First rotate around X (pitch)
+                            let x1 = point.x
+                            let y1 = point.y * cos(angleX) - point.z * sin(angleX)
+                            let z1 = point.y * sin(angleX) + point.z * cos(angleX)
+                            // Then rotate around Y (yaw + auto-rotate)
+                            let rotatedX = x1 * cos(angleY) - z1 * sin(angleY)
+                            let rotatedZ = x1 * sin(angleY) + z1 * cos(angleY)
+                            // Project to 2D (orthographic)
                             let projectedX = centerX + rotatedX * scale
-                            let projectedY = centerY - point.y * scale
+                            let projectedY = centerY - y1 * scale
 
                             // Size based on Z depth
                             let pointSize = 2.0 + (rotatedZ + 20) / 20
@@ -773,26 +784,58 @@ struct PointCloudPlotView: View {
                             )
                         }
                     }
-                }
-                .frame(height: 400)
-                .onAppear {
-                    // Load file if provided; otherwise auto-present importer once if no stored point cloud
-                    if let fileURL = fileURL {
-                        loadPointCloudFromFile(fileURL)
-                    } else if !hasAutoPresentedImporter {
-                        // Only present automatically if there's no point cloud already stored for this window
-                        if windowManager.getWindowPointCloud(for: windowID) == nil {
-                            hasAutoPresentedImporter = true
-                            // Defer to next run loop to avoid presentation during view creation
-                            DispatchQueue.main.async {
-                                showFileImporter = true
+                    .frame(height: 400)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                if !isDragging {
+                                    isDragging = true
+                                    gestureStartYaw = yaw
+                                    gestureStartPitch = pitch
+                                }
+                                let newYaw = gestureStartYaw + Double(value.translation.width) * 0.3
+                                let newPitch = gestureStartPitch - Double(value.translation.height) * 0.3
+                                yaw = newYaw
+                                pitch = max(-89, min(89, newPitch))
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                            }
+                        .simultaneously(with:
+                            MagnificationGesture()
+                                .onChanged { value in
+                                    // Initialize the starting zoom when pinch begins
+                                    if gestureStartZoom == 0 {
+                                        gestureStartZoom = zoom
+                                    }
+                                    let proposed = gestureStartZoom * value
+                                    zoom = max(0.3, min(5.0, proposed))
+                                }
+                                .onEnded { _ in
+                                    // Reset start marker for next pinch
+                                    gestureStartZoom = 0
+                                }
+                        )
+                    )
+                    .onAppear {
+                        // Load file if provided; otherwise auto-present importer once if no stored point cloud
+                        if let fileURL = fileURL {
+                            loadPointCloudFromFile(fileURL)
+                        } else if !hasAutoPresentedImporter {
+                            // Only present automatically if there's no point cloud already stored for this window
+                            if windowManager.getWindowPointCloud(for: windowID) == nil {
+                                hasAutoPresentedImporter = true
+                                // Defer to next run loop to avoid presentation during view creation
+                                DispatchQueue.main.async {
+                                    showFileImporter = true
+                                }
                             }
                         }
-                    }
-                    
-                    // Auto-rotate animation
-                    withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
-                        rotationAngle = 360
+                        
+                        // Auto-rotate animation
+                        withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
+                            rotationAngle = 360
+                        }
                     }
                 }
             }
