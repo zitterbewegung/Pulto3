@@ -24,6 +24,12 @@ struct Model3DVolumetricView: View {
     @State private var rotRoll: Float = 0
     @State private var originalUSDZURL: URL?
 
+    @State private var yawDegrees: Double = 0.0
+    @State private var pitchDegrees: Double = 0.0
+    @State private var gestureStartYawDeg: Double = 0.0
+    @State private var gestureStartPitchDeg: Double = 0.0
+    @State private var isDragging: Bool = false
+
     var body: some View {
         HStack(spacing: 0) {
             RealityView { content in
@@ -58,20 +64,42 @@ struct Model3DVolumetricView: View {
                 }
             }
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        guard let model = modelEntity else { return }
-                        let rotationY = Float(value.translation.width * 0.01)
-                        let rotationX = Float(value.translation.height * 0.01)
-                        model.transform.rotation = simd_quatf(angle: rotationY, axis: [0, 1, 0]) * simd_quatf(angle: rotationX, axis: [1, 0, 0])
+                        if !isDragging {
+                            isDragging = true
+                            gestureStartYawDeg = yawDegrees
+                            gestureStartPitchDeg = pitchDegrees
+                        }
+                        // Update yaw/pitch in degrees based on drag translation
+                        let newYaw = gestureStartYawDeg + Double(value.translation.width) * 0.3
+                        let newPitch = gestureStartPitchDeg - Double(value.translation.height) * 0.3
+                        yawDegrees = newYaw
+                        pitchDegrees = max(-89, min(89, newPitch))
+                        // Apply rotation to model
+                        if let model = modelEntity {
+                            let yawRad = Float(yawDegrees * .pi / 180)
+                            let pitchRad = Float(pitchDegrees * .pi / 180)
+                            let qx = simd_quatf(angle: pitchRad, axis: [1, 0, 0])
+                            let qy = simd_quatf(angle: yawRad, axis: [0, 1, 0])
+                            model.transform.rotation = qy * qx
+                        }
+                    }
+                    .onEnded { _ in
+                        isDragging = false
                     }
             )
             .simultaneousGesture(
                 MagnificationGesture()
                     .onChanged { mag in
-                        let newScale = max(0.1, min(3.0, baseScale * Float(mag)))
-                        modelScale = newScale
-                        updateModelScale(newScale)
+                        // Initialize the starting zoom when pinch begins
+                        if baseScale == 0 {
+                            baseScale = modelScale
+                        }
+                        let proposed = baseScale * Float(mag)
+                        let clamped = max(0.3, min(5.0, Double(proposed)))
+                        modelScale = Float(clamped)
+                        updateModelScale(modelScale)
                     }
                     .onEnded { _ in
                         baseScale = modelScale
@@ -97,6 +125,15 @@ struct Model3DVolumetricView: View {
             }
             .onChange(of: autoRotate) { _, shouldRotate in
                 toggleAutoRotation(shouldRotate)
+            }
+            .onAppear {
+                if let model = modelEntity {
+                    let yawRad = Float(yawDegrees * .pi / 180)
+                    let pitchRad = Float(pitchDegrees * .pi / 180)
+                    let qx = simd_quatf(angle: pitchRad, axis: [1, 0, 0])
+                    let qy = simd_quatf(angle: yawRad, axis: [0, 1, 0])
+                    model.transform.rotation = qy * qx
+                }
             }
 
             if modelData.modelType == "usdz" {

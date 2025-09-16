@@ -395,7 +395,7 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .help("New Project")
 
-                    Button(action: {
+                    /*Button(action: {
                         sheetManager.presentSheet(.templateGallery)
                     }) {
                         Image(systemName: "doc.text.fill")
@@ -416,17 +416,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Import")
-
-                    Button(action: {
-                        createWindow(.dataFrame)
-                    }) {
-                        Image(systemName: "chart.bar.fill")
-                            .font(.title2)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.gray)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Add Window")
+                     */
 
                     Button(action: {
                         onImportUSDZ()
@@ -472,7 +462,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Import Point Cloud (CSV / PLY / PCD / XYZ)")
-                    */
+            */
 
                     Button(action: {
                         onOpenPointCloudDemo()
@@ -484,8 +474,8 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Point Cloud Demo")
-
-                    Button(action: {
+                    
+                    /*Button(action: {
                         onRunPhotogrammetryDemo()
                     }) {
                         Image(systemName: "camera.viewfinder")
@@ -494,7 +484,7 @@ struct EnhancedActiveWindowsView: View {
                             .foregroundStyle(.gray)
                     }
                     .buttonStyle(.plain)
-                    .help("Photogrammetry → Point Cloud")
+                    .help("Photogrammetry → Point Cloud")*/
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
