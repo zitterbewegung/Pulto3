@@ -195,6 +195,8 @@ struct EnhancedActiveWindowsView: View {
     let onImportUSDZ: () -> Void
     let onImportPointCloud: () -> Void
     let onImportDataFrame: () -> Void
+    let onOpenPointCloudDemo: () -> Void
+    let onRunPhotogrammetryDemo: () -> Void
 
     // Add Jupyter server settings
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
@@ -437,7 +439,7 @@ struct EnhancedActiveWindowsView: View {
                     .buttonStyle(.plain)
                     .help("Open 3D Model Window")
 
-                    Button(action: {
+                    /*Button(action: {
                         createWindow(.pointCloud)
                     }) {
                         Image(systemName: "circle.grid.3x3.fill")
@@ -447,7 +449,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Open Point Cloud Window")
-
+            */
                     Button(action: {
                         createWindow(.dataFrame)
                     }) {
@@ -458,6 +460,41 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Add DataFrame Window")
+                    /*
+                    // Inserted Buttons per instructions:
+                    Button(action: {
+                        onImportPointCloud()
+                    }) {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Import Point Cloud (CSV / PLY / PCD / XYZ)")
+                    */
+
+                    Button(action: {
+                        onOpenPointCloudDemo()
+                    }) {
+                        Image(systemName: "circle.grid.3x3.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Point Cloud Demo")
+
+                    Button(action: {
+                        onRunPhotogrammetryDemo()
+                    }) {
+                        Image(systemName: "camera.viewfinder")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.gray)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Photogrammetry → Point Cloud")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -1257,6 +1294,10 @@ struct EnvironmentView: View {
         } message: {
             Text(pointCloudImportAlertMessage)
         }
+        // REMOVED the .toolbar block with Import Point Cloud, Point Cloud Demo, and Photogrammetry buttons here per instruction
+
+        // Toolbar remains only with other toolbar items defined elsewhere if any
+
     }
 
     // MARK: - Workspace View (broken out to reduce complexity)
@@ -1355,6 +1396,12 @@ struct EnvironmentView: View {
             },
             onImportDataFrame: {
                 createStandardWindow(.dataFrame)
+            },
+            onOpenPointCloudDemo: {
+                openPointCloudDemoFromEnvironment()
+            },
+            onRunPhotogrammetryDemo: {
+                runPhotogrammetryDemoFromEnvironment()
             }
         )
     }
@@ -1693,6 +1740,71 @@ struct EnvironmentView: View {
     private var supportedFileTypes: [UTType] {
         [.commaSeparatedText, .tabSeparatedText, .json, .plainText,
          .usdz]
+    }
+
+    // MARK: - Added Helper Methods per Instructions
+
+    private func openPointCloudDemoFromEnvironment() {
+        let newID = windowManager.getNextWindowID()
+        let position = WindowPosition(
+            x: 100 + Double(newID * 20),
+            y: 100 + Double(newID * 20),
+            z: 0,
+            width: 800,
+            height: 600
+        )
+
+        _ = windowManager.createWindow(.pointcloud, id: newID, position: position)
+
+        //windowManager.addWindowTag(newID, tag: "Demo-PointCloud")
+        windowManager.updateWindowContent(newID, content: "Point Cloud Demo Window")
+
+        #if os(visionOS)
+        openWindow(id: "volumetric-pointclouddemo", value: newID)
+        #else
+        openWindow(value: newID)
+        #endif
+
+        print("🪟 Opened Point Cloud Demo windows for ID #\(newID)")
+    }
+
+    private func runPhotogrammetryDemoFromEnvironment() {
+        #if canImport(ObjectCapture)
+        Task { @MainActor in
+            do {
+                let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+                let inputFolder = docs.appendingPathComponent("object_capture_demo")
+                let exportURL = docs.appendingPathComponent("photogrammetry_pointcloud/demo")
+
+                let cloud = try await PhotogrammetryPipeline.generatePointCloudData(from: inputFolder, exportURL: exportURL)
+
+                let newID = windowManager.getNextWindowID()
+                let position = WindowPosition(
+                    x: 100 + Double(newID * 20),
+                    y: 100 + Double(newID * 20),
+                    z: 0,
+                    width: 800,
+                    height: 600
+                )
+
+                _ = windowManager.createWindow(.pointcloud, id: newID, position: position)
+                windowManager.updateWindowContent(newID, content: cloud.toPythonCode())
+                windowManager.addWindowTag(newID, tag: "Photogrammetry")
+
+                openWindow(value: newID)
+
+                #if os(visionOS)
+                openWindow(id: "volumetric-pointcloud", value: newID)
+                #endif
+
+                print("🪟 Ran photogrammetry demo and opened point cloud for ID #\(newID)")
+            } catch {
+                print("Failed to run photogrammetry demo: \(error)")
+            }
+        }
+        #else
+        print("ObjectCapture framework not available.")
+        #endif
     }
 }
 

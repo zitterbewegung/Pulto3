@@ -635,6 +635,7 @@ struct PointCloudPlotView: View {
     @State private var selectedDemo: Int
     @State private var rotationAngle = 0.0
     @State private var showFileImporter = false
+    @State private var hasAutoPresentedImporter = false
     @State private var importedPoints: [(x: Double, y: Double, z: Double, intensity: Double?)] = []
     @State private var loadedFileName: String = ""
     @State private var loadingError: String?
@@ -698,9 +699,6 @@ struct PointCloudPlotView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Point Cloud Demo")
-                .font(.largeTitle)
-                .bold()
 
             // Show loaded file name if available
             if !loadedFileName.isEmpty {
@@ -726,14 +724,6 @@ struct PointCloudPlotView: View {
                 .padding(.horizontal)
             }
 
-            // Demo selector
-            Picker("Select Demo", selection: $selectedDemo) {
-                ForEach(0..<demoNames.count, id: \.self) { index in
-                    Text(demoNames[index]).tag(index)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
 
             // 3D visualization using 2D projection
             ZStack {
@@ -786,6 +776,20 @@ struct PointCloudPlotView: View {
                 }
                 .frame(height: 400)
                 .onAppear {
+                    // Load file if provided; otherwise auto-present importer once if no stored point cloud
+                    if let fileURL = fileURL {
+                        loadPointCloudFromFile(fileURL)
+                    } else if !hasAutoPresentedImporter {
+                        // Only present automatically if there's no point cloud already stored for this window
+                        if windowManager.getWindowPointCloud(for: windowID) == nil {
+                            hasAutoPresentedImporter = true
+                            // Defer to next run loop to avoid presentation during view creation
+                            DispatchQueue.main.async {
+                                showFileImporter = true
+                            }
+                        }
+                    }
+                    
                     // Auto-rotate animation
                     withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
                         rotationAngle = 360
@@ -806,20 +810,7 @@ struct PointCloudPlotView: View {
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
-                
-                // Show current demo type
-                HStack {
-                    Label(demoNames[selectedDemo], systemImage: "info.circle")
-                    Spacer()
-                    if selectedDemo == 5 {
-                        Label("Sample CSV Data", systemImage: "doc.text")
-                    } else if selectedDemo == 6 && !importedPoints.isEmpty {
-                        Label("Imported File", systemImage: "square.and.arrow.down")
-                    }
-                }
-                .font(.caption)
-                .foregroundColor(.blue)
-                
+                                
                 // Show intensity information
                 if !currentPointCloud.isEmpty {
                     let hasIntensity = currentPointCloud.contains { $0.intensity != nil }
@@ -873,12 +864,6 @@ struct PointCloudPlotView: View {
             Spacer()
         }
         .padding(.vertical)
-        .onAppear {
-            // Load file if provided
-            if let fileURL = fileURL {
-                loadPointCloudFromFile(fileURL)
-            }
-        }
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [
@@ -974,3 +959,4 @@ struct PointCloudPlotView_Previews: PreviewProvider {
  let pythonCode = ChartDataExtractor.generateJupyterPythonCode(sphereChart)
  let plotlyCode = ChartDataExtractor.generateJupyterPlotlyCode(sphereChart)
  */
+

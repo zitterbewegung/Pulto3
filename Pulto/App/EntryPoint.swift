@@ -600,9 +600,6 @@ struct MainWindowProtector: View {
 struct ProjectAwareEnvironmentView: View {
     @ObservedObject var windowManager: WindowTypeManager
     @Environment(\.openWindow) private var openWindow
-    
-    @State private var showPointCloudImporter = false
-    @State private var importErrorMessage: String? = nil
 
     var body: some View {
         EnvironmentView()
@@ -623,51 +620,6 @@ struct ProjectAwareEnvironmentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .appDidBecomeActive)) { _ in
                 print("🚀 EnvironmentView received app active notification")
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showPointCloudImporter = true
-                    } label: {
-                        Label("Import Point Cloud", systemImage: "square.and.arrow.down")
-                    }
-                    .help("Import Point Cloud (CSV / PLY / PCD / XYZ)")
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        openPointCloudDemo()
-                    } label: {
-                        Label("Point Cloud Demo", systemImage: "circle.grid.3x3.fill")
-                    }
-                    .help("Open Point Cloud Demo View")
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        runPhotogrammetryDemo()
-                    } label: {
-                        Label("Photogrammetry → Point Cloud", systemImage: "camera.viewfinder")
-                    }
-                    .help("Run Object Capture on a folder and open the resulting point cloud")
-                }
-            }
-            .fileImporter(
-                isPresented: $showPointCloudImporter,
-                allowedContentTypes: [
-                    .commaSeparatedText,
-                    UTType(filenameExtension: "ply") ?? .data,
-                    UTType(filenameExtension: "pcd") ?? .data,
-                    UTType(filenameExtension: "xyz") ?? .data
-                ],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    handlePointCloudImport(url: url)
-                case .failure(let error):
-                    importErrorMessage = error.localizedDescription
-                    print("Error importing point cloud: \(error.localizedDescription)")
-                }
             }
     }
 
@@ -825,98 +777,4 @@ struct ProjectAwareEnvironmentView: View {
         }
     }
     
-    private func handlePointCloudImport(url: URL) {
-        // Supported extensions: csv, ply, pcd, xyz
-        let ext = url.pathExtension.lowercased()
-        let supported = ["csv", "ply", "pcd", "xyz"]
-        guard supported.contains(ext) else {
-            importErrorMessage = "Unsupported file format: \(ext.uppercased())"
-            return
-        }
-
-        // Load points using existing demo loader
-        let loadedPoints = PointCloudDemo.loadPointCloud(from: url)
-
-        // Build PointCloudData for the window manager
-        var pointCloudData = PointCloudData(
-            title: "Imported Point Cloud: \(url.lastPathComponent)",
-            xAxisLabel: "X",
-            yAxisLabel: "Y",
-            zAxisLabel: "Z",
-            demoType: "imported",
-            parameters: ["file": 1.0]
-        )
-        pointCloudData.points = loadedPoints
-        pointCloudData.totalPoints = loadedPoints.count
-
-        // Create a new point cloud window and update it
-        let newID = windowManager.getNextWindowID()
-        _ = windowManager.createWindow(.pointcloud, id: newID)
-        windowManager.updateWindowPointCloud(newID, pointCloud: pointCloudData)
-        windowManager.updateWindowContent(newID, content: pointCloudData.toPythonCode())
-        windowManager.addWindowTag(newID, tag: "Imported-PointCloud")
-
-        #if os(visionOS)
-        // Open the volumetric point cloud view
-        openWindow(id: "volumetric-pointcloud", value: newID)
-        #endif
-
-        print("✅ Imported point cloud (\(pointCloudData.totalPoints) points) from \(url.lastPathComponent)")
-    }
-
-    // REPLACED FUNCTION BODY BELOW:
-    private func openPointCloudDemo() {
-        // Create a point cloud window ID for tracking/demo state
-        let newID = windowManager.getNextWindowID()
-        _ = windowManager.createWindow(.pointcloud, id: newID)
-        windowManager.addWindowTag(newID, tag: "Demo-PointCloud")
-        windowManager.updateWindowContent(newID, content: "Point Cloud Demo Window")
-
-        // Always open the 2D window (handled by WindowGroup(for: NewWindowID.ID.self))
-        openWindow(value: newID)
-
-        #if os(visionOS)
-        // Also open the volumetric demo window that hosts PointCloudPlotView
-        openWindow(id: "volumetric-pointclouddemo", value: newID)
-        #endif
-
-        print("🪟 Opened Point Cloud Demo windows for ID #\(newID)")
-    }
-    
-    private func runPhotogrammetryDemo() {
-        #if canImport(ObjectCapture)
-        // Note: For a real app, present a folder picker. Here we use Documents/PhotogrammetryInput as a placeholder.
-        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("❌ Could not resolve Documents directory")
-            return
-        }
-        let inputFolder = docs.appendingPathComponent("PhotogrammetryInput", isDirectory: true)
-        let exportURL = docs.appendingPathComponent("photogrammetry_output.ply")
-
-        Task { @MainActor in
-            do {
-                let cloud = try await PhotogrammetryPipeline.generatePointCloudData(from: inputFolder, exportURL: exportURL)
-
-                let newID = windowManager.getNextWindowID()
-                _ = windowManager.createWindow(.pointcloud, id: newID)
-                windowManager.updateWindowPointCloud(newID, pointCloud: cloud)
-                windowManager.updateWindowContent(newID, content: cloud.toPythonCode())
-                windowManager.addWindowTag(newID, tag: "Photogrammetry")
-
-                // Open 2D window
-                openWindow(value: newID)
-                #if os(visionOS)
-                // Open volumetric view
-                openWindow(id: "volumetric-pointcloud", value: newID)
-                #endif
-
-                print("✅ Photogrammetry → Point Cloud opened (\(cloud.totalPoints) points)")
-            } catch {
-                print("❌ Photogrammetry pipeline failed: \(error.localizedDescription)")
-            }
-        }
-        #else
-        print("⚠️ Object Capture not available on this platform.")
-        #endif
-    }
 }
