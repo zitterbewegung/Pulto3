@@ -524,13 +524,6 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("Data Browser")
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button(action: {}) {
-                    Image(systemName: "plus")
-                }
-            }
-        }
     }
 }
 

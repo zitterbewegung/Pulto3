@@ -64,7 +64,6 @@
 		DC0E899C2DE3699000B27198 /* Pluto_1_2374.usdz */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pluto_1_2374.usdz; sourceTree = "<group>"; };
 		DC0E899E2DE36A5F00B27198 /* ChartWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartWindowView.swift; sourceTree = "<group>"; };
 		DC1CD6742E779D5C002EDE42 /* PointCloudRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudRendererView.swift; sourceTree = "<group>"; };
-		DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudDataStore.swift; sourceTree = "<group>"; };
 		DC1CD6772E77A128002EDE42 /* PointCloudSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudSupport.swift; sourceTree = "<group>"; };
 		DC2408582E2EC6CC0062838C /* Composer.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Composer.icon; sourceTree = "<group>"; };
 		DC28CF662E02673000F3705E /* LoadUnloadTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadUnloadTest.swift; sourceTree = "<group>"; };
@@ -86,10 +85,6 @@
 		DC661B342E04A126005454FE /* SpatialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialEditorView.swift; sourceTree = "<group>"; };
 		DC6A50A42E0B607600C4FEAF /* EnvironmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentView.swift; sourceTree = "<group>"; };
 		DC70C5812DE7672800DADEAE /* Lorenz.ipynb */ = {isa = PBXFileReference; lastKnownFileType = text; path = Lorenz.ipynb; sourceTree = "<group>"; };
-		DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointCloudShaders.metal; sourceTree = "<group>"; };
-		DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstancedPointCloudRenderer.swift; sourceTree = "<group>"; };
-		DC743D992E77B08A00C24529 /* PointCloudRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudRendererView.swift; sourceTree = "<group>"; };
-		DC743D9A2E77B09600C24529 /* PointCloudIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudIO.swift; sourceTree = "<group>"; };
 		DC7630212E17017200BE77CD /* DEV.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEV.md; sourceTree = "<group>"; };
 		DC85D58B2E03A2C400559301 /* EnvironmentRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentRestoreDialog.swift; sourceTree = "<group>"; };
 		DC85D58D2E03AD7E00559301 /* SimpleRestoreDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleRestoreDialog.swift; sourceTree = "<group>"; };
@@ -136,7 +131,13 @@
 		DCB8174D2E2862410014FC37 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Import/InstancedPointCloudRenderer.swift,
+				Import/PhotogrammetryPipeline.swift,
 				Import/pointcloud.csv,
+				Import/PointCloudDataStore.swift,
+				Import/PointCloudIO.swift,
+				Import/PointCloudRendererView.swift,
+				Import/PointCloudShaders.metal,
 			);
 			target = DF58AE1A2BCD826D00C8F737 /* Pulto */;
 		};
@@ -243,11 +244,6 @@
 				D9D0CBD0CB4B2C9FA9B9583C /* LICENSE */,
 				DC60FCCD2DFF928500996C50 /* Frameworks */,
 				DCA833952E0E21E200D32258 /* MARKETING.md */,
-				DC1CD6762E779EC4002EDE42 /* PointCloudDataStore.swift */,
-				DC743D972E77AB4F00C24529 /* PointCloudShaders.metal */,
-				DC743D982E77AB6900C24529 /* InstancedPointCloudRenderer.swift */,
-				DC743D992E77B08A00C24529 /* PointCloudRendererView.swift */,
-				DC743D9A2E77B09600C24529 /* PointCloudIO.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -606,12 +602,12 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = xros;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				XROS_DEPLOYMENT_TARGET = 1.1;
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -670,7 +666,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
-				XROS_DEPLOYMENT_TARGET = 1.1;
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -690,7 +686,6 @@
 				INFOPLIST_FILE = Pulto/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Pulto;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "arm64 visionos";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -704,7 +699,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -725,7 +719,6 @@
 				INFOPLIST_FILE = Pulto/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Pulto;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "arm64 visionos";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -739,7 +732,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};

@@ -84,6 +84,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "Pulto"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

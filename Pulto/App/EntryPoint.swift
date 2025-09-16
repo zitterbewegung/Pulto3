@@ -641,6 +641,14 @@ struct ProjectAwareEnvironmentView: View {
                     }
                     .help("Open Point Cloud Demo View")
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        runPhotogrammetryDemo()
+                    } label: {
+                        Label("Photogrammetry → Point Cloud", systemImage: "camera.viewfinder")
+                    }
+                    .help("Run Object Capture on a folder and open the resulting point cloud")
+                }
             }
             .fileImporter(
                 isPresented: $showPointCloudImporter,
@@ -873,5 +881,42 @@ struct ProjectAwareEnvironmentView: View {
         #endif
 
         print("🪟 Opened Point Cloud Demo windows for ID #\(newID)")
+    }
+    
+    private func runPhotogrammetryDemo() {
+        #if canImport(ObjectCapture)
+        // Note: For a real app, present a folder picker. Here we use Documents/PhotogrammetryInput as a placeholder.
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            print("❌ Could not resolve Documents directory")
+            return
+        }
+        let inputFolder = docs.appendingPathComponent("PhotogrammetryInput", isDirectory: true)
+        let exportURL = docs.appendingPathComponent("photogrammetry_output.ply")
+
+        Task { @MainActor in
+            do {
+                let cloud = try await PhotogrammetryPipeline.generatePointCloudData(from: inputFolder, exportURL: exportURL)
+
+                let newID = windowManager.getNextWindowID()
+                _ = windowManager.createWindow(.pointcloud, id: newID)
+                windowManager.updateWindowPointCloud(newID, pointCloud: cloud)
+                windowManager.updateWindowContent(newID, content: cloud.toPythonCode())
+                windowManager.addWindowTag(newID, tag: "Photogrammetry")
+
+                // Open 2D window
+                openWindow(value: newID)
+                #if os(visionOS)
+                // Open volumetric view
+                openWindow(id: "volumetric-pointcloud", value: newID)
+                #endif
+
+                print("✅ Photogrammetry → Point Cloud opened (\(cloud.totalPoints) points)")
+            } catch {
+                print("❌ Photogrammetry pipeline failed: \(error.localizedDescription)")
+            }
+        }
+        #else
+        print("⚠️ Object Capture not available on this platform.")
+        #endif
     }
 }

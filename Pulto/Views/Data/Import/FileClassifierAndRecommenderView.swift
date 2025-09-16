@@ -405,6 +405,16 @@ struct FileClassifierAndRecommenderView: View {
                      selectedRecommendation = recommendations.first?.recommendation
                      print("✅ Successfully loaded CSV/TSV with \(data.rows.count) rows")
                  } else {
+                     // Added fallback auto-parse for CSV/TSV files when classifyFile fails to parse
+                     if data == nil, let url = importedURL,
+                        let raw = try? String(contentsOf: url, encoding: .utf8),
+                        let auto = CSVParser.parseAuto(raw) {
+                         csvData = auto
+                         recommendations = ChartRecommender.recommend(for: auto)
+                         selectedRecommendation = recommendations.first?.recommendation
+                         print("✅ Fallback auto-parse succeeded with \(auto.headers.count) columns")
+                         return
+                     }
                      errorMessage = "Failed to parse CSV/TSV file or no recommendations available"
                      print("❌ Failed to parse CSV/TSV: data=\(data != nil), recs=\(recs?.count ?? 0)")
                  }
@@ -432,15 +442,17 @@ struct FileClassifierAndRecommenderView: View {
 
          do {
              let content = try String(contentsOf: url, encoding: .utf8)
+             let normalized = content.replacingOccurrences(of: "\\t", with: "\t")
              print("📄 TSV file content preview (first 200 chars):")
-             print(String(content.prefix(200)))
+             print(String(normalized.prefix(200)))
 
-             let csvData = parseTSVContent(content)
+             let csvData = parseTSVContent(normalized)
              if let csvData = csvData {
                  self.csvData = csvData
                  self.recommendations = generateTSVRecommendations(for: csvData)
                  self.selectedRecommendation = recommendations.first?.recommendation
                  print("✅ Successfully parsed TSV file with \(csvData.rows.count) rows and \(csvData.headers.count) columns")
+                 print("DEBUG TSV: parsed rows=\(csvData.rows.count) cols=\(csvData.headers.count)")
              } else {
                  errorMessage = "Failed to parse TSV file"
                  print("❌ Failed to parse TSV content")

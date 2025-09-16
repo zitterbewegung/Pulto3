@@ -438,7 +438,7 @@ struct EnhancedActiveWindowsView: View {
                     .help("Open 3D Model Window")
 
                     Button(action: {
-                        onImportPointCloud()
+                        createWindow(.pointCloud)
                     }) {
                         Image(systemName: "circle.grid.3x3.fill")
                             .font(.title2)
@@ -446,7 +446,7 @@ struct EnhancedActiveWindowsView: View {
                             .foregroundStyle(.gray)
                     }
                     .buttonStyle(.plain)
-                    .help("Import Point Cloud")
+                    .help("Open Point Cloud Window")
 
                     Button(action: {
                         createWindow(.dataFrame)

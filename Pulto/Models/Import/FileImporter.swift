@@ -85,8 +85,8 @@ struct FileClassifier {
                     // Basic validation: check if first line has 3+ space-separated numbers
                     let firstLineComponents = lines[0].components(separatedBy: .whitespaces).filter { !$0.isEmpty }
                     if firstLineComponents.count >= 3 {
-                        if let _ = Double(firstLineComponents[0]), 
-                           let _ = Double(firstLineComponents[1]), 
+                        if let _ = Double(firstLineComponents[0]),
+                           let _ = Double(firstLineComponents[1]),
                            let _ = Double(firstLineComponents[2]) {
                             return (.pointCloudPLY, nil, nil) // Reuse PLY handler for XYZ/PTS
                         }
@@ -110,42 +110,17 @@ struct FileClassifier {
             defer { url.stopAccessingSecurityScopedResource() }
 
             do {
-                let content = try String(contentsOf: url, encoding: .utf8)
-                let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-                guard !lines.isEmpty else {
-                    return (.unknown, nil, nil)
-                }
-
-                // Determine delimiter: check first line for commas vs tabs
-                let firstLine = lines[0]
-                let commaCount = firstLine.filter { $0 == "," }.count
-                let tabCount = firstLine.filter { $0 == "\t" }.count
-
-                let delimiterChar: Character
-                let delimiterStr: String
-                if commaCount > tabCount && commaCount > 0 {
-                    delimiterChar = ","
-                    delimiterStr = ","
-                } else if tabCount > 0 {
-                    delimiterChar = "\t"
-                    delimiterStr = "\t"
-                } else {
-                    // No clear delimiter, assume comma for .csv
-                    if fileExtension == "csv" {
-                        delimiterChar = ","
-                        delimiterStr = ","
-                    } else {
-                        return (.unknown, nil, nil)
-                    }
-                }
-
-                if let data = CSVParser.parse(content, delimiter: delimiterChar) {
+                let raw = try String(contentsOf: url, encoding: .utf8)
+                let preferTab: Character? = (fileExtension == "tsv" || fileExtension == "tab") ? "\t" : nil
+                if let data = CSVParser.parseAuto(raw, preferredDelimiter: preferTab) {
                     let recommendations = ChartRecommender.recommend(for: data)
-                    return (.csv(delimiter: delimiterStr), data, recommendations)
+                    let chosen = preferTab ?? "," // best-effort log
+                    print("DEBUG CSV/TSV: auto-parse ok, preferred='\(preferTab != nil ? "\\t" : ",")', headers=\(data.headers.count), rows=\(data.rows.count)")
+                    return (.csv(delimiter: preferTab != nil ? "\t" : ","), data, recommendations)
                 } else {
+                    print("Error: CSV/TSV auto-parse failed")
                     return (.unknown, nil, nil)
                 }
-
             } catch {
                 print("Error reading CSV/TSV file: \(error)")
                 return (.unknown, nil, nil)
@@ -238,23 +213,47 @@ class CSVParser {
     }
 
     private static func parseRow(_ row: String, delimiter: Character) -> [String] {
-        var result: [String] = []
+        var fields: [String] = []
         var current = ""
         var inQuotes = false
+        var i = row.startIndex
 
-        for char in row {
-            if char == "\"" {
-                inQuotes.toggle()
-            } else if char == delimiter && !inQuotes {
-                result.append(current.trimmingCharacters(in: .whitespaces))
-                current = ""
-            } else {
-                current.append(char)
-            }
+        func appendField() {
+            // Unescape double quotes inside quoted fields
+            let unescaped = current.replacingOccurrences(of: "\"\"", with: "\"")
+            fields.append(unescaped)
+            current = ""
         }
 
-        result.append(current.trimmingCharacters(in: .whitespaces))
-        return result
+        while i < row.endIndex {
+            let ch = row[i]
+            if ch == "\"" {
+                if inQuotes {
+                    // Lookahead for escaped quote
+                    let next = row.index(after: i)
+                    if next < row.endIndex && row[next] == "\"" {
+                        current.append("\"")
+                        i = next
+                    } else {
+                        inQuotes = false
+                    }
+                } else {
+                    inQuotes = true
+                }
+            } else if ch == delimiter && !inQuotes {
+                // End of field
+                appendField()
+            } else {
+                current.append(ch)
+            }
+            i = row.index(after: i)
+        }
+
+        // Append last field
+        appendField()
+
+        // Trim surrounding spaces only for non-quoted style (already handled by quotes logic)
+        return fields.map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
     private static func detectColumnTypes(headers: [String], rows: [[String]]) -> [ColumnType] {
@@ -291,6 +290,66 @@ class CSVParser {
         } else {
             return .categorical
         }
+    }
+}
+
+extension CSVParser {
+    /// Normalize content: BOM, CRLF to LF, and escaped tabs to real tabs
+    private static func normalize(_ content: String) -> String {
+        var s = content
+        // Remove UTF-8 BOM if present
+        if s.hasPrefix("\u{FEFF}") { s.removeFirst() }
+        // Normalize CRLF and CR to LF
+        s = s.replacingOccurrences(of: "\r\n", with: "\n")
+             .replacingOccurrences(of: "\r", with: "\n")
+        // Convert escaped tabs to real tabs
+        s = s.replacingOccurrences(of: "\\t", with: "\t")
+        return s
+    }
+
+    /// Detect delimiter by scanning up to first 20 non-empty lines and choosing the one with the most consistent column count.
+    private static func detectDelimiter(lines: [String], preferred: Character? = nil) -> Character {
+        if let preferred = preferred { return preferred }
+        let candidates: [Character] = ["\t", ",", ";"]
+        var best: (delim: Character, consistency: Int, columns: Int) = (",", -1, 0)
+
+        for cand in candidates {
+            var counts: [Int: Int] = [:]
+            for line in lines.prefix(20) {
+                let cols = parseRow(line, delimiter: cand).count
+                counts[cols, default: 0] += 1
+            }
+            if let (cols, freq) = counts.max(by: { $0.value < $1.value }) {
+                if freq > best.consistency || (freq == best.consistency && cols > best.columns) {
+                    best = (cand, freq, cols)
+                }
+            }
+        }
+        return best.delim
+    }
+
+    /// Auto-detect delimiter (tab/comma/semicolon), with optional preference, and parse.
+    static func parseAuto(_ content: String, preferredDelimiter: Character? = nil) -> CSVData? {
+        let normalized = normalize(content)
+        let lines = normalized.components(separatedBy: "\n").filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return nil }
+
+        let delimiter = detectDelimiter(lines: lines, preferred: preferredDelimiter)
+        let headers = parseRow(lines[0], delimiter: delimiter)
+        guard !headers.isEmpty else { return nil }
+
+        var rows: [[String]] = []
+        for line in lines.dropFirst() {
+            let fields = parseRow(line, delimiter: delimiter)
+            // Pad or truncate to header count for consistency
+            var adjusted = fields
+            if adjusted.count < headers.count { adjusted += Array(repeating: "", count: headers.count - adjusted.count) }
+            if adjusted.count > headers.count { adjusted = Array(adjusted.prefix(headers.count)) }
+            rows.append(adjusted)
+        }
+
+        let columnTypes = detectColumnTypes(headers: headers, rows: rows)
+        return CSVData(headers: headers, rows: rows, columnTypes: columnTypes)
     }
 }
 
