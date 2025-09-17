@@ -1195,7 +1195,6 @@ struct EnvironmentView: View {
     @State private var showNavigationView = true
     @State private var showInspector = false
     @State private var selectedWindow: NewWindowID? = nil
-    @State private var columnVisibility = NavigationSplitViewVisibility.all
     
     // Main window visibility
     @State private var isMainWindowVisible = true
@@ -1215,12 +1214,15 @@ struct EnvironmentView: View {
         VStack(spacing: 0) {
             // Main content without toolbar (since it's now in the navigation bar)
             Group {
-                // Always show workspace view - removed the conditional home/workspace logic
+                // Single NavigationSplitView with conditional columns per instructions
                 workspaceView
             }
         }
         //.glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .padding(20)
+        .onAppear {
+            // No columnVisibility usage anymore
+        }
         .task {
             initialLoadTask?.cancel()
             initialLoadTask = Task {
@@ -1284,72 +1286,36 @@ struct EnvironmentView: View {
         } message: {
             Text(pointCloudImportAlertMessage)
         }
-        // REMOVED the .toolbar block with Import Point Cloud, Point Cloud Demo, and Photogrammetry buttons here per instruction
-
-        // Toolbar remains only with other toolbar items defined elsewhere if any
-
     }
 
-    // MARK: - Workspace View (broken out to reduce complexity)
+    // MARK: - Workspace View (single NavigationSplitView with conditional columns)
     @ViewBuilder
     private var workspaceView: some View {
-        if showNavigationView && showInspector {
-            threeColumnLayout
-        } else if showNavigationView && !showInspector {
-            twoColumnLayoutWithSidebar
-        } else if !showNavigationView && showInspector {
-            twoColumnLayoutWithInspector
-        } else {
-            singleColumnLayout
-        }
-    }
-
-    // MARK: - Layout Variations
-    @ViewBuilder
-    private var threeColumnLayout: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            RecentProjectsSidebar(
-                workspaceManager: workspaceManager,
-                loadWorkspace: loadWorkspaceFromSidebar
-            )
-            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+        NavigationSplitView {
+            if showNavigationView {
+                RecentProjectsSidebar(
+                    workspaceManager: workspaceManager,
+                    loadWorkspace: loadWorkspaceFromSidebar
+                )
+                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+            } else {
+                // Keep an empty placeholder to maintain layout expectations
+                Color.clear
+                    .frame(width: 0)
+            }
         } content: {
             enhancedActiveWindowsView
                 .navigationSplitViewColumnWidth(min: 600, ideal: 800, max: 1200)
         } detail: {
-            inspectorView
-                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+            if showInspector {
+                inspectorView
+                    .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
+            } else {
+                // Keep an empty placeholder to maintain layout expectations
+                Color.clear
+                    .frame(width: 0)
+            }
         }
-        .navigationSplitViewStyle(.balanced)
-    }
-
-    @ViewBuilder
-    private var twoColumnLayoutWithSidebar: some View {
-        NavigationSplitView {
-            RecentProjectsSidebar(
-                workspaceManager: workspaceManager,
-                loadWorkspace: loadWorkspaceFromSidebar
-            )
-            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
-        } detail: {
-            enhancedActiveWindowsView
-        }
-    }
-
-    @ViewBuilder
-    private var twoColumnLayoutWithInspector: some View {
-        NavigationSplitView {
-            enhancedActiveWindowsView
-                .navigationSplitViewColumnWidth(min: 600, ideal: 900, max: 1200)
-        } detail: {
-            inspectorView
-                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
-        }
-    }
-
-    @ViewBuilder
-    private var singleColumnLayout: some View {
-        enhancedActiveWindowsView
     }
 
     // MARK: - Reusable View Components
@@ -1368,12 +1334,12 @@ struct EnvironmentView: View {
             showNavigationView: showNavigationView,
             showInspector: showInspector,
             onHomeButtonTap: {
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     showNavigationView.toggle()
                 }
             },
             onInspectorToggle: {
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     showInspector.toggle()
                 }
             }
@@ -2864,4 +2830,3 @@ struct SettingsSheetWrapper: View {
 struct EnvironmentView_Previews: PreviewProvider {
     static var previews: some View { EnvironmentView() }
 }
-
