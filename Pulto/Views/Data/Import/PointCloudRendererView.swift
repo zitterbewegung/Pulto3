@@ -88,3 +88,29 @@ fileprivate func colorFromIntensity(_ intensity: Float) -> UIColor {
     let v = CGFloat(clamp(intensity, 0, 1))
     return UIColor(white: v, alpha: 1)
 }
+
+#Preview("PointCloudRendererView") {
+    // Generate a small deterministic point cloud (approx 1k points)
+    var points: [PointCloud.Point] = []
+    let steps = 10
+    let range: ClosedRange<Float> = -0.1...0.1
+    let values = (0...steps).map { i -> Float in
+        let t = Float(i) / Float(steps)
+        return range.lowerBound + t * (range.upperBound - range.lowerBound)
+    }
+    for x in values {
+        for y in values {
+            for z in values {
+                // Intensity based on normalized distance from center
+                let d = sqrt(x*x + y*y + z*z)
+                let maxD = sqrt(3) * 0.1
+                let intensity = max(0, 1 - (d / maxD))
+                points.append(PointCloud.Point(position: SIMD3<Float>(x, y, z), intensity: intensity))
+            }
+        }
+    }
+    let cloud = PointCloud(points: points)
+    return PointCloudRendererView(pointCloud: cloud)
+        .frame(height: 300)
+        .padding()
+}
