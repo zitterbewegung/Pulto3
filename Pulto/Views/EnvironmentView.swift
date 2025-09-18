@@ -188,8 +188,8 @@ struct EnhancedActiveWindowsView: View {
     @Binding var selectedWindow: NewWindowID?
     let viewModel: PultoHomeViewModel
     let navigationState: NavigationState
-    let showNavigationView: Bool
-    let showInspector: Bool
+    @Binding var showNavigationView: Bool
+    @Binding var showInspector: Bool
     let onHomeButtonTap: () -> Void
     let onInspectorToggle: () -> Void
     let onImportUSDZ: () -> Void
@@ -197,6 +197,8 @@ struct EnhancedActiveWindowsView: View {
     let onImportDataFrame: () -> Void
     let onOpenPointCloudDemo: () -> Void
     let onRunPhotogrammetryDemo: () -> Void
+
+    @Binding var splitVisibility: NavigationSplitViewVisibility
 
     // Add Jupyter server settings
     @AppStorage("defaultJupyterURL") private var defaultJupyterURL: String = "http://localhost:8888"
@@ -524,7 +526,7 @@ struct EnhancedActiveWindowsView: View {
                     .help("Settings")
 
                     // Commented out the login button
-                    /*
+
                     Button(action: {
                         sheetManager.presentSheet(.appleSignIn)
                     }) {
@@ -544,7 +546,7 @@ struct EnhancedActiveWindowsView: View {
                     }
                     .buttonStyle(.plain)
                     .help("User Profile")
-                    */
+
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -582,8 +584,9 @@ struct EnhancedActiveWindowsView: View {
             checkJupyterServerStatus()
         }
         .onAppear {
-            // Check server status when view appears
-            checkJupyterServerStatus()
+            // No columnVisibility usage anymore
+            // Align split visibility with initial flags
+            updateSplitVisibility(left: showNavigationView, right: showInspector)
         }
         .onDisappear {
             cancelAllTasks()
@@ -791,6 +794,20 @@ struct EnhancedActiveWindowsView: View {
         } catch {
             // Network error or server not reachable
             return .offline
+        }
+    }
+    
+    // MARK: - Helper method to update split visibility based on left (sidebar) and right (inspector) flags
+    private func updateSplitVisibility(left: Bool, right: Bool) {
+        if left && right {
+            splitVisibility = .all            // left + content + right
+        } else if left && !right {
+            splitVisibility = .doubleColumn   // left + content
+        } else if !left && right {
+            splitVisibility = .detailOnly     // right only (NavigationSplitView cannot show content-only)
+        } else {
+            // Neither left nor right — fall back to showing content with left
+            splitVisibility = .doubleColumn
         }
     }
 }
@@ -1194,6 +1211,7 @@ struct EnvironmentView: View {
     @State private var navigationState: NavigationState = .workspace
     @State private var showNavigationView = true
     @State private var showInspector = false
+    @State private var splitVisibility: NavigationSplitViewVisibility = .all
     @State private var selectedWindow: NewWindowID? = nil
     
     // Main window visibility
@@ -1222,6 +1240,8 @@ struct EnvironmentView: View {
         .padding(20)
         .onAppear {
             // No columnVisibility usage anymore
+            // Align split visibility with initial flags
+            updateSplitVisibility(left: showNavigationView, right: showInspector)
         }
         .task {
             initialLoadTask?.cancel()
@@ -1291,30 +1311,24 @@ struct EnvironmentView: View {
     // MARK: - Workspace View (single NavigationSplitView with conditional columns)
     @ViewBuilder
     private var workspaceView: some View {
-        NavigationSplitView {
-            if showNavigationView {
-                RecentProjectsSidebar(
-                    workspaceManager: workspaceManager,
-                    loadWorkspace: loadWorkspaceFromSidebar
-                )
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
-            } else {
-                // Keep an empty placeholder to maintain layout expectations
-                Color.clear
-                    .frame(width: 0)
-            }
+        NavigationSplitView(columnVisibility: $splitVisibility) {
+            RecentProjectsSidebar(
+                workspaceManager: workspaceManager,
+                loadWorkspace: loadWorkspaceFromSidebar
+            )
+            .navigationSplitViewColumnWidth(min: 220, ideal: 280, max: 420)
         } content: {
             enhancedActiveWindowsView
-                .navigationSplitViewColumnWidth(min: 600, ideal: 800, max: 1200)
+                .navigationSplitViewColumnWidth(min: 480, ideal: 800, max: 1400)
         } detail: {
-            if showInspector {
-                inspectorView
-                    .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 450)
-            } else {
-                // Keep an empty placeholder to maintain layout expectations
-                Color.clear
-                    .frame(width: 0)
-            }
+            WindowInspectorView(
+                selectedWindow: selectedWindow,
+                windowManager: windowManager,
+                onWindowAction: { action, windowId in
+                    handleWindowAction(action, windowId: windowId)
+                }
+            )
+            .navigationSplitViewColumnWidth(min: 240, ideal: 320, max: 500)
         }
     }
 
@@ -1331,16 +1345,18 @@ struct EnvironmentView: View {
             selectedWindow: $selectedWindow,
             viewModel: viewModel,
             navigationState: navigationState,
-            showNavigationView: showNavigationView,
-            showInspector: showInspector,
+            showNavigationView: $showNavigationView,
+            showInspector: $showInspector,
             onHomeButtonTap: {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     showNavigationView.toggle()
+                    updateSplitVisibility(left: showNavigationView, right: showInspector)
                 }
             },
             onInspectorToggle: {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     showInspector.toggle()
+                    updateSplitVisibility(left: showNavigationView, right: showInspector)
                 }
             }
             ,
@@ -1358,7 +1374,8 @@ struct EnvironmentView: View {
             },
             onRunPhotogrammetryDemo: {
                 runPhotogrammetryDemoFromEnvironment()
-            }
+            },
+            splitVisibility: $splitVisibility
         )
     }
 
@@ -1544,7 +1561,6 @@ struct EnvironmentView: View {
         nextWindowID += 1
     }
 
-    // REMOVED: @MainActor private func importDataFrame(from url: URL) { ... }
 
     private func handleWindowAction(_ action: WindowAction, windowId: Int) {
         switch action {
@@ -1761,6 +1777,20 @@ struct EnvironmentView: View {
         #else
         print("ObjectCapture framework not available.")
         #endif
+    }
+
+    // MARK: - Helper method to update split visibility based on left (sidebar) and right (inspector) flags
+    private func updateSplitVisibility(left: Bool, right: Bool) {
+        if left && right {
+            splitVisibility = .all            // left + content + right
+        } else if left && !right {
+            splitVisibility = .doubleColumn   // left + content
+        } else if !left && right {
+            splitVisibility = .detailOnly     // right only (NavigationSplitView cannot show content-only)
+        } else {
+            // Neither left nor right — fall back to showing content with left
+            splitVisibility = .doubleColumn
+        }
     }
 }
 
@@ -2830,3 +2860,4 @@ struct SettingsSheetWrapper: View {
 struct EnvironmentView_Previews: PreviewProvider {
     static var previews: some View { EnvironmentView() }
 }
+
