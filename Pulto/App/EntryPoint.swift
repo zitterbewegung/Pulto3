@@ -138,7 +138,7 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.4, height: 0.4, depth: 0.4, in: .meters)
+        .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
 
         // PointCloudDemo dedicated volume
         WindowGroup(id: "volumetric-pointclouddemo", for: Int.self) { $id in
@@ -215,7 +215,7 @@ struct EntryPoint: App {
             }
         }
         .windowStyle(.volumetric)
-        .defaultSize(width: 0.5, height: 0.5, depth: 0.5, in: .meters)
+        .defaultSize(width: 0.75, height: 0.75, depth: 0.75, in: .meters)
 
         // 3-D chart volume
         WindowGroup(id: "volumetric-chart3d", for: Int.self) { $id in
