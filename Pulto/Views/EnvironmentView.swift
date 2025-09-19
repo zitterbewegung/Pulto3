@@ -338,7 +338,7 @@ struct EnhancedActiveWindowsView: View {
             ToolbarItemGroup(placement: .topBarLeading) {
                 // GROUP 1: Navigation & Status (pill container)
                 HStack(spacing: 12) {
-                    Button(action: onHomeButtonTap) {
+                    Button(action: onInspectorToggle) {
                         Image(systemName: showNavigationView ? "sidebar.left" : "sidebar.squares.left")
                             .font(.system(size: 20))
                             .symbolRenderingMode(.hierarchical)
@@ -553,8 +553,9 @@ struct EnhancedActiveWindowsView: View {
                 .glassBackgroundEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 // Inspector toggle (separate)
-                Button(action: onInspectorToggle) {
+                /*Button(action: onInspectorToggle) {
                     Image(systemName: showInspector ? "sidebar.right" : "sidebar.trailing")
+
                         .font(.title2)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(showInspector ? .blue : .gray)
@@ -570,7 +571,7 @@ struct EnhancedActiveWindowsView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .help("Toggle inspector")
+                .help("Toggle inspector")*/
             }
         }
         .onChange(of: windowManager.getAllWindows().count) { count in
@@ -802,11 +803,11 @@ struct EnhancedActiveWindowsView: View {
         if left && right {
             splitVisibility = .all            // left + content + right
         } else if left && !right {
-            splitVisibility = .doubleColumn   // left + content
+            splitVisibility = .doubleColumn   // left + content (hide right)
         } else if !left && right {
-            splitVisibility = .detailOnly     // right only (NavigationSplitView cannot show content-only)
+            splitVisibility = .all            // Show all columns but handle left visibility through UI state
         } else {
-            // Neither left nor right — fall back to showing content with left
+            // Neither left nor right — show left + content as fallback
             splitVisibility = .doubleColumn
         }
     }
